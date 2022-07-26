@@ -1,0 +1,1 @@
+antlr -Dlanguage=Go -o ../parser ../grammar/JsonTemplate.g4 -visitor
