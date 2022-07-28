@@ -17,11 +17,12 @@ type JsonFunction struct {
 }
 
 var functions = make(map[string][]JsonFunction)
-var instanceFunctions = make(map[reflect.Type]map[string][]JsonFunction)
+var instanceFunctions = make(map[string]map[string][]JsonFunction)
 
 func Init() {
 	RegisterMathFunctions()
 	RegisterStringFunctions()
+	RegisterArrayFunctions()
 }
 
 func RegisterFunction(fn JsonFunction) {
@@ -43,18 +44,18 @@ func RegisterFunction(fn JsonFunction) {
 	}
 	functions[fn.Name] = append(functions[fn.Name], fn)
 	if fn.IsInstance {
-		if _, ok := instanceFunctions[fn.Args[0]]; !ok {
-			instanceFunctions[fn.Args[0]] = make(map[string][]JsonFunction)
+		if _, ok := instanceFunctions[fn.Args[0].String()]; !ok {
+			instanceFunctions[fn.Args[0].String()] = make(map[string][]JsonFunction)
 		}
-		instanceFunctions[fn.Args[0]][fn.Name] = append(instanceFunctions[fn.Args[0]][fn.Name], fn)
+		instanceFunctions[fn.Args[0].String()][fn.Name] = append(instanceFunctions[fn.Args[0].String()][fn.Name], fn)
 	}
 }
 
 func HasInstanceFunction(t reflect.Type, name string) bool {
-	if _, ok := instanceFunctions[t]; !ok {
+	if _, ok := instanceFunctions[t.String()]; !ok {
 		return false
 	}
-	if _, ok := instanceFunctions[t][name]; !ok {
+	if _, ok := instanceFunctions[t.String()][name]; !ok {
 		return false
 	}
 	return true
@@ -68,7 +69,7 @@ func HasFunction(name string) bool {
 }
 
 func CallInstanceFunction(name string, instance interface{}, args []interface{}) (interface{}, error) {
-	fns, ok := instanceFunctions[reflect.TypeOf(instance)][name]
+	fns, ok := instanceFunctions[reflect.TypeOf(instance).String()][name]
 	if !ok {
 		return nil, &utils.EvaluationError{
 			Message: fmt.Sprintf("Function \"%s\" not found", name),

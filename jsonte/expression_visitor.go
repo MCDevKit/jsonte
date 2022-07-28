@@ -527,7 +527,12 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) interface{} {
 				}
 			}
 			for i, context := range ctx.AllName() {
-				v.pushScopePair(context.GetText(), o[i])
+				// Ensure we get boxed type
+				if utils.IsNumber(o[i]) {
+					v.pushScopePair(context.GetText(), utils.ToNumber(o[i]))
+				} else {
+					v.pushScopePair(context.GetText(), o[i])
+				}
 			}
 			result := v.Visit(ctx.Field())
 			if isError(result) {

@@ -310,6 +310,31 @@ func IsEqual(a, b interface{}) bool {
 	return false
 }
 
+func Less(a, b interface{}) bool {
+	if a == nil && b == nil {
+		return false
+	}
+	if a == nil {
+		return false
+	}
+	if b == nil {
+		return true
+	}
+	if IsNumber(a) && IsNumber(b) {
+		if ToNumber(a).Value < ToNumber(b).Value {
+			return true
+		} else {
+			return false
+		}
+	}
+	if s1, ok1 := a.(string); ok1 {
+		if s2, ok2 := b.(string); ok2 {
+			return strings.Compare(s1, s2) == -1
+		}
+	}
+	return false
+}
+
 func IsEqualObject(a, b JsonObject) bool {
 	if len(a) != len(b) {
 		return false
@@ -334,7 +359,7 @@ func IsEqualArray(a, b JsonArray) bool {
 	return true
 }
 
-func CreateRange(start, end int) interface{} {
+func CreateRange(start, end int) JsonArray {
 	result := JsonArray{}
 	if start > end {
 		return result
