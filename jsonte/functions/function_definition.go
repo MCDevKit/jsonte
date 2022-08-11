@@ -23,6 +23,7 @@ func Init() {
 	RegisterMathFunctions()
 	RegisterStringFunctions()
 	RegisterArrayFunctions()
+	RegisterImageFunctions()
 }
 
 func RegisterFunction(fn JsonFunction) {
