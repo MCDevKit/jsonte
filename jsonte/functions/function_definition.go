@@ -24,6 +24,7 @@ func Init() {
 	RegisterStringFunctions()
 	RegisterArrayFunctions()
 	RegisterImageFunctions()
+	RegisterAudioFunctions()
 }
 
 func RegisterFunction(fn JsonFunction) {

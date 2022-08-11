@@ -9,10 +9,10 @@ import (
 	"jsonte/jsonte/utils"
 )
 
-const cacheBucket = "imageBounds"
+const imageCache = "imageBounds"
 
 func RegisterImageFunctions() {
-	utils.CreateCacheBucket(cacheBucket, 3600)
+	utils.CreateCacheBucket(imageCache, 3600)
 	RegisterFunction(JsonFunction{
 		Name: "imageWidth",
 		Body: imageWidth,
@@ -25,7 +25,7 @@ func RegisterImageFunctions() {
 
 func imageBounds(str string) (*image.Config, error) {
 	var img *image.Config
-	cache := utils.GetCache(cacheBucket, str)
+	cache := utils.GetCache(imageCache, str)
 	if cache != nil {
 		c := (*cache).(image.Config)
 		img = &c
@@ -39,7 +39,7 @@ func imageBounds(str string) (*image.Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		utils.PutCache(cacheBucket, str, config)
+		utils.PutCache(imageCache, str, config)
 		err = file.Close()
 		if err != nil {
 			return nil, err
