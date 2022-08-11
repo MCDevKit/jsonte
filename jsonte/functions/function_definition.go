@@ -25,6 +25,7 @@ func Init() {
 	RegisterArrayFunctions()
 	RegisterImageFunctions()
 	RegisterAudioFunctions()
+	RegisterColorFunctions()
 }
 
 func RegisterFunction(fn JsonFunction) {
