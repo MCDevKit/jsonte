@@ -32,17 +32,17 @@ func RegisterArrayFunctions() {
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "contains",
-		Body:       contains,
+		Body:       arrayContains,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "indexOf",
-		Body:       indexOf,
+		Body:       arrayIndexOf,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "lastIndexOf",
-		Body:       lastIndexOf,
+		Body:       arrayLastIndexOf,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
@@ -211,7 +211,7 @@ func sort_(arr utils.JsonArray) (utils.JsonArray, error) {
 	return result, nil
 }
 
-func contains(arr utils.JsonArray, value interface{}) (bool, error) {
+func arrayContains(arr utils.JsonArray, value interface{}) (bool, error) {
 	if arr == nil {
 		return false, nil
 	}
@@ -223,7 +223,7 @@ func contains(arr utils.JsonArray, value interface{}) (bool, error) {
 	return false, nil
 }
 
-func indexOf(arr utils.JsonArray, value interface{}) (int, error) {
+func arrayIndexOf(arr utils.JsonArray, value interface{}) (int, error) {
 	if arr == nil {
 		return -1, nil
 	}
@@ -235,7 +235,7 @@ func indexOf(arr utils.JsonArray, value interface{}) (int, error) {
 	return -1, nil
 }
 
-func lastIndexOf(arr utils.JsonArray, value interface{}) (int, error) {
+func arrayLastIndexOf(arr utils.JsonArray, value interface{}) (int, error) {
 	if arr == nil {
 		return -1, nil
 	}
