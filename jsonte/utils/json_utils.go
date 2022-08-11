@@ -69,6 +69,9 @@ func ToBoolean(obj interface{}) bool {
 	if b, ok := obj.(string); ok && strings.Trim(b, "\n\r") != "" {
 		return true
 	}
+	if b, ok := obj.(JsonNumber); ok && b.Value != 0 {
+		return true
+	}
 	return false
 }
 

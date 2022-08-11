@@ -7,6 +7,7 @@ import (
 	"jsonte/jsonte/functions"
 	"jsonte/jsonte/utils"
 	"jsonte/parser"
+	"os"
 	"reflect"
 )
 
@@ -29,6 +30,10 @@ func (v ExpressionVisitor) Visit(tree antlr.ParseTree) interface{} {
 		return v.VisitField(val)
 	case *parser.ArrayContext:
 		return v.VisitArray(val)
+	case *parser.ObjectContext:
+		return v.VisitObject(val)
+	case *parser.Object_fieldContext:
+		return v.VisitObject_field(val)
 	case *parser.ExpressionContext:
 		return v.VisitExpression(val)
 	case *parser.Function_paramContext:
@@ -125,7 +130,17 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) inter
 		name = ctx.Name().GetText()
 	}
 	v.name = &name
-	return v.Visit(ctx.Field())
+	result := v.Visit(ctx.Field())
+	if isError(result) {
+		// DO YOU REALLY NEED TO RETURN AN ERROR HERE???
+		// I JUST WANT TO PRINT THE ERROR AND CONTINUE
+		_, err := fmt.Fprintln(os.Stderr, result)
+		if err != nil {
+			return nil
+		}
+		return nil
+	}
+	return result
 }
 
 func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{} {
@@ -432,6 +447,9 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 	if context.Array() != nil {
 		return v.Visit(context.Array())
 	}
+	if context.Object() != nil {
+		return v.Visit(context.Object())
+	}
 	if context.Subtract() != nil && len(context.AllField()) == 1 {
 		f := v.Visit(context.Field(0))
 		if isError(f) {
@@ -515,6 +533,36 @@ func (v ExpressionVisitor) VisitArray(context *parser.ArrayContext) interface{} 
 		}
 	}
 	return result
+}
+
+func (v ExpressionVisitor) VisitObject(context *parser.ObjectContext) interface{} {
+	result := utils.JsonObject{}
+	for _, f := range context.AllObject_field() {
+		obj := v.Visit(f)
+		if isError(obj) {
+			return obj
+		}
+		for key, value := range obj.(utils.JsonObject) {
+			result[key] = value
+		}
+	}
+	return result
+}
+
+func (v ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContext) interface{} {
+	name := ""
+	if context.ESCAPED_STRING() != nil {
+		name = utils.UnescapeString(utils.ToString(context.ESCAPED_STRING().GetText()))
+	} else {
+		name = context.Name().GetText()
+	}
+	field := v.Visit(context.Field())
+	if isError(field) {
+		return field
+	}
+	return utils.JsonObject{
+		name: field,
+	}
 }
 
 func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) interface{} {

@@ -33,18 +33,18 @@ As: 'as';
 Comma: ',';
 Arrow: '=>';
 
-LeftMustache: '{{';
-RightMustache: '}}';
+LeftBrace: '{';
+RightBrace: '}';
 
 Null: 'null';
 False: 'false';
 True: 'true';
 
 expression
-    : LeftMustache? Iteration field (As name)? RightMustache?
-    | LeftMustache? Question field RightMustache?
-    | LeftMustache? Literal field RightMustache?
-    | LeftMustache? field RightMustache?
+    : (LeftBrace LeftBrace)? Iteration field (As name)? (RightBrace RightBrace)?
+    | (LeftBrace LeftBrace)? Question field (RightBrace RightBrace)?
+    | (LeftBrace LeftBrace)? Literal field (RightBrace RightBrace)?
+    | (LeftBrace LeftBrace)? field (RightBrace RightBrace)?
     ;
 
 lambda
@@ -65,6 +65,7 @@ field
    | NUMBER
    | ESCAPED_STRING
    | array
+   | object
    | name
    | field (Question? '.' name)
    | field (Question? LeftBracket index RightBracket)
@@ -88,6 +89,15 @@ field
 
 array
     : LeftBracket (field (Comma field)*)? RightBracket
+    ;
+
+object
+    : '{' (object_field (Comma object_field)*)? '}'
+    ;
+
+object_field
+    : name ':' field
+    | ESCAPED_STRING ':' field
     ;
 
 name
