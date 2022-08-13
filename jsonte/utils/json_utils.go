@@ -216,62 +216,44 @@ func IsObject(obj interface{}) bool {
 	return false
 }
 
-func MergeObject(template, parent JsonObject) (JsonObject, error) {
+func MergeObject(template, parent JsonObject) JsonObject {
 	result := JsonObject{}
 	for k, v := range parent {
 		if strings.HasPrefix(k, "$") && k != "$comment" {
 			result[strings.TrimPrefix(k, "$")] = v
 		} else if _, ok := template[k]; !ok {
 			if IsObject(v) {
-				merge, err := MergeObject(nil, v.(JsonObject))
-				if err != nil {
-					return nil, err
-				}
+				merge := MergeObject(nil, v.(JsonObject))
 				result[k] = merge
 			} else if IsArray(v) {
-				merge, err := MergeArray(nil, v.(JsonArray))
-				if err != nil {
-					return nil, err
-				}
+				merge := MergeArray(nil, v.(JsonArray))
 				result[k] = merge
 			} else {
 				result[k] = v
 			}
 		} else {
 			if IsObject(v) {
-				merge, err := MergeObject(template[k].(JsonObject), v.(JsonObject))
-				if err != nil {
-					return nil, err
-				}
+				merge := MergeObject(template[k].(JsonObject), v.(JsonObject))
 				result[k] = merge
 			} else if IsArray(v) {
-				merge, err := MergeArray(template[k].(JsonArray), v.(JsonArray))
-				if err != nil {
-					return nil, err
-				}
+				merge := MergeArray(template[k].(JsonArray), v.(JsonArray))
 				result[k] = merge
 			} else {
 				result[k] = v
 			}
 		}
 	}
-	return result, nil
+	return result
 }
 
-func MergeArray(template, parent JsonArray) (JsonArray, error) {
+func MergeArray(template, parent JsonArray) JsonArray {
 	result := JsonArray{}
 	for _, v := range template {
 		if IsObject(v) {
-			merge, err := MergeObject(nil, v.(JsonObject))
-			if err != nil {
-				return nil, err
-			}
+			merge := MergeObject(nil, v.(JsonObject))
 			result = append(result, merge)
 		} else if IsArray(v) {
-			merge, err := MergeArray(nil, v.(JsonArray))
-			if err != nil {
-				return nil, err
-			}
+			merge := MergeArray(nil, v.(JsonArray))
 			result = append(result, merge)
 		} else {
 			result = append(result, v)
@@ -279,22 +261,16 @@ func MergeArray(template, parent JsonArray) (JsonArray, error) {
 	}
 	for _, v := range parent {
 		if IsObject(v) {
-			merge, err := MergeObject(nil, v.(JsonObject))
-			if err != nil {
-				return nil, err
-			}
+			merge := MergeObject(nil, v.(JsonObject))
 			result = append(result, merge)
 		} else if IsArray(v) {
-			merge, err := MergeArray(nil, v.(JsonArray))
-			if err != nil {
-				return nil, err
-			}
+			merge := MergeArray(nil, v.(JsonArray))
 			result = append(result, merge)
 		} else {
 			result = append(result, v)
 		}
 	}
-	return result, nil
+	return result
 }
 
 func IsEqual(a, b interface{}) bool {
@@ -421,6 +397,34 @@ func UnwrapContainers(obj interface{}) interface{} {
 
 }
 
+func DeepCopyObject(object JsonObject) JsonObject {
+	result := JsonObject{}
+	for k, v := range object {
+		if IsObject(v) {
+			result[k] = DeepCopyObject(v.(JsonObject))
+		} else if IsArray(v) {
+			result[k] = DeepCopyArray(v.(JsonArray))
+		} else {
+			result[k] = v
+		}
+	}
+	return result
+}
+
+func DeepCopyArray(object JsonArray) JsonArray {
+	result := JsonArray{}
+	for _, v := range object {
+		if IsObject(v) {
+			result = append(result, DeepCopyObject(v.(JsonObject)))
+		} else if IsArray(v) {
+			result = append(result, DeepCopyArray(v.(JsonArray)))
+		} else {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
 type EvaluationError struct {
 	Message string
 	Path    string
@@ -428,6 +432,24 @@ type EvaluationError struct {
 }
 
 func (e *EvaluationError) Error() string {
+	if e.Err != nil && e.Path != "" {
+		return e.Message + ": " + e.Err.Error() + " at " + e.Path
+	} else if e.Err != nil {
+		return e.Message + ": " + e.Err.Error()
+	} else if e.Path != "" {
+		return e.Message + " at " + e.Path
+	} else {
+		return e.Message
+	}
+}
+
+type TemplatingError struct {
+	Message string
+	Path    string
+	Err     error
+}
+
+func (e *TemplatingError) Error() string {
 	if e.Err != nil && e.Path != "" {
 		return e.Message + ": " + e.Err.Error() + " at " + e.Path
 	} else if e.Err != nil {

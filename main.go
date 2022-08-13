@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/gammazero/deque"
 	"jsonte/jsonte"
 	"jsonte/jsonte/functions"
+	"jsonte/jsonte/utils"
 	"os"
 	"strings"
 )
@@ -19,7 +21,12 @@ func main() {
 		if text == "exit" {
 			break
 		}
-		jsonte.Eval(text)
+		eval, err := jsonte.Eval(text, utils.JsonObject{}, utils.JsonObject{}, deque.Deque[interface{}]{}, "#/")
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println(utils.ToString(eval.Value))
+		}
 		fmt.Print("> ")
 	}
 }

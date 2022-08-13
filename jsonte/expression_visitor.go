@@ -20,7 +20,7 @@ type ExpressionVisitor struct {
 	name         *string
 	fullScope    utils.JsonObject
 	extraScope   utils.JsonObject
-	currentScope deque.Deque[utils.JsonObject]
+	currentScope deque.Deque[interface{}]
 	path         *string
 }
 
@@ -107,8 +107,10 @@ func isError(v interface{}) bool {
 func (v ExpressionVisitor) resolveScope(name string) interface{} {
 	for i := v.currentScope.Len() - 1; i >= 0; i-- {
 		m := v.currentScope.At(i)
-		if v, ok := m[name]; ok {
-			return v
+		if c, ok := m.(utils.JsonObject); ok {
+			if v, ok := c[name]; ok {
+				return v
+			}
 		}
 	}
 	return nil
@@ -213,10 +215,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					Decimal: n1.Decimal || n2.Decimal,
 				}
 			} else if utils.IsArray(f1) && utils.IsArray(f2) {
-				array, err := utils.MergeArray(f1.(utils.JsonArray), f2.(utils.JsonArray))
-				if err != nil {
-					return err
-				}
+				array := utils.MergeArray(f1.(utils.JsonArray), f2.(utils.JsonArray))
 				return array
 			} else if utils.IsObject(f1) && utils.IsObject(f2) {
 				var result utils.JsonArray = nil
@@ -472,8 +471,10 @@ func (v ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
 		}
 		for i := 0; i < v.currentScope.Len(); i++ {
 			s := v.currentScope.At(i)
-			for key, value := range s {
-				scope[key] = value
+			if c, ok := s.(utils.JsonObject); ok {
+				for key, value := range c {
+					scope[key] = value
+				}
 			}
 		}
 		return scope
@@ -490,8 +491,10 @@ func (v ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
 	back := v.currentScope.Len() - 1
 	for newScope == nil && back >= 0 {
 		m := v.currentScope.At(back)
-		if v, ok := m[text]; ok {
-			newScope = v
+		if c, ok := m.(utils.JsonObject); ok {
+			if v, ok := c[text]; ok {
+				newScope = v
+			}
 		}
 		back--
 	}

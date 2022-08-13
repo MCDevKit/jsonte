@@ -1,8 +1,8 @@
 package jsonte
 
 import (
-	"fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/gammazero/deque"
 	"jsonte/jsonte/utils"
 	"jsonte/parser"
 )
@@ -12,7 +12,15 @@ type Result struct {
 	Action utils.JsonAction
 }
 
-func Eval(text string) (result Result) {
+func (r *Result) GetError() error {
+	if isError(r.Value) {
+		return r.Value.(error)
+	} else {
+		return nil
+	}
+}
+
+func Eval(text string, extraScope, fullScope utils.JsonObject, thisInstance deque.Deque[interface{}], path string) (Result, error) {
 	is := antlr.NewInputStream(text)
 	lexer := parser.NewJsonTemplateLexer(is)
 	lexer.RemoveErrorListeners()
@@ -23,20 +31,19 @@ func Eval(text string) (result Result) {
 	p.AddErrorListener(antlr.NewConsoleErrorListener())
 	p.BuildParseTrees = true
 	tree := p.Expression()
-	path := "#/"
 	visitor := ExpressionVisitor{
-		fullScope: map[string]interface{}{
-			"test": 123,
-		},
-		extraScope: map[string]interface{}{
-			"test2": 456,
-		},
-		path: &path,
+		fullScope:    fullScope,
+		extraScope:   extraScope,
+		currentScope: thisInstance,
+		path:         &path,
 	}
 	r := visitor.Visit(tree)
-	fmt.Println(utils.ToString(r))
+	var err error
+	if isError(r) {
+		err = r.(error)
+	}
 	return Result{
 		Value:  r,
 		Action: visitor.action,
-	}
+	}, err
 }
