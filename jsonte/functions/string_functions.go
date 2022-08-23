@@ -102,7 +102,7 @@ func replace(str, old, new string) string {
 }
 
 func join(strs utils.JsonArray, sep string) string {
-	arr := make([]string, 0, len(strs))
+	arr := make([]string, len(strs))
 	for i, s := range strs {
 		arr[i] = utils.ToString(s)
 	}
