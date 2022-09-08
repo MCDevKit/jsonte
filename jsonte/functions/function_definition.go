@@ -152,7 +152,7 @@ func callFunctionImpl(name string, fns []JsonFunction, args []interface{}) (inte
 
 func checkParams(fn JsonFunction, args []interface{}) bool {
 	for i, arg := range args {
-		if !reflect.TypeOf(arg).AssignableTo(fn.Args[i]) {
+		if arg == nil || !reflect.TypeOf(arg).AssignableTo(fn.Args[i]) {
 			return false
 		}
 	}
@@ -162,7 +162,37 @@ func checkParams(fn JsonFunction, args []interface{}) bool {
 func paramsToString(args []reflect.Type) string {
 	join := make([]string, 0)
 	for _, arg := range args {
-		join = append(join, arg.String())
+		join = append(join, typeToString(arg))
 	}
 	return "(" + strings.Join(join, ", ") + ")"
+}
+
+func typeToString(t reflect.Type) string {
+	if t == nil {
+		return "null"
+	}
+	if t.AssignableTo(reflect.TypeOf(utils.JsonNumber{})) {
+		return "number"
+	}
+	switch t.Kind() {
+	case reflect.Bool:
+		return "boolean"
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Float32, reflect.Float64:
+		return "number"
+	case reflect.String:
+		return "string"
+	case reflect.Slice, reflect.Array:
+		return "array"
+	case reflect.Map:
+		return "object"
+	case reflect.Struct:
+		return "object"
+	case reflect.Ptr:
+		return typeToString(t.Elem())
+	case reflect.Func:
+		return "lambda"
+	}
+	return "unknown"
 }

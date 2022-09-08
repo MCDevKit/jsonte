@@ -112,6 +112,12 @@ func (v ExpressionVisitor) resolveScope(name string) interface{} {
 				return v
 			}
 		}
+		// Seems like sometimes above cast fails, so we need to check for map[string]interface{} as well
+		if c, ok := m.(map[string]interface{}); ok {
+			if v, ok := c[name]; ok {
+				return v
+			}
+		}
 	}
 	return nil
 }
