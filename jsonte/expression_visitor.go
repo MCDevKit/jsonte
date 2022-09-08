@@ -24,7 +24,7 @@ type ExpressionVisitor struct {
 	path         *string
 }
 
-func (v ExpressionVisitor) Visit(tree antlr.ParseTree) interface{} {
+func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) interface{} {
 	switch val := tree.(type) {
 	case *parser.FieldContext:
 		return v.VisitField(val)
@@ -48,7 +48,7 @@ func (v ExpressionVisitor) Visit(tree antlr.ParseTree) interface{} {
 	return nil
 }
 
-func (v ExpressionVisitor) resolveLambdaTree(src string) parser.ILambdaContext {
+func (v *ExpressionVisitor) resolveLambdaTree(src string) parser.ILambdaContext {
 	is := antlr.NewInputStream(src)
 	lexer := parser.NewJsonTemplateLexer(is)
 	lexer.RemoveErrorListeners()
@@ -69,7 +69,7 @@ func (v *ExpressionVisitor) pushScopePair(key string, value interface{}) {
 	v.currentScope.PushBack(map[string]interface{}{key: value})
 }
 
-func (v ExpressionVisitor) popScope() {
+func (v *ExpressionVisitor) popScope() {
 	v.currentScope.PopBack()
 }
 
@@ -104,7 +104,7 @@ func isError(v interface{}) bool {
 	return ok
 }
 
-func (v ExpressionVisitor) resolveScope(name string) interface{} {
+func (v *ExpressionVisitor) resolveScope(name string) interface{} {
 	for i := v.currentScope.Len() - 1; i >= 0; i-- {
 		m := v.currentScope.At(i)
 		if c, ok := m.(utils.JsonObject); ok {
@@ -465,7 +465,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 	return nil
 }
 
-func (v ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
+func (v *ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
 	text := context.GetText()
 	if text == "this" {
 		scope := utils.JsonObject{}
@@ -517,7 +517,7 @@ func (v ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
 	return newScope
 }
 
-func (v ExpressionVisitor) VisitIndex(context *parser.IndexContext) interface{} {
+func (v *ExpressionVisitor) VisitIndex(context *parser.IndexContext) interface{} {
 	if context.NUMBER() != nil {
 		return utils.ToNumber(context.NUMBER().GetText())
 	}
@@ -533,7 +533,7 @@ func (v ExpressionVisitor) VisitIndex(context *parser.IndexContext) interface{} 
 	}
 }
 
-func (v ExpressionVisitor) VisitArray(context *parser.ArrayContext) interface{} {
+func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) interface{} {
 	result := make(utils.JsonArray, len(context.AllField()))
 	for i, f := range context.AllField() {
 		result[i] = v.Visit(f)
@@ -544,7 +544,7 @@ func (v ExpressionVisitor) VisitArray(context *parser.ArrayContext) interface{} 
 	return result
 }
 
-func (v ExpressionVisitor) VisitObject(context *parser.ObjectContext) interface{} {
+func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) interface{} {
 	result := utils.JsonObject{}
 	for _, f := range context.AllObject_field() {
 		obj := v.Visit(f)
@@ -558,7 +558,7 @@ func (v ExpressionVisitor) VisitObject(context *parser.ObjectContext) interface{
 	return result
 }
 
-func (v ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContext) interface{} {
+func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContext) interface{} {
 	name := ""
 	if context.ESCAPED_STRING() != nil {
 		name = utils.UnescapeString(utils.ToString(context.ESCAPED_STRING().GetText()))
