@@ -14,4 +14,5 @@ require (
 	github.com/jfreymuth/oggvorbis v1.0.1 // indirect
 	github.com/jfreymuth/vorbis v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	muzzammil.xyz/jsonc v1.0.0 // indirect
 )

@@ -13,6 +13,10 @@ import (
 
 func main() {
 	functions.Init()
+	repl()
+}
+
+func repl() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("> ")
 	for true {
@@ -21,7 +25,7 @@ func main() {
 		if text == "exit" {
 			break
 		}
-		eval, err := jsonte.Eval(text, utils.JsonObject{}, utils.JsonObject{}, deque.Deque[interface{}]{}, "#/")
+		eval, err := jsonte.Eval(text, deque.Deque[interface{}]{}, "#/")
 		if err != nil {
 			fmt.Println(err)
 		} else {

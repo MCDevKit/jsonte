@@ -1,0 +1,180 @@
+package test
+
+import (
+	"fmt"
+	"jsonte/jsonte"
+	"jsonte/jsonte/utils"
+	"math"
+	"reflect"
+	"testing"
+)
+
+func compareJsonObject(t *testing.T, expected utils.JsonObject, actual utils.JsonObject, path string) {
+	t.Helper()
+	for key, value1 := range expected {
+		if value2, ok := actual[key]; ok {
+			newPath := fmt.Sprintf("%s/%s", path, key)
+			if v1, ok := value1.(utils.JsonObject); ok {
+				if v2, ok := value2.(utils.JsonObject); ok {
+					compareJsonObject(t, v1, v2, newPath)
+				} else {
+					t.Errorf("Field %s is not an object (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
+				}
+			} else if v1, ok := value1.(utils.JsonArray); ok {
+				if v2, ok := value2.(utils.JsonArray); ok {
+					compareJsonArray(t, v1, v2, newPath)
+				} else {
+					t.Errorf("Field %s is not an array (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
+				}
+			} else if v1, ok := value1.(utils.JsonNumber); ok {
+				if v2, ok := value2.(utils.JsonNumber); ok {
+					if v1.FloatValue() != v2.FloatValue() {
+						t.Errorf("Field %s is not equal (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(v2))
+					}
+				} else {
+					t.Errorf("Field %s is not a number (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
+				}
+			} else if value1 != value2 {
+				t.Errorf("Field %s is not equal (expected %s (%s), got %s (%s)", newPath, utils.ToString(value1), reflect.TypeOf(value1).Name(), utils.ToString(value2), reflect.TypeOf(value2).Name())
+			}
+		} else {
+			t.Errorf("Object does not contain key %s", key)
+		}
+	}
+	for key := range actual {
+		if _, ok := expected[key]; !ok {
+			t.Errorf("Object contains unexpected key %s/%s", path, key)
+		}
+	}
+}
+
+func compareJsonArray(t *testing.T, expected utils.JsonArray, actual utils.JsonArray, path string) {
+	t.Helper()
+	for i := 0; i < int(math.Min(float64(len(expected)), float64(len(actual)))); i++ {
+		newPath := fmt.Sprintf("%s[%d]", path, i)
+		value1 := expected[i]
+		value2 := actual[i]
+		if v1, ok := value1.(utils.JsonObject); ok {
+			if v2, ok := value2.(utils.JsonObject); ok {
+				compareJsonObject(t, v1, v2, newPath)
+			} else {
+				t.Errorf("Element %s is not an object (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
+			}
+		} else if v1, ok := value1.(utils.JsonArray); ok {
+			if v2, ok := value2.(utils.JsonArray); ok {
+				compareJsonArray(t, v1, v2, newPath)
+			} else {
+				t.Errorf("Element %s is not an array (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
+			}
+		} else if v1, ok := value1.(utils.JsonNumber); ok {
+			if v2, ok := value2.(utils.JsonNumber); ok {
+				if v1.FloatValue() != v2.FloatValue() {
+					t.Errorf("Element %s is not equal (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(v2))
+				}
+			} else {
+				t.Errorf("Element %s is not a number (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
+			}
+		} else {
+			if value1 != value2 {
+				t.Errorf("Element %s is not equal (expected %s (%s), got %s (%s))", newPath, utils.ToString(value1), reflect.TypeOf(value1).Name(), utils.ToString(value2), reflect.TypeOf(value2).Name())
+			}
+		}
+	}
+	for i := 0; i < len(actual); i++ {
+		if i >= len(expected) {
+			t.Errorf("Array contains unexpected element %s[%d]", path, i)
+		}
+	}
+}
+
+func assertTemplateWithModule(t *testing.T, template, module string, expected utils.JsonObject) {
+	t.Helper()
+	mod, err := jsonte.LoadModule(module)
+	if err != nil {
+		t.Fatal(err)
+	}
+	process, err := jsonte.Process("test", template, utils.JsonObject{}, map[string]jsonte.JsonModule{
+		mod.Name: mod,
+	}, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compareJsonObject(t, expected, process["test"].(utils.JsonObject), "#")
+}
+
+func assertTemplate(t *testing.T, template string, expected utils.JsonObject) {
+	t.Helper()
+	process, err := jsonte.Process("test", template, utils.JsonObject{}, map[string]jsonte.JsonModule{}, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compareJsonObject(t, expected, process["test"].(utils.JsonObject), "#")
+}
+
+func TestSimpleTemplate(t *testing.T) {
+	template := `{
+		"$template": {
+			"test": "{{=1..3}}"
+		}
+	}`
+	expected := utils.JsonObject{
+		"test": utils.JsonArray{1, 2, 3},
+	}
+	assertTemplate(t, template, expected)
+}
+
+func TestSimpleIterationInObject(t *testing.T) {
+	template := `{
+		"$template": {
+			"{{#1..3}}": {
+				"test{{index}}": "{{=value}}"
+			}
+		}
+	}`
+	expected := utils.JsonObject{
+		"test0": 1,
+		"test1": 2,
+		"test2": 3,
+	}
+	assertTemplate(t, template, expected)
+}
+
+func TestSimpleIterationInObjectWithName(t *testing.T) {
+	template := `{
+		"$template": {
+			"{{#1..3 as num}}": {
+				"test{{index}}": "{{=num}}"
+			}
+		}
+	}`
+	expected := utils.JsonObject{
+		"test0": 1,
+		"test1": 2,
+		"test2": 3,
+	}
+	assertTemplate(t, template, expected)
+}
+
+func TestSimpleModule(t *testing.T) {
+	module := `{
+		"$module": "simple",
+		"$scope": {
+			"asd": 123
+		},
+		"$template": {
+			"asd": "{{=asd}}",
+			"overrideMe": -1
+		}
+	}`
+	template := `{
+		"$extend": "simple",
+		"$template": {
+			"overrideMe": 1
+		}
+	}`
+	expected := utils.JsonObject{
+		"overrideMe": 1,
+		"asd":        123,
+	}
+	assertTemplateWithModule(t, template, module, expected)
+}

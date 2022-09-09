@@ -16,12 +16,10 @@ const NaN = "NaN"
 
 type ExpressionVisitor struct {
 	parser.BaseJsonTemplateVisitor
-	action       utils.JsonAction
-	name         *string
-	fullScope    utils.JsonObject
-	extraScope   utils.JsonObject
-	currentScope deque.Deque[interface{}]
-	path         *string
+	action utils.JsonAction
+	name   *string
+	scope  deque.Deque[interface{}]
+	path   *string
 }
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) interface{} {
@@ -62,15 +60,15 @@ func (v *ExpressionVisitor) resolveLambdaTree(src string) parser.ILambdaContext 
 }
 
 func (v *ExpressionVisitor) pushScope(scope map[string]interface{}) {
-	v.currentScope.PushBack(scope)
+	v.scope.PushBack(scope)
 }
 
 func (v *ExpressionVisitor) pushScopePair(key string, value interface{}) {
-	v.currentScope.PushBack(map[string]interface{}{key: value})
+	v.scope.PushBack(map[string]interface{}{key: value})
 }
 
 func (v *ExpressionVisitor) popScope() {
-	v.currentScope.PopBack()
+	v.scope.PopBack()
 }
 
 func negate(value interface{}) interface{} {
@@ -105,8 +103,8 @@ func isError(v interface{}) bool {
 }
 
 func (v *ExpressionVisitor) resolveScope(name string) interface{} {
-	for i := v.currentScope.Len() - 1; i >= 0; i-- {
-		m := v.currentScope.At(i)
+	for i := v.scope.Len() - 1; i >= 0; i-- {
+		m := v.scope.At(i)
 		if c, ok := m.(utils.JsonObject); ok {
 			if v, ok := c[name]; ok {
 				return v
@@ -469,14 +467,8 @@ func (v *ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
 	text := context.GetText()
 	if text == "this" {
 		scope := utils.JsonObject{}
-		for key, value := range v.fullScope {
-			scope[key] = value
-		}
-		for key, value := range v.extraScope {
-			scope[key] = value
-		}
-		for i := 0; i < v.currentScope.Len(); i++ {
-			s := v.currentScope.At(i)
+		for i := 0; i < v.scope.Len(); i++ {
+			s := v.scope.At(i)
 			if c, ok := s.(utils.JsonObject); ok {
 				for key, value := range c {
 					scope[key] = value
@@ -485,34 +477,17 @@ func (v *ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
 		}
 		return scope
 	}
-	if text == "value" {
-		if v.currentScope.Len() > 0 {
-			return v.currentScope.Back()
-		} else {
-			return nil
-		}
-	}
 	newScope := v.resolveScope(text)
 
-	back := v.currentScope.Len() - 1
+	back := v.scope.Len() - 1
 	for newScope == nil && back >= 0 {
-		m := v.currentScope.At(back)
+		m := v.scope.At(back)
 		if c, ok := m.(utils.JsonObject); ok {
 			if v, ok := c[text]; ok {
 				newScope = v
 			}
 		}
 		back--
-	}
-	if newScope == nil {
-		if b, ok := v.extraScope[text]; ok {
-			newScope = b
-		}
-	}
-	if newScope == nil {
-		if b, ok := v.fullScope[text]; ok {
-			newScope = b
-		}
 	}
 	return newScope
 }

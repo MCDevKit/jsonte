@@ -10,6 +10,7 @@ import (
 type Result struct {
 	Value  interface{}
 	Action utils.JsonAction
+	Name   string
 }
 
 func (r *Result) GetError() error {
@@ -20,7 +21,11 @@ func (r *Result) GetError() error {
 	}
 }
 
-func Eval(text string, extraScope, fullScope utils.JsonObject, thisInstance deque.Deque[interface{}], path string) (Result, error) {
+func QuickEval(text string) (Result, error) {
+	return Eval(text, deque.Deque[interface{}]{}, "#/")
+}
+
+func Eval(text string, scope deque.Deque[interface{}], path string) (Result, error) {
 	is := antlr.NewInputStream(text)
 	lexer := parser.NewJsonTemplateLexer(is)
 	lexer.RemoveErrorListeners()
@@ -32,10 +37,8 @@ func Eval(text string, extraScope, fullScope utils.JsonObject, thisInstance dequ
 	p.BuildParseTrees = true
 	tree := p.Expression()
 	visitor := ExpressionVisitor{
-		fullScope:    fullScope,
-		extraScope:   extraScope,
-		currentScope: thisInstance,
-		path:         &path,
+		scope: scope,
+		path:  &path,
 	}
 	r := visitor.Visit(tree)
 	var err error
@@ -45,5 +48,6 @@ func Eval(text string, extraScope, fullScope utils.JsonObject, thisInstance dequ
 	return Result{
 		Value:  r,
 		Action: visitor.action,
+		Name:   *visitor.name,
 	}, err
 }

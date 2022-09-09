@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
 	"math"
+	"muzzammil.xyz/jsonc"
 	"reflect"
 	"strconv"
 	"strings"
@@ -135,6 +137,26 @@ func ToNumber(obj interface{}) JsonNumber {
 			Decimal: false,
 		}
 	}
+	if b, ok := obj.(json.Number); ok {
+		result, err := strconv.ParseInt(string(b), 10, 64)
+		if err != nil {
+			result1, err := strconv.ParseFloat(string(b), 64)
+			if err != nil {
+				return JsonNumber{
+					Value:   0,
+					Decimal: false,
+				}
+			}
+			return JsonNumber{
+				Value:   result1,
+				Decimal: true,
+			}
+		}
+		return JsonNumber{
+			Value:   float64(result),
+			Decimal: false,
+		}
+	}
 	return JsonNumber{
 		Value:   0,
 		Decimal: false,
@@ -202,6 +224,40 @@ func IsArray(obj interface{}) bool {
 		return true
 	}
 	return false
+}
+
+func AsArray(obj interface{}) JsonArray {
+	if obj == nil {
+		return nil
+	}
+	rt := reflect.TypeOf(obj)
+	switch rt.Kind() {
+	case reflect.Slice, reflect.Array:
+		rv := reflect.ValueOf(obj)
+		result := make(JsonArray, rv.Len())
+		for i := 0; i < rv.Len(); i++ {
+			result[i] = rv.Index(i).Interface()
+		}
+		return result
+	}
+	return nil
+}
+
+func AsObject(obj interface{}) JsonObject {
+	if obj == nil {
+		return nil
+	}
+	rt := reflect.TypeOf(obj)
+	switch rt.Kind() {
+	case reflect.Map:
+		rv := reflect.ValueOf(obj)
+		result := make(JsonObject)
+		for _, key := range rv.MapKeys() {
+			result[key.String()] = rv.MapIndex(key).Interface()
+		}
+		return result
+	}
+	return nil
 }
 
 func IsObject(obj interface{}) bool {
@@ -382,14 +438,26 @@ func UnwrapContainers(obj interface{}) interface{} {
 	switch rt.Kind() {
 	case reflect.Slice, reflect.Array:
 		result := JsonArray{}
-		for _, v := range obj.(JsonArray) {
-			result = append(result, UnwrapContainers(v))
+		if o, ok := obj.(JsonArray); ok {
+			for _, v := range o {
+				result = append(result, UnwrapContainers(v))
+			}
+		} else {
+			for _, v := range obj.([]interface{}) {
+				result = append(result, UnwrapContainers(v))
+			}
 		}
 		return result
 	case reflect.Map:
 		result := JsonObject{}
-		for k, v := range obj.(JsonObject) {
-			result[k] = UnwrapContainers(v)
+		if o, ok := obj.(JsonObject); ok {
+			for k, v := range o {
+				result[k] = UnwrapContainers(v)
+			}
+		} else {
+			for k, v := range obj.(map[string]interface{}) {
+				result[k] = UnwrapContainers(v)
+			}
 		}
 		return result
 	}
@@ -401,9 +469,9 @@ func DeepCopyObject(object JsonObject) JsonObject {
 	result := JsonObject{}
 	for k, v := range object {
 		if IsObject(v) {
-			result[k] = DeepCopyObject(v.(JsonObject))
+			result[k] = DeepCopyObject(AsObject(v))
 		} else if IsArray(v) {
-			result[k] = DeepCopyArray(v.(JsonArray))
+			result[k] = DeepCopyArray(AsArray(v))
 		} else {
 			result[k] = v
 		}
@@ -415,9 +483,54 @@ func DeepCopyArray(object JsonArray) JsonArray {
 	result := JsonArray{}
 	for _, v := range object {
 		if IsObject(v) {
-			result = append(result, DeepCopyObject(v.(JsonObject)))
+			result = append(result, DeepCopyObject(AsObject(v)))
 		} else if IsArray(v) {
-			result = append(result, DeepCopyArray(v.(JsonArray)))
+			result = append(result, DeepCopyArray(AsArray(v)))
+		} else {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func ParseJson(str []byte) (JsonObject, error) {
+	dat := make(JsonObject)
+	// Remove comments
+	d := json.NewDecoder(bytes.NewBuffer(jsonc.ToJSON(str)))
+	// Set the UseNumber option to true to unmarshal numbers into strings
+	d.UseNumber()
+	if err := d.Decode(&dat); err != nil {
+		return nil, err
+	}
+	// Convert all numbers to JsonNumber
+	return convertNumbersObject(dat), nil
+}
+
+func convertNumbersObject(object JsonObject) JsonObject {
+	result := JsonObject{}
+	for k, v := range object {
+		if IsObject(v) {
+			result[k] = convertNumbersObject(AsObject(v))
+		} else if IsArray(v) {
+			result[k] = convertNumbersArray(AsArray(v))
+		} else if _, ok := v.(json.Number); ok {
+			result[k] = ToNumber(v)
+		} else {
+			result[k] = v
+		}
+	}
+	return result
+}
+
+func convertNumbersArray(object JsonArray) JsonArray {
+	result := JsonArray{}
+	for _, v := range object {
+		if IsObject(v) {
+			result = append(result, convertNumbersObject(AsObject(v)))
+		} else if IsArray(v) {
+			result = append(result, convertNumbersArray(AsArray(v)))
+		} else if _, ok := v.(json.Number); ok {
+			result = append(result, ToNumber(v))
 		} else {
 			result = append(result, v)
 		}

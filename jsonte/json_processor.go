@@ -1,7 +1,7 @@
 package jsonte
 
 import (
-	"encoding/json"
+	"fmt"
 	"github.com/gammazero/deque"
 	"io/ioutil"
 	"jsonte/jsonte/io"
@@ -19,12 +19,45 @@ type JsonModule struct {
 }
 
 type TemplateVisitor struct {
-	fullScope    utils.JsonObject
-	currentScope deque.Deque[interface{}]
-	deadline     int64
+	scope       deque.Deque[interface{}]
+	globalScope utils.JsonObject
+	deadline    int64
 }
 
 const MaxInt64 = int64(^uint64(0) >> 1)
+
+func LoadModule(input string) (JsonModule, error) {
+	json, err := utils.ParseJson([]byte(input))
+	if err != nil {
+		return JsonModule{}, err
+	}
+	moduleName, ok := json["$module"].(string)
+	if !ok {
+		return JsonModule{}, &utils.TemplatingError{
+			Path:    "$module",
+			Message: "The $module field is missing or not a string",
+		}
+	}
+	scope, ok := json["$scope"].(utils.JsonObject)
+	if !ok {
+		return JsonModule{}, &utils.TemplatingError{
+			Path:    "$scope",
+			Message: "The $scope field is missing or not an object",
+		}
+	}
+	template, ok := json["$template"].(utils.JsonObject)
+	if !ok {
+		return JsonModule{}, &utils.TemplatingError{
+			Path:    "$template",
+			Message: "The $template field is missing or not an object",
+		}
+	}
+	return JsonModule{
+		Name:     moduleName,
+		Scope:    scope,
+		Template: template,
+	}, nil
+}
 
 func Process(name, input string, globalScope utils.JsonObject, modules map[string]JsonModule, timeout int64) (map[string]interface{}, error) {
 	// Set up the deadline
@@ -35,8 +68,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 
 	// Parse the input
 	result := make(utils.JsonObject)
-	var root utils.JsonObject
-	err := json.Unmarshal([]byte(input), &root)
+	root, err := utils.ParseJson([]byte(input))
 	if err != nil {
 		return nil, err
 	}
@@ -58,16 +90,17 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 	}
 
 	visitor := TemplateVisitor{
-		fullScope:    utils.DeepCopyObject(scope),
-		currentScope: deque.Deque[interface{}]{},
-		deadline:     deadline,
+		scope:       deque.Deque[interface{}]{},
+		globalScope: globalScope,
+		deadline:    deadline,
 	}
+	visitor.scope.PushBack(utils.DeepCopyObject(scope))
 	var template utils.JsonObject
 
 	if file, ok := root["$files"]; ok {
 		//fileName := file.(utils.JsonObject)["fileName"]
-		visitor.currentScope.PushBack(scope)
-		array, err := Eval(file.(utils.JsonObject)["array"].(string), utils.JsonObject{}, visitor.fullScope, visitor.currentScope, "$files.array")
+		visitor.pushScope(scope)
+		array, err := Eval(file.(utils.JsonObject)["array"].(string), visitor.scope, "$files.array")
 		if err != nil {
 			return nil, err
 		}
@@ -84,56 +117,38 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 					"index": i,
 					"value": item,
 				}
+				visitor.pushScope(extra)
 				if isCopy {
-					c, err := visitor.visitString(c, extra, visitor.fullScope, "$files.array")
+					template, err = processCopy(name, c, visitor, modules, "$files.array", timeout)
 					if err != nil {
 						return nil, err
-					}
-					if copyPath, ok := c.(string); ok {
-						resolve, err := io.Resolver.Resolve(copyPath)
-						if err != nil {
-							return nil, err
-						}
-						all, err := ioutil.ReadAll(resolve)
-						if err != nil {
-							return nil, err
-						}
-						if strings.HasSuffix(copyPath, ".templ") {
-							processedMap, err := Process("copy", string(all), scope, modules, timeout)
-							if err != nil {
-								return nil, err
-							}
-							if len(processedMap) > 1 {
-								return nil, &utils.TemplatingError{
-									Path:    name,
-									Message: "The $copy template returned more than one result",
-								}
-							}
-							template = processedMap["copy"].(utils.JsonObject)
-						} else {
-							err := json.Unmarshal(all, &template)
-							if err != nil {
-								return nil, err
-							}
-						}
-					} else {
-						return nil, &utils.TemplatingError{
-							Path:    name,
-							Message: "The $copy evaluated to a non-string",
-						}
 					}
 				} else {
 					template = root["$template"].(utils.JsonObject)
 				}
 				if isExtend {
-					visitor.currentScope.PushBack(item)
-					template, err = extendTemplate(root["$extend"], template, visitor, extra, modules)
+					visitor.pushScope(item)
+					template, err = extendTemplate(root["$extend"], template, visitor, modules)
 					if err != nil {
 						return nil, err
 					}
-					visitor.currentScope.PopBack()
+					visitor.popScope()
 				}
-				// Ended at JsonProcessor:255
+				if isCopy && hasTemplate {
+					template = utils.MergeObject(root["$template"].(map[string]interface{}), template)
+				}
+				visitor.popScope()
+				//TODO: Remove nulls
+				visitor.pushScope(item)
+				mFileName, err := visitor.visitString(file.(map[string]interface{})["fileName"].(string), "$files.fileName")
+				if err != nil {
+					return nil, err
+				}
+				result[mFileName.(string)], err = visitor.visitObject(utils.DeepCopyObject(template), "$files.template")
+				if err != nil {
+					return nil, err
+				}
+				visitor.popScope()
 			}
 		} else {
 			return nil, &utils.TemplatingError{
@@ -141,17 +156,86 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				Message: "The array in the $files evaluated to a non-array",
 			}
 		}
-
-		visitor.currentScope.PopBack()
+		visitor.popScope()
+	} else {
+		// Ended at JsonProcessor:283
+		if isCopy {
+			template, err = processCopy(name, c, visitor, modules, "$copy", timeout)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			template = root["$template"].(utils.JsonObject)
+		}
+		if isExtend {
+			visitor.pushScope(scope)
+			template, err = extendTemplate(root["$extend"], template, visitor, modules)
+			if err != nil {
+				return nil, err
+			}
+			visitor.popScope()
+		}
+		if isCopy && hasTemplate {
+			template = utils.MergeObject(root["$template"].(utils.JsonObject), template)
+		}
+		//TODO: Remove nulls
+		visitor.pushScope(scope)
+		result[name], err = visitor.visitObject(utils.DeepCopyObject(template), name)
+		if err != nil {
+			return nil, err
+		}
+		visitor.popScope()
 	}
 
-	return map[string]interface{}{}, nil
+	return utils.UnwrapContainers(result).(utils.JsonObject), nil
+}
+
+func processCopy(name string, c interface{}, visitor TemplateVisitor, modules map[string]JsonModule, path string, timeout int64) (utils.JsonObject, error) {
+	c, err := visitor.visitString(c.(string), path)
+	if err != nil {
+		return nil, err
+	}
+	if copyPath, ok := c.(string); ok {
+		resolve, err := io.Resolver.Resolve(copyPath)
+		if err != nil {
+			return nil, err
+		}
+		all, err := ioutil.ReadAll(resolve)
+		if err != nil {
+			return nil, err
+		}
+		if strings.HasSuffix(copyPath, ".templ") {
+			processedMap, err := Process("copy", string(all), visitor.globalScope, modules, timeout)
+			if err != nil {
+				return nil, err
+			}
+			if len(processedMap) > 1 {
+				return nil, &utils.TemplatingError{
+					Path:    name,
+					Message: "The $copy template returned more than one result",
+				}
+			}
+			template := processedMap["copy"].(utils.JsonObject)
+			return template, nil
+		} else {
+			template, err := utils.ParseJson(all)
+			if err != nil {
+				return nil, err
+			}
+			return template, nil
+		}
+	} else {
+		return nil, &utils.TemplatingError{
+			Path:    name,
+			Message: "The $copy evaluated to a non-string",
+		}
+	}
 }
 
 var templatePattern, _ = regexp.Compile("\\{\\{(?:\\\\.|[^{}])+}}")
 var actionPattern, _ = regexp.Compile("^\\{\\{(?:\\\\.|[^{}])+}}$")
 
-func extendTemplate(extend interface{}, template utils.JsonObject, visitor TemplateVisitor, extraScope utils.JsonObject, modules map[string]JsonModule) (utils.JsonObject, error) {
+func extendTemplate(extend interface{}, template utils.JsonObject, visitor TemplateVisitor, modules map[string]JsonModule) (utils.JsonObject, error) {
 	resolvedModules := make([]string, 0)
 	toResolve := make([]string, 0)
 	isString := true
@@ -172,7 +256,7 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 			path += "[" + strconv.Itoa(i) + "]"
 		}
 		if actionPattern.MatchString(str) {
-			eval, err := Eval(str, extraScope, visitor.fullScope, visitor.currentScope, path)
+			eval, err := Eval(str, visitor.scope, path)
 			if err != nil {
 				return nil, err
 			}
@@ -208,8 +292,9 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 				Message: "The module " + module + " is missing a template",
 			}
 		}
-		moduleScope := utils.MergeObject(visitor.fullScope, mod.Scope)
-		parent, err := visitor.visitObject(mod.Template, extraScope, moduleScope, "[Module "+module+"]")
+		visitor.scope.PushFront(mod.Scope)
+		parent, err := visitor.visitObject(mod.Template, "[Module "+module+"]")
+		visitor.scope.PopFront()
 		if err != nil {
 			return nil, err
 		}
@@ -218,27 +303,109 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 	return template, nil
 }
 
-func (v *TemplateVisitor) visitObject(obj utils.JsonObject, extraScope, fullScope utils.JsonObject, path string) (interface{}, error) {
-	// TODO
+func (v *TemplateVisitor) pushScope(obj interface{}) {
+	v.scope.PushBack(obj)
+}
+
+func (v *TemplateVisitor) popScope() {
+	v.scope.PopBack()
+}
+
+func (v *TemplateVisitor) visit(obj interface{}, path string) (interface{}, error) {
+	if obj == nil {
+		return nil, nil
+	}
+	if str, ok := obj.(string); ok {
+		return v.visitString(str, path)
+	}
+	if arr, ok := obj.(utils.JsonArray); ok {
+		return v.visitArray(arr, path)
+	}
+	if objMap, ok := obj.(utils.JsonObject); ok {
+		return v.visitObject(objMap, path)
+	}
 	return obj, nil
 }
 
-func (v *TemplateVisitor) visitArray(arr utils.JsonArray, extraScope, fullScope utils.JsonObject, path string) (interface{}, error) {
+func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interface{}, error) {
+	// TODO
+	var result = make(utils.JsonObject)
+	for key, value := range obj {
+		if key == "$comment" {
+			continue
+		}
+		if actionPattern.MatchString(key) {
+			if _, ok := value.(utils.JsonObject); !ok {
+				return nil, &utils.TemplatingError{
+					Path:    path,
+					Message: "The value of an iteration action must be an object",
+				}
+			}
+			eval, err := Eval(key, v.scope, path)
+			if err != nil {
+				return nil, err
+			}
+			switch eval.Action {
+			case utils.Iteration:
+				if arr, ok := eval.Value.(utils.JsonArray); ok {
+					for i := range arr {
+						v.pushScope(utils.JsonObject{
+							"index":   i,
+							eval.Name: arr[i],
+						})
+						o, err := v.visit(value, fmt.Sprintf("%s[%d]", path, i))
+						v.popScope()
+						if err != nil {
+							return nil, err
+						}
+						for k, v := range o.(utils.JsonObject) {
+							result[k] = v
+						}
+					}
+				} else {
+					return nil, &utils.TemplatingError{
+						Path:    path,
+						Message: "The $iteration action returned a non-array",
+					}
+				}
+			}
+		} else if templatePattern.MatchString(key) {
+			key, err := v.visitString(key, path)
+			if err != nil {
+				return nil, err
+			}
+			key = utils.ToString(key)
+			result[key.(string)], err = v.visit(value, fmt.Sprintf("%s/%s", path, key))
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			var err error
+			result[key], err = v.visit(value, fmt.Sprintf("%s/%s", path, key))
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return result, nil
+}
+
+func (v *TemplateVisitor) visitArray(arr utils.JsonArray, path string) (interface{}, error) {
 	// TODO
 	return arr, nil
 }
 
 // Special visitor for cases when the array element is an object, that generates multiple values
-func (v *TemplateVisitor) visitArrayElement(arr utils.JsonArray, extraScope, fullScope utils.JsonObject, path string) (interface{}, error) {
+func (v *TemplateVisitor) visitArrayElement(arr utils.JsonArray, path string) (interface{}, error) {
 	// TODO
 	return arr, nil
 }
 
-func (v *TemplateVisitor) visitString(str string, extraScope, fullScope utils.JsonObject, path string) (interface{}, error) {
+func (v *TemplateVisitor) visitString(str string, path string) (interface{}, error) {
 	matches := templatePattern.FindAllString(str, -1)
 	replacements := make(map[string]string, len(matches))
 	for _, match := range matches {
-		result, err := Eval(match, extraScope, fullScope, v.currentScope, path)
+		result, err := Eval(match, v.scope, path)
 		if err != nil {
 			return nil, err
 		}
