@@ -158,7 +158,6 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 		}
 		visitor.popScope()
 	} else {
-		// Ended at JsonProcessor:283
 		if isCopy {
 			template, err = processCopy(name, c, visitor, modules, "$copy", timeout)
 			if err != nil {
@@ -298,7 +297,7 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 		if err != nil {
 			return nil, err
 		}
-		template = utils.MergeObject(template, parent.(utils.JsonObject))
+		template = utils.MergeObject(parent.(utils.JsonObject), template)
 	}
 	return template, nil
 }

@@ -274,6 +274,15 @@ func IsObject(obj interface{}) bool {
 
 func MergeObject(template, parent JsonObject) JsonObject {
 	result := JsonObject{}
+	for k, v := range template {
+		if IsObject(v) {
+			result[k] = DeepCopyObject(v.(map[string]interface{}))
+		} else if IsArray(v) {
+			result[k] = DeepCopyArray(v.([]interface{}))
+		} else {
+			result[k] = v
+		}
+	}
 	for k, v := range parent {
 		if strings.HasPrefix(k, "$") && k != "$comment" {
 			result[strings.TrimPrefix(k, "$")] = v
