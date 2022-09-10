@@ -239,3 +239,29 @@ func TestTemplateCopy(t *testing.T) {
 	assertTemplate(t, template, expected)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
+
+func TestDeleteNulls(t *testing.T) {
+	file := `{
+		"$scope": {
+			"asd": 123
+		},
+		"$template": {
+			"asd": "{{=asd}}",
+			"overrideMe": -1
+		}
+	}`
+	safeio.Resolver = createFakeFS(map[string][]byte{
+		"file.templ": []byte(file),
+	})
+	template := `{
+		"$copy": "file.templ",
+		"$template": {
+			"overrideMe": null
+		}
+	}`
+	expected := utils.JsonObject{
+		"asd": 123,
+	}
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}

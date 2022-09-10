@@ -138,7 +138,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 					template = utils.MergeObject(template, root["$template"].(map[string]interface{}))
 				}
 				visitor.popScope()
-				//TODO: Remove nulls
+				utils.DeleteNulls(template)
 				visitor.pushScope(item)
 				mFileName, err := visitor.visitString(file.(map[string]interface{})["fileName"].(string), "$files.fileName")
 				if err != nil {
@@ -177,7 +177,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 		if isCopy && hasTemplate {
 			template = utils.MergeObject(template, root["$template"].(utils.JsonObject))
 		}
-		//TODO: Remove nulls
+		utils.DeleteNulls(template)
 		visitor.pushScope(scope)
 		result[name], err = visitor.visitObject(utils.DeepCopyObject(template), name)
 		if err != nil {

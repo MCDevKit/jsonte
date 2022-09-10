@@ -502,6 +502,28 @@ func DeepCopyArray(object JsonArray) JsonArray {
 	return result
 }
 
+func DeleteNulls(object JsonObject) {
+	for k, v := range object {
+		if IsObject(v) {
+			DeleteNulls(AsObject(v))
+		} else if IsArray(v) {
+			DeleteNullsFromArray(AsArray(v))
+		} else if v == nil {
+			delete(object, k)
+		}
+	}
+}
+
+func DeleteNullsFromArray(array JsonArray) {
+	for _, v := range array {
+		if IsObject(v) {
+			DeleteNulls(AsObject(v))
+		} else if IsArray(v) {
+			DeleteNullsFromArray(AsArray(v))
+		}
+	}
+}
+
 func ParseJson(str []byte) (JsonObject, error) {
 	dat := make(JsonObject)
 	// Remove comments
