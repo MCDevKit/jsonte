@@ -71,14 +71,6 @@ func RegisterMathFunctions() {
 		Body: clamp,
 	})
 	RegisterFunction(JsonFunction{
-		Name: "clamp",
-		Body: clamp,
-	})
-	RegisterFunction(JsonFunction{
-		Name: "clamp",
-		Body: clamp,
-	})
-	RegisterFunction(JsonFunction{
 		Name: "pi",
 		Body: pi,
 	})
@@ -148,7 +140,7 @@ func round(a utils.JsonNumber) utils.JsonNumber {
 func roundPrecision(a utils.JsonNumber, precision utils.JsonNumber) utils.JsonNumber {
 	return utils.JsonNumber{
 		Value:   math.Round(a.FloatValue()*math.Pow(10, float64(precision.IntValue()))) / math.Pow(10, float64(precision.IntValue())),
-		Decimal: false,
+		Decimal: true,
 	}
 }
 
@@ -257,7 +249,7 @@ func mod(a, b utils.JsonNumber) utils.JsonNumber {
 func pi() utils.JsonNumber {
 	return utils.JsonNumber{
 		Value:   math.Pi,
-		Decimal: false,
+		Decimal: true,
 	}
 }
 

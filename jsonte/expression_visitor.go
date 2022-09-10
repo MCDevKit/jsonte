@@ -75,17 +75,23 @@ func negate(value interface{}) interface{} {
 	if value == nil {
 		return nil
 	}
+	if b, ok := value.(utils.JsonNumber); ok {
+		return utils.JsonNumber{
+			Value:   -b.Value,
+			Decimal: b.Decimal,
+		}
+	}
 	if b, ok := value.(bool); ok {
 		return !b
 	}
 	if b, ok := value.(int); ok {
-		return -b
+		return utils.ToNumber(-b)
 	}
 	if b, ok := value.(float64); ok {
-		return -b
+		return utils.ToNumber(-b)
 	}
 	if b, ok := value.(float32); ok {
-		return -b
+		return utils.ToNumber(-b)
 	}
 	if utils.IsArray(value) {
 		result := make(utils.JsonArray, len(value.(utils.JsonArray)))
