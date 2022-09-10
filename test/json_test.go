@@ -265,3 +265,33 @@ func TestDeleteNulls(t *testing.T) {
 	assertTemplate(t, template, expected)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
+
+func TestCopyAndExtend(t *testing.T) {
+	file := `{
+		"asd": 123,
+		"overrideMe": -1,
+		"removeMe": 1
+	}`
+	safeio.Resolver = createFakeFS(map[string][]byte{
+		"file.json": []byte(file),
+	})
+	module := `{
+		"$module": "simple",
+		"$template": {
+			"removeMe": null
+		}
+	}`
+	template := `{
+		"$copy": "file.json",
+		"$extend": "simple",
+		"$template": {
+			"overrideMe": 1
+		}
+	}`
+	expected := utils.JsonObject{
+		"asd":        123,
+		"overrideMe": 1,
+	}
+	assertTemplateWithModule(t, template, module, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}

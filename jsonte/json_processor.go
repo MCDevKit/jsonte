@@ -40,10 +40,7 @@ func LoadModule(input string) (JsonModule, error) {
 	}
 	scope, ok := json["$scope"].(utils.JsonObject)
 	if !ok {
-		return JsonModule{}, &utils.TemplatingError{
-			Path:    "$scope",
-			Message: "The $scope field is missing or not an object",
-		}
+		scope = utils.JsonObject{}
 	}
 	template, ok := json["$template"].(utils.JsonObject)
 	if !ok {
@@ -85,7 +82,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 
 	// If none of the options are defined, return unmodified JSON
 	if !hasTemplate && !isCopy && !isExtend {
-		result[name] = input
+		result[name] = root
 		return result, nil
 	}
 
@@ -94,12 +91,11 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 		globalScope: globalScope,
 		deadline:    deadline,
 	}
-	visitor.scope.PushBack(utils.DeepCopyObject(scope))
+	visitor.pushScope(utils.DeepCopyObject(scope))
 	var template utils.JsonObject
 
 	if file, ok := root["$files"]; ok {
 		//fileName := file.(utils.JsonObject)["fileName"]
-		visitor.pushScope(scope)
 		array, err := Eval(file.(utils.JsonObject)["array"].(string), visitor.scope, "$files.array")
 		if err != nil {
 			return nil, err
@@ -156,34 +152,29 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				Message: "The array in the $files evaluated to a non-array",
 			}
 		}
-		visitor.popScope()
 	} else {
 		if isCopy {
 			template, err = processCopy(name, c, visitor, modules, "$copy", timeout)
 			if err != nil {
 				return nil, err
 			}
-		} else {
+		} /* else {
 			template = root["$template"].(utils.JsonObject)
-		}
+		}*/
 		if isExtend {
-			visitor.pushScope(scope)
 			template, err = extendTemplate(root["$extend"], template, visitor, modules)
 			if err != nil {
 				return nil, err
 			}
-			visitor.popScope()
 		}
-		if isCopy && hasTemplate {
+		if hasTemplate {
 			template = utils.MergeObject(template, root["$template"].(utils.JsonObject))
 		}
 		utils.DeleteNulls(template)
-		visitor.pushScope(scope)
 		result[name], err = visitor.visitObject(utils.DeepCopyObject(template), name)
 		if err != nil {
 			return nil, err
 		}
-		visitor.popScope()
 	}
 
 	return utils.UnwrapContainers(result).(utils.JsonObject), nil
@@ -297,7 +288,7 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 		if err != nil {
 			return nil, err
 		}
-		template = utils.MergeObject(parent.(utils.JsonObject), template)
+		template = utils.MergeObject(template, parent.(utils.JsonObject))
 	}
 	return template, nil
 }
