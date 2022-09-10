@@ -158,9 +158,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 			if err != nil {
 				return nil, err
 			}
-		} /* else {
-			template = root["$template"].(utils.JsonObject)
-		}*/
+		}
 		if isExtend {
 			template, err = extendTemplate(root["$extend"], template, visitor, modules)
 			if err != nil {

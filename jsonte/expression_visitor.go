@@ -364,10 +364,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		if isError(object) {
 			return object
 		}
-		var newScope utils.JsonObject = nil
+		var newScope interface{} = nil
 		if utils.IsObject(object) {
 			if v, ok := object.(utils.JsonObject)[text]; ok {
-				newScope = v.(utils.JsonObject)
+				newScope = v
 			}
 		} else if functions.HasInstanceFunction(reflect.TypeOf(object), text) {
 			return utils.JsonLambda(

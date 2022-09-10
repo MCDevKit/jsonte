@@ -21,8 +21,8 @@ func (r *Result) GetError() error {
 	}
 }
 
-func QuickEval(text string) (Result, error) {
-	return Eval(text, deque.Deque[interface{}]{}, "#/")
+func QuickEval(text string, path string) (Result, error) {
+	return Eval(text, deque.Deque[interface{}]{}, path)
 }
 
 func Eval(text string, scope deque.Deque[interface{}], path string) (Result, error) {
