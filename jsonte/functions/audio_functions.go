@@ -6,9 +6,9 @@ import (
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/vorbis"
 	"github.com/faiface/beep/wav"
-	"jsonte/jsonte/io"
+	"io"
+	"jsonte/jsonte/safeio"
 	"jsonte/jsonte/utils"
-	"os"
 	"strings"
 )
 
@@ -30,7 +30,7 @@ func audioDuration(str string) (utils.JsonNumber, error) {
 	if cache != nil {
 		length = (*cache).(float64)
 	} else {
-		file, err := io.Resolver.Resolve(str)
+		file, err := safeio.Resolver(str)
 		if err != nil {
 			return utils.ToNumber(0), err
 		}
@@ -49,7 +49,7 @@ func audioDuration(str string) (utils.JsonNumber, error) {
 	return utils.ToNumber(length), nil
 }
 
-func decodeAudio(path string, file *os.File) (beep.StreamSeekCloser, beep.Format, error) {
+func decodeAudio(path string, file io.ReadCloser) (beep.StreamSeekCloser, beep.Format, error) {
 	if strings.HasSuffix(path, ".ogg") {
 		return vorbis.Decode(file)
 	}

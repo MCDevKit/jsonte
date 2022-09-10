@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gammazero/deque"
 	"io/ioutil"
-	"jsonte/jsonte/io"
+	"jsonte/jsonte/safeio"
 	"jsonte/jsonte/utils"
 	"regexp"
 	"strconv"
@@ -135,7 +135,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 					visitor.popScope()
 				}
 				if isCopy && hasTemplate {
-					template = utils.MergeObject(root["$template"].(map[string]interface{}), template)
+					template = utils.MergeObject(template, root["$template"].(map[string]interface{}))
 				}
 				visitor.popScope()
 				//TODO: Remove nulls
@@ -175,7 +175,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 			visitor.popScope()
 		}
 		if isCopy && hasTemplate {
-			template = utils.MergeObject(root["$template"].(utils.JsonObject), template)
+			template = utils.MergeObject(template, root["$template"].(utils.JsonObject))
 		}
 		//TODO: Remove nulls
 		visitor.pushScope(scope)
@@ -195,7 +195,7 @@ func processCopy(name string, c interface{}, visitor TemplateVisitor, modules ma
 		return nil, err
 	}
 	if copyPath, ok := c.(string); ok {
-		resolve, err := io.Resolver.Resolve(copyPath)
+		resolve, err := safeio.Resolver(copyPath)
 		if err != nil {
 			return nil, err
 		}

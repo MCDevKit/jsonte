@@ -5,7 +5,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"jsonte/jsonte/io"
+	"jsonte/jsonte/safeio"
 	"jsonte/jsonte/utils"
 )
 
@@ -30,7 +30,7 @@ func imageBounds(str string) (*image.Config, error) {
 		c := (*cache).(image.Config)
 		img = &c
 	} else {
-		file, err := io.Resolver.Resolve(str)
+		file, err := safeio.Resolver(str)
 		if err != nil {
 			return nil, err
 		}
