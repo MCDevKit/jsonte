@@ -30,9 +30,14 @@ func (n JsonNumber) IntValue() int {
 	return int(n.Value)
 }
 
+func toFixed(num float64, precision int) float64 {
+	output := math.Pow(10, float64(precision))
+	return math.Round(num*output) / output
+}
+
 func (n JsonNumber) FloatValue() float64 {
 	if n.Decimal {
-		return n.Value
+		return toFixed(n.Value, 10)
 	} else {
 		return math.Floor(n.Value)
 	}

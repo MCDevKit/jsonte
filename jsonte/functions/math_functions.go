@@ -152,51 +152,59 @@ func roundPrecision(a utils.JsonNumber, precision utils.JsonNumber) utils.JsonNu
 	}
 }
 
+func toRadians(a float64) float64 {
+	return a * math.Pi / 180.0
+}
+
+func fromRadians(a float64) float64 {
+	return a * 180.0 / math.Pi
+}
+
 func sin(a utils.JsonNumber) utils.JsonNumber {
 	return utils.JsonNumber{
-		Value:   math.Sin(a.FloatValue()),
+		Value:   math.Sin(toRadians(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
 func cos(a utils.JsonNumber) utils.JsonNumber {
 	return utils.JsonNumber{
-		Value:   math.Cos(a.FloatValue()),
+		Value:   math.Cos(toRadians(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
 func tan(a utils.JsonNumber) utils.JsonNumber {
 	return utils.JsonNumber{
-		Value:   math.Tan(a.FloatValue()),
+		Value:   math.Tan(toRadians(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
 func asin(a utils.JsonNumber) utils.JsonNumber {
 	return utils.JsonNumber{
-		Value:   math.Asin(a.FloatValue()),
+		Value:   fromRadians(math.Asin(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
 func acos(a utils.JsonNumber) utils.JsonNumber {
 	return utils.JsonNumber{
-		Value:   math.Acos(a.FloatValue()),
+		Value:   fromRadians(math.Acos(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
 func atan(a utils.JsonNumber) utils.JsonNumber {
 	return utils.JsonNumber{
-		Value:   math.Atan(a.FloatValue()),
+		Value:   fromRadians(math.Atan(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
 func atan2(a, b utils.JsonNumber) utils.JsonNumber {
 	return utils.JsonNumber{
-		Value:   math.Atan2(a.FloatValue(), b.FloatValue()),
+		Value:   fromRadians(math.Atan2(a.FloatValue(), b.FloatValue())),
 		Decimal: true,
 	}
 }
