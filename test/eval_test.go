@@ -62,6 +62,25 @@ func assertBool(t *testing.T, eval jsonte.Result, expected bool) {
 	}
 }
 
+func assertString(t *testing.T, eval jsonte.Result, expected string) {
+	t.Helper()
+	assertAction(t, eval, utils.Value)
+	if _, ok := eval.Value.(string); !ok {
+		t.Fatalf("Result is not a string (%s)", reflect.TypeOf(eval.Value).Name())
+	}
+	if eval.Value.(string) != expected {
+		t.Fatalf("Result is not correct (expected %s, got %s)", expected, eval.Value)
+	}
+}
+
+func assertNull(t *testing.T, eval jsonte.Result) {
+	t.Helper()
+	assertAction(t, eval, utils.Value)
+	if eval.Value != nil {
+		t.Fatalf("Result is not null (%s)", utils.ToString(eval.Value))
+	}
+}
+
 func evaluate(t *testing.T, text string) jsonte.Result {
 	t.Helper()
 	eval, err := jsonte.QuickEval(text, "#")
@@ -202,7 +221,97 @@ func TestObjectAccess2(t *testing.T) {
 	assertNumber(t, eval, 2)
 }
 
-func TestObjectAccess3(t *testing.T) {
+func TestScope(t *testing.T) {
 	eval := evaluateWithScope(t, `b`, utils.JsonObject{"a": utils.ToNumber(1), "b": utils.ToNumber(2)})
 	assertNumber(t, eval, 2)
+}
+
+func TestConcatenation(t *testing.T) {
+	eval := evaluate(t, `'a' + 'b'`)
+	assertString(t, eval, "ab")
+}
+
+func TestConcatenation2(t *testing.T) {
+	eval := evaluate(t, `'a' + 1`)
+	assertString(t, eval, "a1")
+}
+
+func TestConcatenation3(t *testing.T) {
+	eval := evaluate(t, `1 + 'b'`)
+	assertString(t, eval, "1b")
+}
+
+func TestConcatenation4(t *testing.T) {
+	eval := evaluate(t, `1 + 2 + 'b'`)
+	assertString(t, eval, "3b")
+}
+
+func TestConcatenation5(t *testing.T) {
+	eval := evaluate(t, `'a' + 1 + 2`)
+	assertString(t, eval, "a12")
+}
+
+func TestConcatenation6(t *testing.T) {
+	eval := evaluate(t, `'a' + (1 + 2)`)
+	assertString(t, eval, "a3")
+}
+
+func TestNullCoalescing(t *testing.T) {
+	eval := evaluate(t, `1 ?? 2`)
+	assertNumber(t, eval, 1)
+}
+
+func TestNullCoalescing2(t *testing.T) {
+	eval := evaluate(t, `null ?? 2`)
+	assertNumber(t, eval, 2)
+}
+
+func TestNullCoalescing3(t *testing.T) {
+	eval := evaluate(t, `null ?? null`)
+	assertNull(t, eval)
+}
+
+func TestNullCoalescing4(t *testing.T) {
+	eval := evaluate(t, `null ?? null ?? 3`)
+	assertNumber(t, eval, 3)
+}
+
+func TestTernaryOperator(t *testing.T) {
+	eval := evaluate(t, `true ? 1 : 2`)
+	assertNumber(t, eval, 1)
+}
+
+func TestTernaryOperator2(t *testing.T) {
+	eval := evaluate(t, `false ? 1 : 2`)
+	assertNumber(t, eval, 2)
+}
+
+func TestTernaryOperator3(t *testing.T) {
+	eval := evaluate(t, `true ? 1 : 2 + 3`)
+	assertNumber(t, eval, 1)
+}
+
+func TestTernaryOperator4(t *testing.T) {
+	eval := evaluate(t, `false ? 1 : 2 + 3`)
+	assertNumber(t, eval, 5)
+}
+
+func TestTernaryOperator5(t *testing.T) {
+	eval := evaluate(t, `true ? 1 + 2 : 3`)
+	assertNumber(t, eval, 3)
+}
+
+func TestTernaryOperator6(t *testing.T) {
+	eval := evaluate(t, `false ? 1 + 2 : 3`)
+	assertNumber(t, eval, 3)
+}
+
+func TestTernaryOperator7(t *testing.T) {
+	eval := evaluate(t, `false ? 1 : true ? 2 : 3`)
+	assertNumber(t, eval, 2)
+}
+
+func TestTernaryOperator8(t *testing.T) {
+	eval := evaluate(t, `false ? 1 : false ? 2 : 3`)
+	assertNumber(t, eval, 3)
 }
