@@ -3,10 +3,10 @@ package test
 import (
 	"bytes"
 	"fmt"
+	"github.com/MCDevKit/jsonte/jsonte"
+	"github.com/MCDevKit/jsonte/jsonte/safeio"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"io"
-	"jsonte/jsonte"
-	"jsonte/jsonte/safeio"
-	"jsonte/jsonte/utils"
 	"math"
 	"reflect"
 	"testing"

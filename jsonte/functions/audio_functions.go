@@ -2,13 +2,13 @@ package functions
 
 import (
 	"errors"
+	"github.com/MCDevKit/jsonte/jsonte/safeio"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/vorbis"
 	"github.com/faiface/beep/wav"
 	"io"
-	"jsonte/jsonte/safeio"
-	"jsonte/jsonte/utils"
 	"strings"
 )
 

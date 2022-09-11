@@ -1,10 +1,10 @@
 package jsonte
 
 import (
+	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/gammazero/deque"
-	"jsonte/jsonte/utils"
-	"jsonte/parser"
 )
 
 type Result struct {

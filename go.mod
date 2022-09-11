@@ -1,4 +1,4 @@
-module jsonte
+module github.com/MCDevKit/jsonte
 
 go 1.18
 

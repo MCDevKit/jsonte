@@ -2,9 +2,9 @@ package test
 
 import (
 	"fmt"
+	"github.com/MCDevKit/jsonte/jsonte"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
-	"jsonte/jsonte"
-	"jsonte/jsonte/utils"
 	"reflect"
 	"testing"
 )

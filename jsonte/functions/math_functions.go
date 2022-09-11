@@ -1,7 +1,7 @@
 package functions
 
 import (
-	"jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"math"
 )
 

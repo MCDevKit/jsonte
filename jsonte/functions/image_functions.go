@@ -1,12 +1,12 @@
 package functions
 
 import (
+	"github.com/MCDevKit/jsonte/jsonte/safeio"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"jsonte/jsonte/safeio"
-	"jsonte/jsonte/utils"
 )
 
 const imageCache = "imageBounds"

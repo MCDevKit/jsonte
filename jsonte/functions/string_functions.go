@@ -1,10 +1,10 @@
 package functions
 
 import (
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"hash/fnv"
-	"jsonte/jsonte/utils"
 	"regexp"
 	"strings"
 )

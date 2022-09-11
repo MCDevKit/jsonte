@@ -3,10 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/MCDevKit/jsonte/jsonte"
+	"github.com/MCDevKit/jsonte/jsonte/functions"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
-	"jsonte/jsonte"
-	"jsonte/jsonte/functions"
-	"jsonte/jsonte/utils"
 	"os"
 	"strings"
 )

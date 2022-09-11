@@ -2,10 +2,10 @@ package jsonte
 
 import (
 	"fmt"
+	"github.com/MCDevKit/jsonte/jsonte/safeio"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
 	"io/ioutil"
-	"jsonte/jsonte/safeio"
-	"jsonte/jsonte/utils"
 	"regexp"
 	"strconv"
 	"strings"

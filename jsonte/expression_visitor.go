@@ -2,11 +2,11 @@ package jsonte
 
 import (
 	"fmt"
+	"github.com/MCDevKit/jsonte/jsonte/functions"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/gammazero/deque"
-	"jsonte/jsonte/functions"
-	"jsonte/jsonte/utils"
-	"jsonte/parser"
 	"reflect"
 )
 

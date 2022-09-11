@@ -2,7 +2,7 @@ package functions
 
 import (
 	"fmt"
-	"jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"reflect"
 	"strings"
 )

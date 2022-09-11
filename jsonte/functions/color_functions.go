@@ -2,8 +2,8 @@ package functions
 
 import (
 	"errors"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"image/color"
-	"jsonte/jsonte/utils"
 )
 
 func RegisterColorFunctions() {

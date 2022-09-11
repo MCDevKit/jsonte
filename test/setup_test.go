@@ -1,7 +1,7 @@
 package test
 
 import (
-	"jsonte/jsonte/functions"
+	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"testing"
 )
 
