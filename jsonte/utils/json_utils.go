@@ -190,11 +190,47 @@ func ToString(obj interface{}) string {
 	if b, ok := obj.(string); ok {
 		return b
 	}
-	marshal, err := json.Marshal(UnwrapContainers(obj))
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(UnwrapContainers(obj))
 	if err != nil {
 		return "null"
 	}
-	return string(marshal)
+	return buffer.String()
+}
+
+func ToPrettyString(obj interface{}) string {
+	if obj == nil {
+		return "null"
+	}
+	if b, ok := obj.(JsonNumber); ok {
+		return b.StringValue()
+	}
+	if b, ok := obj.(float64); ok {
+		return strconv.FormatFloat(b, 'f', -1, 64)
+	}
+	if b, ok := obj.(float32); ok {
+		return strconv.FormatFloat(float64(b), 'f', -1, 64)
+	}
+	if b, ok := obj.(int); ok {
+		return strconv.FormatInt(int64(b), 10)
+	}
+	if b, ok := obj.(bool); ok && b {
+		return strconv.FormatBool(b)
+	}
+	if b, ok := obj.(string); ok {
+		return b
+	}
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	err := encoder.Encode(UnwrapContainers(obj))
+	if err != nil {
+		return "null"
+	}
+	return buffer.String()
 }
 
 func IsNumber(obj interface{}) bool {
