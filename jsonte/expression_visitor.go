@@ -7,7 +7,6 @@ import (
 	"jsonte/jsonte/functions"
 	"jsonte/jsonte/utils"
 	"jsonte/parser"
-	"os"
 	"reflect"
 )
 
@@ -143,15 +142,6 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) inter
 	}
 	v.name = &name
 	result := v.Visit(ctx.Field())
-	if isError(result) {
-		// DO YOU REALLY NEED TO RETURN AN ERROR HERE???
-		// I JUST WANT TO PRINT THE ERROR AND CONTINUE
-		_, err := fmt.Fprintln(os.Stderr, result)
-		if err != nil {
-			return nil
-		}
-		return nil
-	}
 	return result
 }
 
@@ -217,7 +207,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				return f1
 			}
 		} else if context.Add() != nil {
-			if utils.IsNumber(f1) && utils.IsNumber(f2) {
+			if (utils.IsNumber(f1) && utils.IsNumber(f2)) || (utils.IsNumber(f1) && f2 == nil) || (f1 == nil && utils.IsNumber(f2)) {
 				n1 := utils.ToNumber(f1)
 				n2 := utils.ToNumber(f2)
 				return utils.JsonNumber{

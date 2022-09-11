@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"github.com/gammazero/deque"
 	"jsonte/jsonte"
 	"jsonte/jsonte/utils"
@@ -18,6 +19,9 @@ func assertAction(t *testing.T, eval jsonte.Result, action utils.JsonAction) {
 func assertArray(t *testing.T, eval jsonte.Result, expected utils.JsonArray) utils.JsonArray {
 	t.Helper()
 	assertAction(t, eval, utils.Value)
+	if eval.Value == nil {
+		t.Fatalf("Result is null")
+	}
 	if !utils.IsArray(eval.Value) {
 		t.Fatalf("Result is not an array (%s)", reflect.TypeOf(eval.Value).Name())
 	}
@@ -29,7 +33,27 @@ func assertArray(t *testing.T, eval jsonte.Result, expected utils.JsonArray) uti
 		t.Fatalf("Array length is not correct (expected %d, got %d)", len(expected), len(array))
 	}
 	for i := 0; i < len(expected); i++ {
-		if array[i] != expected[i] {
+		if utils.IsNumber(expected[i]) && utils.IsNumber(array[i]) {
+			if utils.ToNumber(expected[i]).FloatValue() != utils.ToNumber(array[i]).FloatValue() {
+				t.Fatalf("Array element %d is not correct (expected %f, got %f)", i, expected[i], array[i])
+			}
+		} else if utils.IsObject(expected[i]) {
+			if array[i] == nil {
+				t.Fatalf("Array element %d is null", i)
+			}
+			if !utils.IsObject(array[i]) {
+				t.Fatalf("Array element %d is not an object (%s)", i, reflect.TypeOf(array[i]).Name())
+			}
+			compareJsonObject(t, expected[i].(utils.JsonObject), array[i].(utils.JsonObject), fmt.Sprintf("#[%d]", i))
+		} else if utils.IsArray(expected[i]) {
+			if array[i] == nil {
+				t.Fatalf("Array element %d is null", i)
+			}
+			if !utils.IsArray(array[i]) {
+				t.Fatalf("Array element %d is not an array (%s)", i, reflect.TypeOf(array[i]).Name())
+			}
+			compareJsonArray(t, expected[i].(utils.JsonArray), array[i].(utils.JsonArray), fmt.Sprintf("#[%d]", i))
+		} else if array[i] != expected[i] {
 			t.Errorf("Array element %d is not correct (expected %s, got %s)", i, utils.ToString(array[i]), utils.ToString(expected[i]))
 		}
 	}
@@ -39,6 +63,9 @@ func assertArray(t *testing.T, eval jsonte.Result, expected utils.JsonArray) uti
 func assertNumber(t *testing.T, eval jsonte.Result, expected float64) {
 	t.Helper()
 	assertAction(t, eval, utils.Value)
+	if eval.Value == nil {
+		t.Fatalf("Result is null")
+	}
 	if !utils.IsNumber(eval.Value) {
 		t.Fatalf("Result is not a number (%s)", reflect.TypeOf(eval.Value).Name())
 	}
@@ -54,6 +81,9 @@ func assertNumber(t *testing.T, eval jsonte.Result, expected float64) {
 func assertBool(t *testing.T, eval jsonte.Result, expected bool) {
 	t.Helper()
 	assertAction(t, eval, utils.Value)
+	if eval.Value == nil {
+		t.Fatalf("Result is null")
+	}
 	if _, ok := eval.Value.(bool); !ok {
 		t.Fatalf("Result is not a boolean (%s)", reflect.TypeOf(eval.Value).Name())
 	}
@@ -65,6 +95,9 @@ func assertBool(t *testing.T, eval jsonte.Result, expected bool) {
 func assertString(t *testing.T, eval jsonte.Result, expected string) {
 	t.Helper()
 	assertAction(t, eval, utils.Value)
+	if eval.Value == nil {
+		t.Fatalf("Result is null")
+	}
 	if _, ok := eval.Value.(string); !ok {
 		t.Fatalf("Result is not a string (%s)", reflect.TypeOf(eval.Value).Name())
 	}

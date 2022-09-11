@@ -420,7 +420,7 @@ func CreateRange(start, end int) JsonArray {
 		return result
 	}
 	for i := start; i <= end; i++ {
-		result = append(result, i)
+		result = append(result, ToNumber(i))
 	}
 	return result
 }

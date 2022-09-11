@@ -26,6 +26,11 @@ func RegisterArrayFunctions() {
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Name:       "sort",
+		Body:       sortMap,
+		IsInstance: true,
+	})
+	RegisterFunction(JsonFunction{
 		Name:       "reverse",
 		Body:       reverse,
 		IsInstance: true,
@@ -71,6 +76,11 @@ func RegisterArrayFunctions() {
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Name:       "sum",
+		Body:       sumMap,
+		IsInstance: true,
+	})
+	RegisterFunction(JsonFunction{
 		Name:       "none",
 		Body:       none,
 		IsInstance: true,
@@ -96,13 +106,18 @@ func RegisterArrayFunctions() {
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
-		Name:       "range_",
+		Name:       "range",
 		Body:       range_,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "findFirst",
 		Body:       findFirst,
+		IsInstance: true,
+	})
+	RegisterFunction(JsonFunction{
+		Name:       "findFirst",
+		Body:       findFirstFilter,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
@@ -143,6 +158,26 @@ func RegisterArrayFunctions() {
 	RegisterFunction(JsonFunction{
 		Name:       "min",
 		Body:       minArraySimple,
+		IsInstance: true,
+	})
+	RegisterFunction(JsonFunction{
+		Name:       "reduce",
+		Body:       reduce,
+		IsInstance: true,
+	})
+	RegisterFunction(JsonFunction{
+		Name:       "reduce",
+		Body:       reduceInit,
+		IsInstance: true,
+	})
+	RegisterFunction(JsonFunction{
+		Name:       "findLast",
+		Body:       findLast,
+		IsInstance: true,
+	})
+	RegisterFunction(JsonFunction{
+		Name:       "findLast",
+		Body:       findLastFilter,
 		IsInstance: true,
 	})
 }
@@ -211,6 +246,22 @@ func sort_(arr utils.JsonArray) (utils.JsonArray, error) {
 	return result, nil
 }
 
+func sortMap(arr utils.JsonArray, predicate utils.JsonLambda) (utils.JsonArray, error) {
+	if arr == nil {
+		return nil, nil
+	}
+	mapped, err := map_(arr, predicate)
+	if err != nil {
+		return nil, err
+	}
+	result := make(utils.JsonArray, len(arr))
+	copy(result, arr)
+	sort.SliceStable(result, func(i, j int) bool {
+		return utils.Less(mapped[i], mapped[j])
+	})
+	return result, nil
+}
+
 func arrayContains(arr utils.JsonArray, value interface{}) (bool, error) {
 	if arr == nil {
 		return false, nil
@@ -223,28 +274,28 @@ func arrayContains(arr utils.JsonArray, value interface{}) (bool, error) {
 	return false, nil
 }
 
-func arrayIndexOf(arr utils.JsonArray, value interface{}) (int, error) {
+func arrayIndexOf(arr utils.JsonArray, value interface{}) (utils.JsonNumber, error) {
 	if arr == nil {
-		return -1, nil
+		return utils.ToNumber(-1), nil
 	}
 	for i, v := range arr {
 		if utils.IsEqual(v, value) {
-			return i, nil
+			return utils.ToNumber(i), nil
 		}
 	}
-	return -1, nil
+	return utils.ToNumber(-1), nil
 }
 
-func arrayLastIndexOf(arr utils.JsonArray, value interface{}) (int, error) {
+func arrayLastIndexOf(arr utils.JsonArray, value interface{}) (utils.JsonNumber, error) {
 	if arr == nil {
-		return -1, nil
+		return utils.ToNumber(-1), nil
 	}
 	for i := len(arr) - 1; i >= 0; i-- {
 		if utils.IsEqual(arr[i], value) {
-			return i, nil
+			return utils.ToNumber(i), nil
 		}
 	}
-	return -1, nil
+	return utils.ToNumber(-1), nil
 }
 
 func any_(arr utils.JsonArray, predicate utils.JsonLambda) (bool, error) {
@@ -392,7 +443,7 @@ func range_(arr utils.JsonArray) (utils.JsonArray, error) {
 	return utils.CreateRange(0, len(arr)-1), nil
 }
 
-func findFirst(arr utils.JsonArray, predicate utils.JsonLambda) (interface{}, error) {
+func findFirstFilter(arr utils.JsonArray, predicate utils.JsonLambda) (interface{}, error) {
 	if arr == nil {
 		return nil, nil
 	}
@@ -408,6 +459,18 @@ func findFirst(arr utils.JsonArray, predicate utils.JsonLambda) (interface{}, er
 	return nil, &utils.EvaluationError{
 		Message: "No matching items found!",
 	}
+}
+
+func findFirst(arr utils.JsonArray) (interface{}, error) {
+	if arr == nil {
+		return nil, nil
+	}
+	if len(arr) == 0 {
+		return nil, &utils.EvaluationError{
+			Message: "No matching items found!",
+		}
+	}
+	return arr[0], nil
 }
 
 func encode(arr utils.JsonArray, space utils.JsonNumber, predicate utils.JsonLambda) (utils.JsonNumber, error) {
@@ -505,11 +568,17 @@ func maxArraySimple(arr utils.JsonArray) (interface{}, error) {
 }
 
 func minArray(arr utils.JsonArray, predicate utils.JsonLambda) (interface{}, error) {
-	if arr == nil {
+	if arr == nil || len(arr) == 0 {
 		return nil, nil
 	}
-	min := arr[0]
+	min, err := predicate([]interface{}{arr[0], 0})
+	if err != nil {
+		return nil, err
+	}
 	for i, v := range arr {
+		if i == 0 {
+			continue
+		}
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
 			return nil, err
@@ -534,7 +603,7 @@ func minArraySimple(arr utils.JsonArray) (interface{}, error) {
 	return min, nil
 }
 
-func sum(arr utils.JsonArray, predicate utils.JsonLambda) (utils.JsonNumber, error) {
+func sumMap(arr utils.JsonArray, predicate utils.JsonLambda) (utils.JsonNumber, error) {
 	if arr == nil {
 		return utils.ToNumber(0), nil
 	}
@@ -547,4 +616,64 @@ func sum(arr utils.JsonArray, predicate utils.JsonLambda) (utils.JsonNumber, err
 		s = s + utils.ToNumber(b).FloatValue()
 	}
 	return utils.ToNumber(s), nil
+}
+
+func sum(arr utils.JsonArray) (utils.JsonNumber, error) {
+	if arr == nil {
+		return utils.ToNumber(0), nil
+	}
+	s := 0.0
+	for _, v := range arr {
+		s = s + utils.ToNumber(v).FloatValue()
+	}
+	return utils.ToNumber(s), nil
+}
+
+func reduce(arr utils.JsonArray, predicate utils.JsonLambda) (interface{}, error) {
+	return reduceInit(arr, predicate, nil)
+}
+
+func reduceInit(arr utils.JsonArray, predicate utils.JsonLambda, initialValue interface{}) (interface{}, error) {
+	if arr == nil {
+		return nil, nil
+	}
+	var prev = initialValue
+	for i, v := range arr {
+		b, err := predicate([]interface{}{prev, v, i})
+		if err != nil {
+			return utils.ToNumber(0), err
+		}
+		prev = b
+	}
+	return prev, nil
+}
+
+func findLastFilter(arr utils.JsonArray, predicate utils.JsonLambda) (interface{}, error) {
+	if arr == nil {
+		return nil, nil
+	}
+	for i := len(arr) - 1; i >= 0; i-- {
+		b, err := predicate([]interface{}{arr[i], i})
+		if err != nil {
+			return nil, err
+		}
+		if utils.ToBoolean(b) {
+			return arr[i], nil
+		}
+	}
+	return nil, &utils.EvaluationError{
+		Message: "No matching items found!",
+	}
+}
+
+func findLast(arr utils.JsonArray) (interface{}, error) {
+	if arr == nil {
+		return nil, nil
+	}
+	if len(arr) == 0 {
+		return nil, &utils.EvaluationError{
+			Message: "No matching items found!",
+		}
+	}
+	return arr[len(arr)-1], nil
 }
