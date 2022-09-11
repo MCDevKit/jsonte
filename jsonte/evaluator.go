@@ -43,7 +43,7 @@ func Eval(text string, scope deque.Deque[interface{}], path string) (Result, err
 	r := visitor.Visit(tree)
 	var err error
 	if isError(r) {
-		err = r.(error)
+		err = getError(r)
 	}
 	return Result{
 		Value:  r,

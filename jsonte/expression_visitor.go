@@ -103,8 +103,19 @@ func negate(value interface{}) interface{} {
 }
 
 func isError(v interface{}) bool {
-	_, ok := v.(error)
-	return ok
+	_, err := v.(error)
+	_, err2 := v.(utils.EvaluationError)
+	return err || err2
+}
+
+func getError(v interface{}) error {
+	if err, ok := v.(error); ok {
+		return err
+	}
+	if err, ok := v.(utils.EvaluationError); ok {
+		return err
+	}
+	return nil
 }
 
 func (v *ExpressionVisitor) resolveScope(name string) interface{} {
@@ -361,6 +372,11 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			return object
 		}
 		var newScope interface{} = nil
+		if object == nil {
+			return &utils.EvaluationError{
+				Message: fmt.Sprintf("Cannot access property '%s' of null!", text),
+			}
+		}
 		if utils.IsObject(object) {
 			if v, ok := object.(utils.JsonObject)[text]; ok {
 				newScope = v

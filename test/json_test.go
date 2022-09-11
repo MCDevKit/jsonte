@@ -123,6 +123,26 @@ func assertTemplate(t *testing.T, template string, expected utils.JsonObject) {
 	compareJsonObject(t, expected, process["test"].(utils.JsonObject), "#")
 }
 
+func assertTemplateMultiple(t *testing.T, template string, expected map[string]utils.JsonObject) {
+	t.Helper()
+	process, err := jsonte.Process("test", template, utils.JsonObject{}, map[string]jsonte.JsonModule{}, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for key, value := range expected {
+		if _, ok := process[key]; !ok {
+			t.Errorf("Missing file %s", key)
+			continue
+		}
+		compareJsonObject(t, value, process[key].(utils.JsonObject), fmt.Sprintf("%s#", key))
+	}
+	for key := range process {
+		if _, ok := expected[key]; !ok {
+			t.Errorf("Unexpected file %s", key)
+		}
+	}
+}
+
 func TestSimpleTemplate(t *testing.T) {
 	template := `{
 		"$template": {
@@ -148,6 +168,129 @@ func TestSimpleIterationInObject(t *testing.T) {
 		"test1": 2,
 		"test2": 3,
 	}
+	assertTemplate(t, template, expected)
+}
+
+func TestSimpleIterationInArray(t *testing.T) {
+	template := `{
+		"$template": {
+			"test": [
+				{
+					"{{#1..3}}": {
+						"test{{index}}": "{{=value}}"
+					}
+				}
+			]
+		}
+	}`
+	expected := utils.JsonObject{
+		"test": utils.JsonArray{
+			utils.JsonObject{
+				"test0": 1,
+			},
+			utils.JsonObject{
+				"test1": 2,
+			},
+			utils.JsonObject{
+				"test2": 3,
+			},
+		},
+	}
+	assertTemplate(t, template, expected)
+}
+
+func TestSimplePredicateInArray(t *testing.T) {
+	template := `{
+		"$template": {
+			"test": [
+				{
+					"{{?true}}": 1
+				},
+				{
+					"{{?false}}": 2
+				}
+			]
+		}
+	}`
+	expected := utils.JsonObject{
+		"test": utils.JsonArray{
+			1,
+		},
+	}
+	assertTemplate(t, template, expected)
+}
+
+func TestNestedIterationInArray(t *testing.T) {
+	template := `{
+		"$template": {
+			"test": [
+				{
+					"{{#1..3 as outer}}": {
+						"{{#1..3 as inner}}": {
+							"test{{outer}}-{{inner}}": "{{outer}}-{{inner}}"
+						}
+					}
+				}
+			]
+		}
+	}`
+	expected := utils.JsonObject{
+		"test": utils.JsonArray{
+			utils.JsonObject{
+				"test1-1": "1-1",
+			},
+			utils.JsonObject{
+				"test1-2": "1-2",
+			},
+			utils.JsonObject{
+				"test1-3": "1-3",
+			},
+			utils.JsonObject{
+				"test2-1": "2-1",
+			},
+			utils.JsonObject{
+				"test2-2": "2-2",
+			},
+			utils.JsonObject{
+				"test2-3": "2-3",
+			},
+			utils.JsonObject{
+				"test3-1": "3-1",
+			},
+			utils.JsonObject{
+				"test3-2": "3-2",
+			},
+			utils.JsonObject{
+				"test3-3": "3-3",
+			},
+		},
+	}
+	assertTemplate(t, template, expected)
+}
+
+func TestSimplePredicateInObject(t *testing.T) {
+	template := `{
+		"$template": {
+			"{{?true}}": {
+				"test": 1
+			}
+		}
+	}`
+	expected := utils.JsonObject{
+		"test": 1,
+	}
+	assertTemplate(t, template, expected)
+}
+
+func TestSimplePredicateInObject2(t *testing.T) {
+	template := `{
+		"$template": {
+			"{{?false}}": {
+				"test": 1
+			}
+		}
+	}`
+	expected := utils.JsonObject{}
 	assertTemplate(t, template, expected)
 }
 
@@ -294,4 +437,28 @@ func TestCopyAndExtend(t *testing.T) {
 	}
 	assertTemplateWithModule(t, template, module, expected)
 	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestMultipleFiles(t *testing.T) {
+	template := `{
+		"$files": {
+			"fileName": "file{{index}}",
+			"array": "{{1..3}}"
+		},	
+		"$template": {
+			"test": "{{=index}}"
+		}
+	}`
+	expected := map[string]utils.JsonObject{
+		"file0": {
+			"test": 0,
+		},
+		"file1": {
+			"test": 1,
+		},
+		"file2": {
+			"test": 2,
+		},
+	}
+	assertTemplateMultiple(t, template, expected)
 }

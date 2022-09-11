@@ -580,7 +580,7 @@ type EvaluationError struct {
 	Err     error
 }
 
-func (e *EvaluationError) Error() string {
+func (e EvaluationError) Error() string {
 	if e.Err != nil && e.Path != "" {
 		return e.Message + ": " + e.Err.Error() + " at " + e.Path
 	} else if e.Err != nil {
@@ -598,7 +598,7 @@ type TemplatingError struct {
 	Err     error
 }
 
-func (e *TemplatingError) Error() string {
+func (e TemplatingError) Error() string {
 	if e.Err != nil && e.Path != "" {
 		return e.Message + ": " + e.Err.Error() + " at " + e.Path
 	} else if e.Err != nil {

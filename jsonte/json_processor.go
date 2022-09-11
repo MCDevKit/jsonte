@@ -114,6 +114,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 					"value": item,
 				}
 				visitor.pushScope(extra)
+				visitor.pushScope(item)
 				if isCopy {
 					template, err = processCopy(name, c, visitor, modules, "$files.array", timeout)
 					if err != nil {
@@ -123,20 +124,16 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 					template = root["$template"].(utils.JsonObject)
 				}
 				if isExtend {
-					visitor.pushScope(item)
 					template, err = extendTemplate(root["$extend"], template, visitor, modules)
 					if err != nil {
 						return nil, err
 					}
-					visitor.popScope()
 				}
 				if isCopy && hasTemplate {
 					template = utils.MergeObject(template, root["$template"].(map[string]interface{}))
 				}
-				visitor.popScope()
 				utils.DeleteNulls(template)
-				visitor.pushScope(item)
-				mFileName, err := visitor.visitString(file.(map[string]interface{})["fileName"].(string), "$files.fileName")
+				mFileName, err := visitor.visitString(file.(utils.JsonObject)["fileName"].(string), "$files.fileName")
 				if err != nil {
 					return nil, err
 				}
@@ -144,6 +141,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				if err != nil {
 					return nil, err
 				}
+				visitor.popScope()
 				visitor.popScope()
 			}
 		} else {
@@ -169,7 +167,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 			template = utils.MergeObject(template, root["$template"].(utils.JsonObject))
 		}
 		utils.DeleteNulls(template)
-		result[name], err = visitor.visitObject(utils.DeepCopyObject(template), name)
+		result[name], err = visitor.visitObject(utils.DeepCopyObject(template), "$template")
 		if err != nil {
 			return nil, err
 		}
@@ -316,7 +314,6 @@ func (v *TemplateVisitor) visit(obj interface{}, path string) (interface{}, erro
 }
 
 func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interface{}, error) {
-	// TODO
 	var result = make(utils.JsonObject)
 	for key, value := range obj {
 		if key == "$comment" {
@@ -329,7 +326,7 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 					Message: "The value of an iteration action must be an object",
 				}
 			}
-			eval, err := Eval(key, v.scope, path)
+			eval, err := Eval(key, v.scope, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
 				return nil, err
 			}
@@ -341,7 +338,7 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 							"index":   i,
 							eval.Name: arr[i],
 						})
-						o, err := v.visit(value, fmt.Sprintf("%s[%d]", path, i))
+						o, err := v.visit(value, fmt.Sprintf("%s/%s[%d]", path, key, i))
 						v.popScope()
 						if err != nil {
 							return nil, err
@@ -356,9 +353,31 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 						Message: "The $iteration action returned a non-array",
 					}
 				}
+			case utils.Predicate:
+				if utils.ToBoolean(eval.Value) {
+					o, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
+					if err != nil {
+						return nil, err
+					}
+					if obj, ok := o.(utils.JsonObject); ok {
+						for k, v := range obj {
+							result[k] = v
+						}
+					} else {
+						return nil, &utils.TemplatingError{
+							Path:    path,
+							Message: "The $predicate action requires an object value",
+						}
+					}
+				}
+			default:
+				return nil, &utils.TemplatingError{
+					Path:    path,
+					Message: "Unsupported action",
+				}
 			}
 		} else if templatePattern.MatchString(key) {
-			key, err := v.visitString(key, path)
+			key, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
 				return nil, err
 			}
@@ -379,14 +398,70 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 }
 
 func (v *TemplateVisitor) visitArray(arr utils.JsonArray, path string) (interface{}, error) {
-	// TODO
-	return arr, nil
+	var result = make(utils.JsonArray, 0)
+	for i, value := range arr {
+		a, err := v.visitArrayElement(result, value, fmt.Sprintf("%s[%d]", path, i))
+		if err != nil {
+			return nil, err
+		}
+		result = a
+	}
+	return result, nil
 }
 
 // Special visitor for cases when the array element is an object, that generates multiple values
-func (v *TemplateVisitor) visitArrayElement(arr utils.JsonArray, path string) (interface{}, error) {
-	// TODO
-	return arr, nil
+func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element interface{}, path string) (utils.JsonArray, error) {
+	if obj, ok := element.(utils.JsonObject); ok {
+		if len(obj) == 1 {
+			for key, value := range obj {
+				if actionPattern.MatchString(key) {
+					eval, err := Eval(key, v.scope, path)
+					if err != nil {
+						return array, err
+					}
+					switch eval.Action {
+					case utils.Iteration:
+						if arr, ok := eval.Value.(utils.JsonArray); ok {
+							for i := range arr {
+								v.pushScope(utils.JsonObject{
+									"index":   i,
+									eval.Name: arr[i],
+								})
+								a, err := v.visitArrayElement(array, value, fmt.Sprintf("%s[%d]", path, i))
+								array = a
+								v.popScope()
+								if err != nil {
+									return array, err
+								}
+							}
+							return array, nil
+						} else {
+							return nil, &utils.TemplatingError{
+								Path:    path,
+								Message: "The $iteration action returned a non-array",
+							}
+						}
+					case utils.Predicate:
+						if utils.ToBoolean(eval.Value) {
+							return v.visitArrayElement(array, value, path)
+						}
+						return array, nil
+					default:
+						return nil, &utils.TemplatingError{
+							Path:    path,
+							Message: "Unsupported action",
+						}
+					}
+				}
+			}
+		}
+	}
+	visit, err := v.visit(element, path)
+	if err != nil {
+		return nil, err
+	}
+	array = append(array, visit)
+	return array, nil
 }
 
 func (v *TemplateVisitor) visitString(str string, path string) (interface{}, error) {
