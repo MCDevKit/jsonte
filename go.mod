@@ -7,6 +7,7 @@ require (
 	github.com/faiface/beep v1.1.0
 	github.com/gammazero/deque v0.2.0
 	golang.org/x/text v0.3.0
+	muzzammil.xyz/jsonc v1.0.0
 )
 
 require (
@@ -14,5 +15,4 @@ require (
 	github.com/jfreymuth/oggvorbis v1.0.1 // indirect
 	github.com/jfreymuth/vorbis v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	muzzammil.xyz/jsonc v1.0.0 // indirect
 )
