@@ -7,6 +7,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -502,4 +503,36 @@ func TestKeepTypes(t *testing.T) {
 		"templatedArray":   utils.JsonArray{},
 	}
 	assertTemplate(t, template, expected)
+}
+
+func TestTrailingCommaError(t *testing.T) {
+	template := `{
+		"$template": {
+			"test": "asd",
+		},
+	}`
+	_, err := utils.ParseJson([]byte(template))
+	if err == nil {
+		t.Error("Expected error")
+	}
+	s := err.Error()
+	if !strings.HasPrefix(s, "Most likely trailing comma at line 4, column 4\n") {
+		t.Error("Expected trailing comma error")
+	}
+}
+
+func TestNoQuotesObjectKey(t *testing.T) {
+	template := `{
+		"$template": {
+			test: "asd",
+		},
+	}`
+	_, err := utils.ParseJson([]byte(template))
+	if err == nil {
+		t.Error("Expected error")
+	}
+	s := err.Error()
+	if !strings.HasPrefix(s, "Most likely missing quote at line 3, column 5\n") {
+		t.Error("Expected quote error")
+	}
 }

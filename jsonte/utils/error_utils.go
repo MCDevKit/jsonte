@@ -53,6 +53,12 @@ func WrappedErrorf(text string, args ...interface{}) error {
 	return wrapErrorStackTrace(nil, text)
 }
 
+// WrappedJsonErrorf creates an error with a stack trace from formatted text and appends the path.
+func WrappedJsonErrorf(path string, text string, args ...interface{}) error {
+	text = fmt.Sprintf(text, args...)
+	return wrapErrorStackTrace(nil, fmt.Sprintf("%s at %s", text, path))
+}
+
 // WrapError wraps an error with a stack trace and adds additional text
 // information.
 func WrapError(err error, text string) error {
@@ -63,4 +69,11 @@ func WrapError(err error, text string) error {
 // text information.
 func WrapErrorf(err error, text string, args ...interface{}) error {
 	return wrapErrorStackTrace(err, fmt.Sprintf(text, args...))
+}
+
+// WrapJsonErrorf wraps an error with a stack trace and adds additional formatted
+// text information.
+func WrapJsonErrorf(path string, err error, text string, args ...interface{}) error {
+	text = fmt.Sprintf(text, args...)
+	return wrapErrorStackTrace(err, fmt.Sprintf("%s at %s", text, path))
 }

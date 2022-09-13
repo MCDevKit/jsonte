@@ -48,7 +48,7 @@ func getMinecraftInstallDir() (string, error) {
 	if installDir == "" {
 		output, err := exec.Command("powershell", "(Get-AppxPackage -Name Microsoft.MinecraftUWP).InstallLocation").Output()
 		if err != nil {
-			return "", err
+			return "", utils.WrapErrorf(err, "An error occurred while getting Minecraft install directory")
 		}
 		installDir = strings.Trim(string(output), "\r\n \t")
 	}
@@ -193,10 +193,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 					}
 					if version, ok := headerMap["version"]; ok {
 						if versionArr, ok := version.([]interface{}); ok {
-							array, err := utils.ParseSemverArray(versionArr)
-							if err != nil {
-								continue
-							}
+							array := utils.ParseSemverArray(versionArr)
 							versions.Put(array.String(), p)
 						}
 					}

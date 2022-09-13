@@ -224,7 +224,7 @@ func getScope(scope []string) (utils.JsonObject, error) {
 	for _, path := range scope {
 		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				return utils.WrapError(err, "An error occurred while reading the scope")
+				return utils.WrapErrorf(err, "An error occurred while reading the scope file %s", path)
 			}
 			if !info.IsDir() && strings.HasSuffix(path, ".json") {
 				file, err := ioutil.ReadFile(path)
@@ -240,7 +240,7 @@ func getScope(scope []string) (utils.JsonObject, error) {
 			return nil
 		})
 		if err != nil {
-			return nil, utils.WrapError(err, "An error occurred while reading the scope")
+			return nil, utils.WrapError(err, "An error occurred while reading the scope files")
 		}
 	}
 	return result, nil
@@ -253,14 +253,14 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 	for _, i := range include {
 		g, err := glob.Compile(i)
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapErrorf(err, "An error occurred while compiling the include pattern %s", i)
 		}
 		includes = append(includes, g)
 	}
 	for _, e := range exclude {
 		g, err := glob.Compile(e)
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapErrorf(err, "An error occurred while compiling the exclude pattern %s", e)
 		}
 		excludes = append(excludes, g)
 	}
@@ -271,11 +271,11 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 			if os.IsNotExist(err) {
 				return nil, utils.WrappedErrorf("The path %s does not exist", p)
 			}
-			return nil, err
+			return nil, utils.WrapErrorf(err, "An error occurred while reading the path %s", p)
 		}
 		err = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				return err
+				return utils.WrapErrorf(err, "An error occurred while reading the path %s", p)
 			}
 			if !info.IsDir() {
 				if !strings.HasSuffix(path, ".templ") && !strings.HasSuffix(path, ".modl") && !strings.HasSuffix(path, ".mcfunction") {

@@ -19,16 +19,12 @@ func ProcessMCFunction(input string, scope utils.JsonObject) (string, error) {
 			return "", err
 		}
 		if result.Value == nil {
-			return "", &utils.TemplatingError{
-				Message: "The expression evaluated to null",
-			}
+			return "", utils.WrappedErrorf("The expression '%s' evaluated to null.", match)
 		}
 		if result.Action == utils.Value {
 			replacements[match] = utils.ToString(result.Value)
 		} else {
-			return "", &utils.TemplatingError{
-				Message: "Cannot execute action here",
-			}
+			return "", utils.WrappedErrorf("The expression '%s' evaluated to an action.", match)
 		}
 	}
 	result := templatePattern.ReplaceAllStringFunc(input, func(match string) string {

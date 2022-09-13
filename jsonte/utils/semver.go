@@ -37,11 +37,11 @@ func ParseSemverString(version string) (Semver, error) {
 	var major, minor, patch int
 	_, err := fmt.Sscanf(version, "%d.%d.%d", &major, &minor, &patch)
 	if err != nil {
-		return Semver{}, err
+		return Semver{}, WrapErrorf(err, "Failed to parse semver string: %s", version)
 	}
 	return Semver{major, minor, patch}, nil
 }
 
-func ParseSemverArray(version []interface{}) (Semver, error) {
-	return Semver{int(version[0].(float64)), int(version[1].(float64)), int(version[2].(float64))}, nil
+func ParseSemverArray(version []interface{}) Semver {
+	return Semver{int(version[0].(float64)), int(version[1].(float64)), int(version[2].(float64))}
 }

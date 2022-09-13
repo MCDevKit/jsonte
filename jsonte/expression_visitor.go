@@ -1,7 +1,6 @@
 package jsonte
 
 import (
-	"fmt"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/MCDevKit/jsonte/parser"
@@ -104,15 +103,11 @@ func negate(value interface{}) interface{} {
 
 func isError(v interface{}) bool {
 	_, err := v.(error)
-	_, err2 := v.(utils.EvaluationError)
-	return err || err2
+	return err
 }
 
 func getError(v interface{}) error {
 	if err, ok := v.(error); ok {
-		return err
-	}
-	if err, ok := v.(utils.EvaluationError); ok {
 		return err
 	}
 	return nil
@@ -332,10 +327,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				}
 				return i
 			} else {
-				return &utils.EvaluationError{
-					Message: fmt.Sprintf("Function '%s' not found!", context.Field(0).GetText()),
-					Path:    *v.path,
-				}
+				return utils.WrappedErrorf("%s is not a function", lambda)
 			}
 		} else if _, ok := lambda.(utils.JsonLambda); ok {
 			i, err := lambda.(utils.JsonLambda)(params)
@@ -353,10 +345,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				}
 			}
 			if methodName == nil || !functions.HasFunction(*methodName) {
-				return &utils.EvaluationError{
-					Message: fmt.Sprintf("Function '%s' not found!", context.Field(0).GetText()),
-					Path:    *v.path,
-				}
+				return utils.WrappedErrorf("Function '%s' not found!", context.Field(0).GetText())
 			}
 			function, err := functions.CallFunction(*methodName, params)
 			if err != nil {
@@ -376,10 +365,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if context.Question() != nil {
 				return nil
 			} else {
-				return &utils.EvaluationError{
-					Message: fmt.Sprintf("Cannot access property '%s' of null (%s)!", text, text),
-					Path:    *v.path,
-				}
+				return utils.WrappedErrorf("Cannot access property '%s' of null", text)
 			}
 		}
 		if utils.IsObject(object) {
@@ -402,10 +388,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if v.action == utils.Predicate || context.Question() != nil {
 				return nil
 			} else {
-				return utils.EvaluationError{
-					Message: "Failed to resolve \"" + text + "\"",
-					Path:    *v.path,
-				}
+				return utils.WrappedErrorf("Failed to resolve field '%s' on '%s'", text, utils.ToString(object))
 			}
 		}
 		return newScope
@@ -429,10 +412,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					if context.Question() != nil {
 						return nil
 					} else {
-						return utils.EvaluationError{
-							Message: "Array index out of bounds!",
-							Path:    *v.path,
-						}
+						return utils.WrappedErrorf("Index out of bounds: %d", value)
 					}
 				}
 				return object.(utils.JsonArray)[value]
@@ -440,10 +420,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				if context.Question() != nil {
 					return nil
 				} else {
-					return utils.EvaluationError{
-						Message: "Array index is not a number!",
-						Path:    *v.path,
-					}
+					return utils.WrappedErrorf("Index must be a number: %s", utils.ToString(i))
 				}
 			}
 		} else if utils.IsObject(object) {
@@ -452,10 +429,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				if context.Question() != nil {
 					return nil
 				} else {
-					return utils.EvaluationError{
-						Message: "Object does not have key \"" + value + "\"!",
-						Path:    *v.path,
-					}
+					return utils.WrappedErrorf("Property '%s' not found on '%s'", value, utils.ToString(object))
 				}
 			} else {
 				return b
@@ -574,10 +548,7 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) interface{} {
 	return utils.JsonLambda(
 		func(o []interface{}) (interface{}, error) {
 			if len(ctx.AllName()) > len(o) {
-				return nil, &utils.EvaluationError{
-					Message: fmt.Sprintf("Lambda requires %d parameters, but only %d were supplied!", len(ctx.AllName()), len(o)),
-					Path:    *v.path,
-				}
+				return nil, utils.WrappedErrorf("Lambda expects %d arguments, but got %d", len(ctx.AllName()), len(o))
 			}
 			for i, context := range ctx.AllName() {
 				// Ensure we get boxed type

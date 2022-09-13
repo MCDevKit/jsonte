@@ -2,7 +2,6 @@ package safeio
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"io"
 	"io/fs"
@@ -28,7 +27,7 @@ var DefaultIOResolver = IOResolver{
 		var files []string
 		err := filepath.Walk(path, func(p string, info fs.FileInfo, err error) error {
 			if err != nil {
-				return err
+				return utils.WrapErrorf(err, "Failed to walk path %s", p)
 			}
 			rel, err := filepath.Rel(path, p)
 			if err != nil {
@@ -38,7 +37,7 @@ var DefaultIOResolver = IOResolver{
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapErrorf(err, "Failed to walk path %s", path)
 		}
 		return files, nil
 	},
@@ -46,7 +45,7 @@ var DefaultIOResolver = IOResolver{
 		var files []string
 		dir, err := os.ReadDir(path)
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapErrorf(err, "Failed to read dir %s", path)
 		}
 		for _, file := range dir {
 			files = append(files, file.Name())
@@ -56,7 +55,7 @@ var DefaultIOResolver = IOResolver{
 	IsDir: func(path string) (bool, error) {
 		info, err := os.Stat(path)
 		if err != nil {
-			return false, err
+			return false, utils.WrapErrorf(err, "Failed to stat path %s", path)
 		}
 		return info.IsDir(), nil
 	},
@@ -80,7 +79,7 @@ func CreateFakeFS(files map[string][]byte) IOResolver {
 			if data, ok := files[path]; ok {
 				return io.NopCloser(bytes.NewReader(data)), nil
 			}
-			return nil, fmt.Errorf("file not found")
+			return nil, utils.WrappedErrorf("File %s not found", path)
 		},
 		OpenDir: func(path string) ([]string, error) {
 			result := make([]string, 0)

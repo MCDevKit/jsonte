@@ -83,7 +83,7 @@ func fileList(s string) (utils.JsonArray, error) {
 	for i, file := range resolved {
 		result[i] = file
 	}
-	return result, err
+	return result, nil
 }
 
 func fileListFilter(s string, filter string) (utils.JsonArray, error) {
@@ -101,7 +101,7 @@ func fileListFilter(s string, filter string) (utils.JsonArray, error) {
 			result = append(result, file)
 		}
 	}
-	return result, err
+	return result, nil
 }
 
 func fileListRecurse(s string) (utils.JsonArray, error) {
@@ -113,7 +113,7 @@ func fileListRecurse(s string) (utils.JsonArray, error) {
 	for i, file := range resolved {
 		result[i] = file
 	}
-	return result, err
+	return result, nil
 }
 
 func fileListRecurseFilter(s string, filter string) (utils.JsonArray, error) {
@@ -131,23 +131,23 @@ func fileListRecurseFilter(s string, filter string) (utils.JsonArray, error) {
 			result = append(result, file)
 		}
 	}
-	return result, err
+	return result, nil
 }
 
-func fileExtension(s string) (string, error) {
-	return filepath.Ext(s), nil
+func fileExtension(s string) string {
+	return filepath.Ext(s)
 }
 
-func fileName(s string) (string, error) {
-	return filepath.Base(s), nil
+func fileName(s string) string {
+	return filepath.Base(s)
 }
 
-func fileBaseName(s string) (string, error) {
-	return strings.TrimSuffix(filepath.Base(s), filepath.Ext(s)), nil
+func fileBaseName(s string) string {
+	return strings.TrimSuffix(filepath.Base(s), filepath.Ext(s))
 }
 
-func filePath(s string) (string, error) {
-	return filepath.Dir(s), nil
+func filePath(s string) string {
+	return filepath.Dir(s)
 }
 
 func isDir(s string) (bool, error) {

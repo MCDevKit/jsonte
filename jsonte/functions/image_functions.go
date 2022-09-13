@@ -32,17 +32,17 @@ func imageBounds(str string) (*image.Config, error) {
 	} else {
 		file, err := safeio.Resolver.Open(str)
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapErrorf(err, "Failed to open image file %s", str)
 		}
 
 		config, _, err := image.DecodeConfig(file)
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapErrorf(err, "Failed to decode image file %s", str)
 		}
 		utils.PutCache(imageCache, str, config)
 		err = file.Close()
 		if err != nil {
-			return nil, err
+			return nil, utils.WrapErrorf(err, "Failed to close image file %s", str)
 		}
 		img = &config
 	}
@@ -52,7 +52,7 @@ func imageBounds(str string) (*image.Config, error) {
 func imageWidth(str string) (utils.JsonNumber, error) {
 	bounds, err := imageBounds(str)
 	if err != nil {
-		return utils.ToNumber(0), err
+		return utils.ToNumber(0), utils.WrapErrorf(err, "Failed to get image bounds for %s", str)
 	}
 	return utils.ToNumber(bounds.Width), nil
 }
@@ -60,7 +60,7 @@ func imageWidth(str string) (utils.JsonNumber, error) {
 func imageHeight(str string) (utils.JsonNumber, error) {
 	bounds, err := imageBounds(str)
 	if err != nil {
-		return utils.ToNumber(0), err
+		return utils.ToNumber(0), utils.WrapErrorf(err, "Failed to get image bounds for %s", str)
 	}
 	return utils.ToNumber(bounds.Height), nil
 }

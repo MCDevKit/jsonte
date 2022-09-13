@@ -150,7 +150,7 @@ func hash(str string) (utils.JsonNumber, error) {
 	a := fnv.New32a()
 	_, err := a.Write([]byte(str))
 	if err != nil {
-		return utils.ToNumber(0), err
+		return utils.ToNumber(0), utils.WrapErrorf(err, "Failed to hash string")
 	}
 	return utils.ToNumber(a.Sum32()), nil
 }
@@ -201,7 +201,7 @@ func endsWith(str, substr string) bool {
 func regexReplace(str, pattern, repl string) (string, error) {
 	compile, err := regexp.Compile(pattern)
 	if err != nil {
-		return "", err
+		return "", utils.WrapErrorf(err, "Failed to compile regex pattern")
 	}
 	return compile.ReplaceAllString(str, repl), nil
 }

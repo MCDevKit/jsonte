@@ -16,7 +16,7 @@ func RegisterColorFunctions() {
 func hexToArray(str string) (utils.JsonArray, error) {
 	fast, err := parseHexColorFast(str)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapErrorf(err, "Failed to parse hex color %s", str)
 	}
 	return utils.JsonArray{
 		utils.ToNumber(float64(fast.R) / 255),

@@ -203,7 +203,7 @@ func ToString(obj interface{}) string {
 	if err != nil {
 		return "null"
 	}
-	return buffer.String()
+	return strings.ReplaceAll(buffer.String(), "\n", "")
 }
 
 func ToPrettyString(obj interface{}) string {
@@ -588,10 +588,33 @@ func ParseJson(str []byte) (JsonObject, error) {
 	// Set the UseNumber option to true to unmarshal numbers into strings
 	d.UseNumber()
 	if err := d.Decode(&dat); err != nil {
+		if serr, ok := err.(*json.SyntaxError); ok {
+			line, caret := offsetToCaret(string(str), int(serr.Offset))
+			if strings.HasPrefix(serr.Error(), "invalid character") && strings.HasSuffix(serr.Error(), "looking for beginning of object key string") && str[serr.Offset] == ',' {
+				return nil, WrapErrorf(serr, "Most likely trailing comma at line %d, column %d", line, caret)
+			} else if strings.HasPrefix(serr.Error(), "invalid character") && strings.HasSuffix(serr.Error(), "looking for beginning of object key string") && str[serr.Offset] != '"' && str[serr.Offset-1] != '"' && str[serr.Offset-2] != '"' {
+				return nil, WrapErrorf(serr, "Most likely missing quote at line %d, column %d", line, caret)
+			} else {
+				return nil, WrapErrorf(serr, "JSON syntax error at line %d, column %d", line, caret)
+			}
+		}
 		return nil, err
 	}
 	// Convert all numbers to JsonNumber
 	return convertNumbersObject(dat), nil
+}
+
+func offsetToCaret(str string, offset int) (int, int) {
+	line := 1
+	caret := 1
+	for i := 0; i < offset; i++ {
+		caret++
+		if str[i] == '\n' {
+			line++
+			caret = 1
+		}
+	}
+	return line, caret
 }
 
 func convertNumbersObject(object JsonObject) JsonObject {
@@ -626,42 +649,6 @@ func convertNumbersArray(object JsonArray) JsonArray {
 	return result
 }
 
-type EvaluationError struct {
-	Message string
-	Path    string
-	Err     error
-}
-
-func (e EvaluationError) Error() string {
-	if e.Err != nil && e.Path != "" {
-		return e.Message + ": " + e.Err.Error() + " at " + e.Path
-	} else if e.Err != nil {
-		return e.Message + ": " + e.Err.Error()
-	} else if e.Path != "" {
-		return e.Message + " at " + e.Path
-	} else {
-		return e.Message
-	}
-}
-
-type TemplatingError struct {
-	Message string
-	Path    string
-	Err     error
-}
-
-func (e TemplatingError) Error() string {
-	if e.Err != nil && e.Path != "" {
-		return e.Message + ": " + e.Err.Error() + " at " + e.Path
-	} else if e.Err != nil {
-		return e.Message + ": " + e.Err.Error()
-	} else if e.Path != "" {
-		return e.Message + " at " + e.Path
-	} else {
-		return e.Message
-	}
-}
-
 type JsonAction int
 type JsonLambda func(args []interface{}) (interface{}, error)
 
@@ -671,3 +658,17 @@ const (
 	Literal
 	Predicate
 )
+
+func (a JsonAction) String() string {
+	switch a {
+	case Value:
+		return "Value"
+	case Iteration:
+		return "Iteration"
+	case Literal:
+		return "Literal"
+	case Predicate:
+		return "Predicate"
+	}
+	return string(rune(a))
+}
