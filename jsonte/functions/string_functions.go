@@ -7,6 +7,7 @@ import (
 	"hash/fnv"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 func RegisterStringFunctions() {
@@ -100,6 +101,16 @@ func RegisterStringFunctions() {
 		Body:       trim,
 		IsInstance: true,
 	})
+	RegisterFunction(JsonFunction{
+		Name:       "title",
+		Body:       title,
+		IsInstance: true,
+	})
+	RegisterFunction(JsonFunction{
+		Name:       "swapCase",
+		Body:       swapCase,
+		IsInstance: true,
+	})
 }
 
 func replace(str, old, new string) string {
@@ -161,7 +172,22 @@ func substringFrom(str string, start utils.JsonNumber) string {
 }
 
 func captialize(str string) string {
+	return cases.Upper(language.Und).String(str[:1]) + cases.Lower(language.Und).String(str[1:])
+}
+
+func title(str string) string {
 	return cases.Title(language.Und).String(str)
+}
+
+func swapCase(str string) string {
+	for i, c := range str {
+		if unicode.IsUpper(c) {
+			str = str[:i] + strings.ToLower(string(c)) + str[i+1:]
+		} else if unicode.IsLower(c) {
+			str = str[:i] + strings.ToUpper(string(c)) + str[i+1:]
+		}
+	}
+	return str
 }
 
 func startsWith(str, substr string) bool {

@@ -16,7 +16,7 @@ regolith install json_templating_engine
 From source (requires [Go v1.18 or later](https://golang.org/)):
 
 ```powershell
-go install github.com/MCDevKit/jsonte
+go install github.com/MCDevKit/jsonte@latest
 ```
 
 ## Development

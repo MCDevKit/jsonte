@@ -207,7 +207,7 @@ func main() {
 				if err != nil {
 					return utils.WrapErrorf(err, "An error occurred while evaluating the expression")
 				}
-				fmt.Println(utils.ToPrettyString(value))
+				fmt.Println(utils.ToPrettyString(value.Value))
 			}
 			return nil
 		},
