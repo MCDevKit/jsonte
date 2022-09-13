@@ -110,6 +110,12 @@ func ToNumber(obj interface{}) JsonNumber {
 			Decimal: false,
 		}
 	}
+	if b, ok := obj.(uint32); ok {
+		return JsonNumber{
+			Value:   float64(b),
+			Decimal: false,
+		}
+	}
 	if b, ok := obj.(int64); ok {
 		return JsonNumber{
 			Value:   float64(b),

@@ -95,6 +95,11 @@ func RegisterStringFunctions() {
 		Body:       length,
 		IsInstance: true,
 	})
+	RegisterFunction(JsonFunction{
+		Name:       "trim",
+		Body:       trim,
+		IsInstance: true,
+	})
 }
 
 func replace(str, old, new string) string {
@@ -147,12 +152,12 @@ func toLowerCase(str string) string {
 	return cases.Lower(language.Und).String(str)
 }
 
-func substring(str string, start, end int) string {
-	return str[start:end]
+func substring(str string, start, end utils.JsonNumber) string {
+	return str[start.IntValue():end.IntValue()]
 }
 
-func substringFrom(str string, start int) string {
-	return str[start:]
+func substringFrom(str string, start utils.JsonNumber) string {
+	return str[start.IntValue():]
 }
 
 func captialize(str string) string {
@@ -185,4 +190,8 @@ func chars(str string) utils.JsonArray {
 
 func length(str string) utils.JsonNumber {
 	return utils.ToNumber(len(str))
+}
+
+func trim(str string) string {
+	return strings.Trim(str, " \t\n\r")
 }
