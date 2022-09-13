@@ -30,7 +30,7 @@ func audioDuration(str string) (utils.JsonNumber, error) {
 	if cache != nil {
 		length = (*cache).(float64)
 	} else {
-		file, err := safeio.Resolver(str)
+		file, err := safeio.Resolver.Open(str)
 		if err != nil {
 			return utils.ToNumber(0), err
 		}

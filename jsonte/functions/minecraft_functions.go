@@ -67,7 +67,7 @@ func getLatestBPFile(p string) (string, error) {
 }
 
 func getLatestRPFile(p string) (string, error) {
-	if bpFiles.IsEmpty() {
+	if rpFiles.IsEmpty() {
 		rp, err := findPackVersions(false, VanillaRpUUID)
 		if err != nil {
 			return "", utils.WrapErrorf(err, "An error occurred while reading resource packs")
@@ -78,7 +78,7 @@ func getLatestRPFile(p string) (string, error) {
 }
 
 func listLatestRPFiles(p string) (utils.JsonArray, error) {
-	if bpFiles.IsEmpty() {
+	if rpFiles.IsEmpty() {
 		rp, err := findPackVersions(false, VanillaRpUUID)
 		if err != nil {
 			return utils.JsonArray{}, utils.WrapErrorf(err, "An error occurred while reading resource packs")

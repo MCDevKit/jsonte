@@ -1,12 +1,10 @@
 package test
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
-	"io"
 	"math"
 	"reflect"
 	"testing"
@@ -87,15 +85,6 @@ func compareJsonArray(t *testing.T, expected utils.JsonArray, actual utils.JsonA
 		if i >= len(expected) {
 			t.Errorf("Array contains unexpected element %s[%d]", path, i)
 		}
-	}
-}
-
-func createFakeFS(files map[string][]byte) safeio.IOResolver {
-	return func(path string) (io.ReadCloser, error) {
-		if data, ok := files[path]; ok {
-			return io.NopCloser(bytes.NewReader(data)), nil
-		}
-		return nil, fmt.Errorf("file not found")
 	}
 }
 
@@ -339,7 +328,7 @@ func TestSimpleCopy(t *testing.T) {
 		"asd": 123,
 		"overrideMe": -1
 	}`
-	safeio.Resolver = createFakeFS(map[string][]byte{
+	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
 		"file.json": []byte(file),
 	})
 	template := `{
@@ -366,7 +355,7 @@ func TestTemplateCopy(t *testing.T) {
 			"overrideMe": -1
 		}
 	}`
-	safeio.Resolver = createFakeFS(map[string][]byte{
+	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
 		"file.templ": []byte(file),
 	})
 	template := `{
@@ -393,7 +382,7 @@ func TestDeleteNulls(t *testing.T) {
 			"overrideMe": -1
 		}
 	}`
-	safeio.Resolver = createFakeFS(map[string][]byte{
+	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
 		"file.templ": []byte(file),
 	})
 	template := `{
@@ -415,7 +404,7 @@ func TestCopyAndExtend(t *testing.T) {
 		"overrideMe": -1,
 		"removeMe": 1
 	}`
-	safeio.Resolver = createFakeFS(map[string][]byte{
+	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
 		"file.json": []byte(file),
 	})
 	module := `{

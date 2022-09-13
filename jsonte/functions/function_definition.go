@@ -27,6 +27,7 @@ func Init() {
 	RegisterAudioFunctions()
 	RegisterColorFunctions()
 	RegisterMinecraftFunctions()
+	RegisterFileFunctions()
 }
 
 func RegisterFunction(fn JsonFunction) {

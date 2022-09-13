@@ -373,8 +373,13 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		}
 		var newScope interface{} = nil
 		if object == nil {
-			return &utils.EvaluationError{
-				Message: fmt.Sprintf("Cannot access property '%s' of null!", text),
+			if context.Question() != nil {
+				return nil
+			} else {
+				return &utils.EvaluationError{
+					Message: fmt.Sprintf("Cannot access property '%s' of null (%s)!", text, text),
+					Path:    *v.path,
+				}
 			}
 		}
 		if utils.IsObject(object) {

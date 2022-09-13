@@ -158,7 +158,7 @@ func TestArrayJoinWithEmptySeparator(t *testing.T) {
 }
 
 func TestAsArray(t *testing.T) {
-	eval := evaluate(t, `asArray({'a': 1, 'b': 2}, 'key', 'value')`)
+	eval := evaluate(t, `asArray({'a': 1, 'b': 2}, 'key', 'value').sort(x => x.key)`)
 	assertArray(t, eval, utils.JsonArray{
 		utils.JsonObject{"key": "a", "value": utils.ToNumber(1)},
 		utils.JsonObject{"key": "b", "value": utils.ToNumber(2)},

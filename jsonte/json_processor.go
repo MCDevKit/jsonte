@@ -130,7 +130,11 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 					}
 				}
 				if isCopy && hasTemplate {
-					template = utils.MergeObject(template, root["$template"].(map[string]interface{}))
+					if temp, ok := root["$template"].(utils.JsonObject); ok {
+						template = utils.MergeObject(template, temp)
+					} else if temp1, ok := root["$template"].(map[string]interface{}); ok {
+						template = utils.MergeObject(template, temp1)
+					}
 				}
 				utils.DeleteNulls(template)
 				mFileName, err := visitor.visitString(file.(utils.JsonObject)["fileName"].(string), "$files.fileName")
@@ -182,7 +186,7 @@ func processCopy(name string, c interface{}, visitor TemplateVisitor, modules ma
 		return nil, err
 	}
 	if copyPath, ok := c.(string); ok {
-		resolve, err := safeio.Resolver(copyPath)
+		resolve, err := safeio.Resolver.Open(copyPath)
 		if err != nil {
 			return nil, err
 		}

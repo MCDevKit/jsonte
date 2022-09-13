@@ -11,7 +11,6 @@ import (
 	"github.com/gobwas/glob"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
@@ -62,60 +61,95 @@ func main() {
 	app.Action(Action{
 		Name: "compile",
 		Function: func(args []string) error {
+			outFile := ""
+			if out != "" {
+				stat, err := os.Stat(out)
+				if err != nil {
+					if os.IsNotExist(err) {
+						err := os.MkdirAll(out, 0755)
+						if err != nil {
+							return utils.WrapError(err, "An error occurred while creating the output directory")
+						}
+					} else {
+						return utils.WrapError(err, "An error occurred while reading the output file")
+					}
+				} else if !stat.IsDir() {
+					return utils.WrappedErrorf("The output file %s is not a directory", out)
+				}
+				outFile, err = filepath.Abs(out)
+			}
 			object, err := getScope(scope)
 			if err != nil {
 				return utils.WrapError(err, "An error occurred while reading the scope")
 			}
-			files, err := getFileList(args, include, exclude)
+			fileSets, err := getFileList(args, include, exclude)
 			if err != nil {
 				return err
 			}
 			// Process modules
 			modules := map[string]jsonte.JsonModule{}
-			for _, file := range files {
-				if strings.HasSuffix(file, ".modl") {
-					bytes, err := ioutil.ReadFile(file)
-					if err != nil {
-						return utils.WrapErrorf(err, "An error occurred while reading the module file %s", file)
-					}
-					module, err := jsonte.LoadModule(string(bytes))
-					if err != nil {
-						return utils.WrapErrorf(err, "An error occurred while loading the module file %s", file)
-					}
-					modules[module.Name] = module
-					if removeSrc {
-						err = os.Remove(file)
+			for _, files := range fileSets {
+				for _, file := range files {
+					if strings.HasSuffix(file, ".modl") {
+						bytes, err := ioutil.ReadFile(file)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while removing the module file %s", file)
+							return utils.WrapErrorf(err, "An error occurred while reading the module file %s", file)
+						}
+						module, err := jsonte.LoadModule(string(bytes))
+						if err != nil {
+							return utils.WrapErrorf(err, "An error occurred while loading the module file %s", file)
+						}
+						modules[module.Name] = module
+						if removeSrc {
+							err = os.Remove(file)
+							if err != nil {
+								return utils.WrapErrorf(err, "An error occurred while removing the module file %s", file)
+							}
 						}
 					}
 				}
 			}
 			// Process templates
-			for _, file := range files {
-				if strings.HasSuffix(file, ".templ") {
-					bytes, err := ioutil.ReadFile(file)
-					if err != nil {
-						return utils.WrapErrorf(err, "An error occurred while reading the template file %s", file)
-					}
-					template, err := jsonte.Process(strings.TrimSuffix(path.Base(file), path.Ext(file)), string(bytes), object, modules, -1)
-					if err != nil {
-						return utils.WrapErrorf(err, "An error occurred while processing the template file %s", file)
-					}
-					toString := utils.ToPrettyString
-					if minify {
-						toString = utils.ToString
-					}
-					for fileName, content := range template {
-						err := ioutil.WriteFile(path.Dir(file)+"/"+fileName+".json", []byte(toString(content)), 0644)
+			for base, files := range fileSets {
+				for _, file := range files {
+					if strings.HasSuffix(file, ".templ") {
+						bytes, err := ioutil.ReadFile(file)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while writing the output file %s", fileName)
+							return utils.WrapErrorf(err, "An error occurred while reading the template file %s", file)
 						}
-					}
-					if removeSrc {
-						err = os.Remove(file)
+						template, err := jsonte.Process(strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)), string(bytes), object, modules, -1)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while removing the template file %s", file)
+							return utils.WrapErrorf(err, "An error occurred while processing the template file %s", file)
+						}
+						toString := utils.ToPrettyString
+						if minify {
+							toString = utils.ToString
+						}
+						for fileName, content := range template {
+							filename := filepath.Dir(file) + "/" + fileName + ".json"
+							if outFile != "" {
+								filename, err = filepath.Rel(base, filename)
+								if err != nil {
+									return utils.WrapErrorf(err, "An error occurred while creating the output file name")
+								}
+								filename = filepath.Join(outFile, base, filename)
+							}
+							filename = filepath.Clean(filename)
+							fmt.Println(color.GreenString("Writing file %s", filename))
+							err := os.MkdirAll(filepath.Dir(filename), 0755)
+							if err != nil {
+								return utils.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
+							}
+							err = ioutil.WriteFile(filename, []byte(toString(content)), 0644)
+							if err != nil {
+								return utils.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
+							}
+						}
+						if removeSrc {
+							err = os.Remove(file)
+							if err != nil {
+								return utils.WrapErrorf(err, "An error occurred while removing the template file %s", file)
+							}
 						}
 					}
 				}
@@ -171,7 +205,8 @@ func getScope(scope []string) (utils.JsonObject, error) {
 	return result, nil
 }
 
-func getFileList(paths, include, exclude []string) ([]string, error) {
+func getFileList(paths, include, exclude []string) (map[string][]string, error) {
+	result := map[string][]string{}
 	includes := make([]glob.Glob, 0)
 	excludes := make([]glob.Glob, 0)
 	for _, i := range include {
@@ -188,8 +223,8 @@ func getFileList(paths, include, exclude []string) ([]string, error) {
 		}
 		excludes = append(excludes, g)
 	}
-	files := make([]string, 0)
 	for _, p := range paths {
+		files := make([]string, 0)
 		_, err := os.Stat(p)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -225,8 +260,9 @@ func getFileList(paths, include, exclude []string) ([]string, error) {
 		if err != nil {
 			return nil, utils.WrapErrorf(err, "An error occurred while reading input files from %s", p)
 		}
+		result[p] = files
 	}
-	return files, nil
+	return result, nil
 }
 
 func repl() {

@@ -30,7 +30,7 @@ func imageBounds(str string) (*image.Config, error) {
 		c := (*cache).(image.Config)
 		img = &c
 	} else {
-		file, err := safeio.Resolver(str)
+		file, err := safeio.Resolver.Open(str)
 		if err != nil {
 			return nil, err
 		}

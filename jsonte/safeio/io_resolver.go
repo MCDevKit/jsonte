@@ -1,19 +1,116 @@
 package safeio
 
 import (
-	"errors"
+	"bytes"
+	"fmt"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
-type IOResolver func(path string) (io.ReadCloser, error)
+type IOResolver struct {
+	Open             func(path string) (io.ReadCloser, error)
+	OpenDir          func(path string) ([]string, error)
+	OpenDirRecursive func(path string) ([]string, error)
+	IsDir            func(path string) (bool, error)
+}
 
 var Resolver IOResolver = DefaultIOResolver
 
-var DefaultIOResolver = func(path string) (io.ReadCloser, error) {
-	return os.Open(path)
+var DefaultIOResolver = IOResolver{
+	Open: func(path string) (io.ReadCloser, error) {
+		return os.Open(path)
+	},
+	OpenDirRecursive: func(path string) ([]string, error) {
+		var files []string
+		err := filepath.Walk(path, func(p string, info fs.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			rel, err := filepath.Rel(path, p)
+			if err != nil {
+				return utils.WrapErrorf(err, "Failed to get relative path of %s", p)
+			}
+			files = append(files, rel)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return files, nil
+	},
+	OpenDir: func(path string) ([]string, error) {
+		var files []string
+		dir, err := os.ReadDir(path)
+		if err != nil {
+			return nil, err
+		}
+		for _, file := range dir {
+			files = append(files, file.Name())
+		}
+		return files, nil
+	},
+	IsDir: func(path string) (bool, error) {
+		info, err := os.Stat(path)
+		if err != nil {
+			return false, err
+		}
+		return info.IsDir(), nil
+	},
 }
 
-var NoIOResolver = func(path string) (io.ReadCloser, error) {
-	return nil, errors.New("file loading has been disabled")
+var NoIOResolver = IOResolver{
+	Open: func(path string) (io.ReadCloser, error) {
+		return nil, utils.WrappedErrorf("IO is disabled")
+	},
+	OpenDir: func(path string) ([]string, error) {
+		return nil, utils.WrappedErrorf("IO is disabled")
+	},
+	IsDir: func(path string) (bool, error) {
+		return false, utils.WrappedErrorf("IO is disabled")
+	},
+}
+
+func CreateFakeFS(files map[string][]byte) IOResolver {
+	return IOResolver{
+		Open: func(path string) (io.ReadCloser, error) {
+			if data, ok := files[path]; ok {
+				return io.NopCloser(bytes.NewReader(data)), nil
+			}
+			return nil, fmt.Errorf("file not found")
+		},
+		OpenDir: func(path string) ([]string, error) {
+			result := make([]string, 0)
+			for p := range files {
+				rel, err := filepath.Rel(path, p)
+				if err != nil || filepath.Dir(rel) != "." {
+					continue
+				}
+				result = append(result, rel)
+			}
+			return result, nil
+		},
+		OpenDirRecursive: func(path string) ([]string, error) {
+			result := make([]string, 0)
+			for p := range files {
+				rel, err := filepath.Rel(path, p)
+				if err != nil || strings.HasPrefix(rel, "..") {
+					continue
+				}
+				result = append(result, rel)
+			}
+			return result, nil
+		},
+		IsDir: func(path string) (bool, error) {
+			for p := range files {
+				if strings.HasPrefix(p, path) && p != path {
+					return true, nil
+				}
+			}
+			return false, nil
+		},
+	}
 }
