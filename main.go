@@ -15,8 +15,6 @@ import (
 	"strings"
 )
 
-const version string = "2.0.0"
-
 func main() {
 	functions.Init()
 	debug := false
@@ -155,11 +153,39 @@ func main() {
 				}
 			}
 			//Process functions
-			//for _, file := range files {
-			//	if strings.HasSuffix(file, ".mcfunction") {
-			//
-			//	}
-			//}
+			for base, files := range fileSets {
+				for _, file := range files {
+					if strings.HasSuffix(file, ".mcfunction") {
+						bytes, err := ioutil.ReadFile(file)
+						if err != nil {
+							return utils.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file)
+						}
+						fileName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+						output, err := jsonte.ProcessMCFunction(string(bytes), object)
+						if err != nil {
+							return utils.WrapErrorf(err, "An error occurred while processing the mcfunction file %s", file)
+						}
+						filename := filepath.Dir(file) + "/" + fileName + ".mcfunction"
+						if outFile != "" {
+							filename, err = filepath.Rel(base, filename)
+							if err != nil {
+								return utils.WrapErrorf(err, "An error occurred while creating the output file name")
+							}
+							filename = filepath.Join(outFile, base, filename)
+						}
+						filename = filepath.Clean(filename)
+						fmt.Println(color.GreenString("Writing file %s", filename))
+						err = os.MkdirAll(filepath.Dir(filename), 0755)
+						if err != nil {
+							return utils.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
+						}
+						err = ioutil.WriteFile(filename, []byte(output), 0644)
+						if err != nil {
+							return utils.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
+						}
+					}
+				}
+			}
 			return nil
 		},
 	})
@@ -167,7 +193,22 @@ func main() {
 		Name:  "eval",
 		Usage: "Evaluate a JSON expression or run a REPL",
 		Function: func(args []string) error {
-			repl()
+			object, err := getScope(scope)
+			if err != nil {
+				return utils.WrapError(err, "An error occurred while reading the scope")
+			}
+			if len(args) == 0 {
+				repl(object)
+			} else {
+				expression := strings.Join(args, " ")
+				s := deque.Deque[interface{}]{}
+				s.PushBack(object)
+				value, err := jsonte.Eval(expression, s, "#")
+				if err != nil {
+					return utils.WrapErrorf(err, "An error occurred while evaluating the expression")
+				}
+				fmt.Println(utils.ToPrettyString(value))
+			}
 			return nil
 		},
 	})
@@ -265,7 +306,7 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 	return result, nil
 }
 
-func repl() {
+func repl(scope utils.JsonObject) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("> ")
 	for true {
@@ -274,7 +315,9 @@ func repl() {
 		if text == "exit" {
 			break
 		}
-		eval, err := jsonte.Eval(text, deque.Deque[interface{}]{}, "#/")
+		s := deque.Deque[interface{}]{}
+		s.PushBack(scope)
+		eval, err := jsonte.Eval(text, s, "#/")
 		if err != nil {
 			fmt.Println(err)
 		} else {
