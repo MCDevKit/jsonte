@@ -86,7 +86,7 @@ func main() {
 			}
 			// Process modules
 			modules := map[string]jsonte.JsonModule{}
-			for _, files := range fileSets {
+			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".modl") {
 						bytes, err := ioutil.ReadFile(file)
@@ -98,6 +98,11 @@ func main() {
 							return utils.WrapErrorf(err, "An error occurred while loading the module file %s", file)
 						}
 						modules[module.Name] = module
+						rel, err := filepath.Rel(base, file)
+						if err != nil {
+							return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
+						}
+						fmt.Println(color.GreenString("Loaded module %s", rel))
 						if removeSrc {
 							err = os.Remove(file)
 							if err != nil {
@@ -131,10 +136,23 @@ func main() {
 									return utils.WrapErrorf(err, "An error occurred while creating the output file name")
 								}
 								filename = filepath.Join(outFile, base, filename)
+								rel, err := filepath.Rel(outFile, filename)
+								if err != nil {
+									return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
+								}
+								fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
+							} else {
+								abs, err := filepath.Abs(base)
+								if err != nil {
+									return utils.WrapErrorf(err, "An error occurred while creating the output file name")
+								}
+								rel, err := filepath.Rel(abs, filename)
+								if err != nil {
+									return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
+								}
+								fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
 							}
-							filename = filepath.Clean(filename)
-							fmt.Println(color.GreenString("Writing file %s", filename))
-							err := os.MkdirAll(filepath.Dir(filename), 0755)
+							err = os.MkdirAll(filepath.Dir(filename), 0755)
 							if err != nil {
 								return utils.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
 							}
@@ -172,9 +190,22 @@ func main() {
 								return utils.WrapErrorf(err, "An error occurred while creating the output file name")
 							}
 							filename = filepath.Join(outFile, base, filename)
+							rel, err := filepath.Rel(outFile, filename)
+							if err != nil {
+								return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
+							}
+							fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
+						} else {
+							abs, err := filepath.Abs(base)
+							if err != nil {
+								return utils.WrapErrorf(err, "An error occurred while creating the output file name")
+							}
+							rel, err := filepath.Rel(abs, filename)
+							if err != nil {
+								return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
+							}
+							fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
 						}
-						filename = filepath.Clean(filename)
-						fmt.Println(color.GreenString("Writing file %s", filename))
 						err = os.MkdirAll(filepath.Dir(filename), 0755)
 						if err != nil {
 							return utils.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
