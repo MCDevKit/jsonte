@@ -348,3 +348,23 @@ func TestTernaryOperator8(t *testing.T) {
 	eval := evaluate(t, `false ? 1 : false ? 2 : 3`)
 	assertNumber(t, eval, 3)
 }
+
+func TestNullForgivingObjectOperator(t *testing.T) {
+	eval := evaluate(t, `{}?.a`)
+	assertNull(t, eval)
+}
+
+func TestNullForgivingObjectOperator2(t *testing.T) {
+	eval := evaluate(t, `{"a": 1}?.a`)
+	assertNumber(t, eval, 1)
+}
+
+func TestNullForgivingArrayOperator(t *testing.T) {
+	eval := evaluate(t, `[]?[0]`)
+	assertNull(t, eval)
+}
+
+func TestNullForgivingArrayOperator2(t *testing.T) {
+	eval := evaluate(t, `[1]?[0]`)
+	assertNumber(t, eval, 1)
+}

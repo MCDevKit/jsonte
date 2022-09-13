@@ -6,14 +6,227 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/fatih/color"
 	"github.com/gammazero/deque"
+	"github.com/gobwas/glob"
+	"io/ioutil"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 )
 
+const version string = "2.0.0"
+
 func main() {
 	functions.Init()
-	repl()
+	debug := false
+	removeSrc := false
+	minify := false
+	scope := make([]string, 0)
+	out := ""
+	include := make([]string, 0)
+	exclude := make([]string, 0)
+	app := NewApp()
+	app.BoolFlag(Flag{
+		Name:  "debug",
+		Usage: "Enable debug mode",
+		OnSet: func() {
+			utils.PrintStackTraces = debug
+		},
+	}, &debug)
+	app.BoolFlag(Flag{
+		Name:  "remove-src",
+		Usage: "Remove source files after compilation",
+	}, &removeSrc)
+	app.BoolFlag(Flag{
+		Name:  "minify",
+		Usage: "Minify the output",
+	}, &minify)
+	app.StringSliceFlag(Flag{
+		Name:  "scope",
+		Usage: "Scope of the output",
+	}, &scope)
+	app.StringFlag(Flag{
+		Name:  "out",
+		Usage: "Output file",
+	}, &out)
+	app.StringSliceFlag(Flag{
+		Name:  "include",
+		Usage: "Include files",
+	}, &include)
+	app.StringSliceFlag(Flag{
+		Name:  "exclude",
+		Usage: "Exclude files",
+	}, &exclude)
+	app.Action(Action{
+		Name: "compile",
+		Function: func(args []string) error {
+			object, err := getScope(scope)
+			if err != nil {
+				return utils.WrapError(err, "An error occurred while reading the scope")
+			}
+			files, err := getFileList(args, include, exclude)
+			if err != nil {
+				return err
+			}
+			// Process modules
+			modules := map[string]jsonte.JsonModule{}
+			for _, file := range files {
+				if strings.HasSuffix(file, ".modl") {
+					bytes, err := ioutil.ReadFile(file)
+					if err != nil {
+						return utils.WrapErrorf(err, "An error occurred while reading the module file %s", file)
+					}
+					module, err := jsonte.LoadModule(string(bytes))
+					if err != nil {
+						return utils.WrapErrorf(err, "An error occurred while loading the module file %s", file)
+					}
+					modules[module.Name] = module
+					if removeSrc {
+						err = os.Remove(file)
+						if err != nil {
+							return utils.WrapErrorf(err, "An error occurred while removing the module file %s", file)
+						}
+					}
+				}
+			}
+			// Process templates
+			for _, file := range files {
+				if strings.HasSuffix(file, ".templ") {
+					bytes, err := ioutil.ReadFile(file)
+					if err != nil {
+						return utils.WrapErrorf(err, "An error occurred while reading the template file %s", file)
+					}
+					template, err := jsonte.Process(strings.TrimSuffix(path.Base(file), path.Ext(file)), string(bytes), object, modules, -1)
+					if err != nil {
+						return utils.WrapErrorf(err, "An error occurred while processing the template file %s", file)
+					}
+					toString := utils.ToPrettyString
+					if minify {
+						toString = utils.ToString
+					}
+					for fileName, content := range template {
+						err := ioutil.WriteFile(path.Dir(file)+"/"+fileName+".json", []byte(toString(content)), 0644)
+						if err != nil {
+							return utils.WrapErrorf(err, "An error occurred while writing the output file %s", fileName)
+						}
+					}
+					if removeSrc {
+						err = os.Remove(file)
+						if err != nil {
+							return utils.WrapErrorf(err, "An error occurred while removing the template file %s", file)
+						}
+					}
+				}
+			}
+			//Process functions
+			//for _, file := range files {
+			//	if strings.HasSuffix(file, ".mcfunction") {
+			//
+			//	}
+			//}
+			return nil
+		},
+	})
+	app.Action(Action{
+		Name:  "eval",
+		Usage: "Evaluate a JSON expression or run a REPL",
+		Function: func(args []string) error {
+			repl()
+			return nil
+		},
+	})
+	err := app.Run(os.Args)
+	if err != nil {
+		color.Red(err.Error())
+		os.Exit(1)
+	}
+}
+
+func getScope(scope []string) (utils.JsonObject, error) {
+	result := utils.JsonObject{}
+	for _, path := range scope {
+		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return utils.WrapError(err, "An error occurred while reading the scope")
+			}
+			if !info.IsDir() && strings.HasSuffix(path, ".json") {
+				file, err := ioutil.ReadFile(path)
+				if err != nil {
+					return utils.WrapErrorf(err, "An error occurred while reading the scope file %s", path)
+				}
+				json, err := utils.ParseJson(file)
+				if err != nil {
+					return utils.WrapErrorf(err, "An error occurred while parsing the scope file %s", path)
+				}
+				result = utils.MergeObject(result, json)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, utils.WrapError(err, "An error occurred while reading the scope")
+		}
+	}
+	return result, nil
+}
+
+func getFileList(paths, include, exclude []string) ([]string, error) {
+	includes := make([]glob.Glob, 0)
+	excludes := make([]glob.Glob, 0)
+	for _, i := range include {
+		g, err := glob.Compile(i)
+		if err != nil {
+			return nil, err
+		}
+		includes = append(includes, g)
+	}
+	for _, e := range exclude {
+		g, err := glob.Compile(e)
+		if err != nil {
+			return nil, err
+		}
+		excludes = append(excludes, g)
+	}
+	files := make([]string, 0)
+	for _, p := range paths {
+		_, err := os.Stat(p)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil, utils.WrappedErrorf("The path %s does not exist", p)
+			}
+			return nil, err
+		}
+		err = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				if !strings.HasSuffix(path, ".templ") && !strings.HasSuffix(path, ".modl") && !strings.HasSuffix(path, ".mcfunction") {
+					return nil
+				}
+				for _, g := range excludes {
+					if g.Match(path) {
+						return nil
+					}
+				}
+				for _, g := range includes {
+					if g.Match(path) {
+						files = append(files, path)
+						return nil
+					}
+				}
+				if len(include) == 0 {
+					files = append(files, path)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, utils.WrapErrorf(err, "An error occurred while reading input files from %s", p)
+		}
+	}
+	return files, nil
 }
 
 func repl() {

@@ -3,8 +3,8 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/stirante/jsonc"
 	"math"
-	"muzzammil.xyz/jsonc"
 	"reflect"
 	"strconv"
 	"strings"
@@ -317,9 +317,17 @@ func MergeObject(template, parent JsonObject) JsonObject {
 	result := JsonObject{}
 	for k, v := range template {
 		if IsObject(v) {
-			result[k] = DeepCopyObject(v.(map[string]interface{}))
+			if val, ok := v.(map[string]interface{}); ok {
+				result[k] = DeepCopyObject(val)
+			} else if val, ok := v.(JsonObject); ok {
+				result[k] = DeepCopyObject(val)
+			}
 		} else if IsArray(v) {
-			result[k] = DeepCopyArray(v.([]interface{}))
+			if val, ok := v.([]interface{}); ok {
+				result[k] = DeepCopyArray(val)
+			} else if val, ok := v.(JsonArray); ok {
+				result[k] = DeepCopyArray(val)
+			}
 		} else {
 			result[k] = v
 		}
@@ -338,10 +346,10 @@ func MergeObject(template, parent JsonObject) JsonObject {
 				result[k] = v
 			}
 		} else {
-			if IsObject(v) {
+			if IsObject(v) && IsObject(result[k]) {
 				merge := MergeObject(template[k].(JsonObject), v.(JsonObject))
 				result[k] = merge
-			} else if IsArray(v) {
+			} else if IsArray(v) && IsArray(template[k]) {
 				merge := MergeArray(template[k].(JsonArray), v.(JsonArray))
 				result[k] = merge
 			} else {

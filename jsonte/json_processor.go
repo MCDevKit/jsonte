@@ -320,25 +320,27 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 			continue
 		}
 		if actionPattern.MatchString(key) {
-			if _, ok := value.(utils.JsonObject); !ok {
-				return nil, &utils.TemplatingError{
-					Path:    path,
-					Message: "The value of an iteration action must be an object",
-				}
-			}
 			eval, err := Eval(key, v.scope, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
 				return nil, err
 			}
 			switch eval.Action {
 			case utils.Iteration:
+				if _, ok := value.(utils.JsonObject); !ok {
+					return nil, &utils.TemplatingError{
+						Path:    path,
+						Message: "The value of an iteration action must be an object",
+					}
+				}
 				if arr, ok := eval.Value.(utils.JsonArray); ok {
 					for i := range arr {
 						v.pushScope(utils.JsonObject{
 							"index":   i,
 							eval.Name: arr[i],
 						})
+						v.pushScope(arr[i])
 						o, err := v.visit(value, fmt.Sprintf("%s/%s[%d]", path, key, i))
+						v.popScope()
 						v.popScope()
 						if err != nil {
 							return nil, err
@@ -350,7 +352,7 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 				} else {
 					return nil, &utils.TemplatingError{
 						Path:    path,
-						Message: "The $iteration action returned a non-array",
+						Message: "The iteration action returned a non-array",
 					}
 				}
 			case utils.Predicate:
@@ -366,9 +368,19 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 					} else {
 						return nil, &utils.TemplatingError{
 							Path:    path,
-							Message: "The $predicate action requires an object value",
+							Message: "The predicate action requires an object value",
 						}
 					}
+				}
+			case utils.Value:
+				key, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
+				if err != nil {
+					return nil, err
+				}
+				key = utils.ToString(key)
+				result[key.(string)], err = v.visit(value, fmt.Sprintf("%s/%s", path, key))
+				if err != nil {
+					return nil, err
 				}
 			default:
 				return nil, &utils.TemplatingError{
@@ -427,8 +439,10 @@ func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element inter
 									"index":   i,
 									eval.Name: arr[i],
 								})
+								v.pushScope(arr[i])
 								a, err := v.visitArrayElement(array, value, fmt.Sprintf("%s[%d]", path, i))
 								array = a
+								v.popScope()
 								v.popScope()
 								if err != nil {
 									return array, err
@@ -445,6 +459,13 @@ func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element inter
 						if utils.ToBoolean(eval.Value) {
 							return v.visitArrayElement(array, value, path)
 						}
+						return array, nil
+					case utils.Value:
+						visit, err := v.visit(element, path)
+						if err != nil {
+							return nil, err
+						}
+						array = append(array, visit)
 						return array, nil
 					default:
 						return nil, &utils.TemplatingError{
