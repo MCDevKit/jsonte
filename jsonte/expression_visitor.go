@@ -360,7 +360,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			}
 			function, err := functions.CallFunction(*methodName, params)
 			if err != nil {
-				return err
+				return utils.WrapErrorf(err, "Error calling function '%s'", *methodName)
 			}
 			return function
 		}
@@ -389,7 +389,11 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		} else if functions.HasInstanceFunction(reflect.TypeOf(object), text) {
 			return utils.JsonLambda(
 				func(o []interface{}) (interface{}, error) {
-					return functions.CallInstanceFunction(text, object, o)
+					function, err := functions.CallInstanceFunction(text, object, o)
+					if err != nil {
+						return nil, utils.WrapErrorf(err, "Error calling function '%s' on '%s'", text, utils.ToString(object))
+					}
+					return function, nil
 				},
 			)
 		}
