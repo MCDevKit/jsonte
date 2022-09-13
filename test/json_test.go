@@ -10,6 +10,13 @@ import (
 	"testing"
 )
 
+func safeTypeName(v interface{}) string {
+	if v == nil {
+		return "nil"
+	}
+	return reflect.TypeOf(v).Name()
+}
+
 func compareJsonObject(t *testing.T, expected utils.JsonObject, actual utils.JsonObject, path string) {
 	t.Helper()
 	for key, value1 := range expected {
@@ -33,10 +40,10 @@ func compareJsonObject(t *testing.T, expected utils.JsonObject, actual utils.Jso
 						t.Errorf("Field %s is not equal (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(v2))
 					}
 				} else {
-					t.Errorf("Field %s is not a number (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
+					t.Errorf("Field %s is not a number (expected %s (%s), got %s (%s))", newPath, utils.ToString(v1), safeTypeName(v1), utils.ToString(value2), safeTypeName(value2))
 				}
 			} else if value1 != value2 {
-				t.Errorf("Field %s is not equal (expected %s (%s), got %s (%s)", newPath, utils.ToString(value1), reflect.TypeOf(value1).Name(), utils.ToString(value2), reflect.TypeOf(value2).Name())
+				t.Errorf("Field %s is not equal (expected %s (%s), got %s (%s)", newPath, utils.ToString(value1), safeTypeName(value1), utils.ToString(value2), safeTypeName(value2))
 			}
 		} else {
 			t.Errorf("Object does not contain key %s", key)
@@ -73,11 +80,11 @@ func compareJsonArray(t *testing.T, expected utils.JsonArray, actual utils.JsonA
 					t.Errorf("Element %s is not equal (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(v2))
 				}
 			} else {
-				t.Errorf("Element %s is not a number (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
+				t.Errorf("Element %s is not a number (expected %s (%s), got %s (%s))", newPath, utils.ToString(v1), safeTypeName(v1), utils.ToString(value2), safeTypeName(value2))
 			}
 		} else {
 			if value1 != value2 {
-				t.Errorf("Element %s is not equal (expected %s (%s), got %s (%s))", newPath, utils.ToString(value1), reflect.TypeOf(value1).Name(), utils.ToString(value2), reflect.TypeOf(value2).Name())
+				t.Errorf("Element %s is not equal (expected %s (%s), got %s (%s))", newPath, utils.ToString(value1), safeTypeName(value1), utils.ToString(value2), safeTypeName(value2))
 			}
 		}
 	}
@@ -450,4 +457,49 @@ func TestMultipleFiles(t *testing.T) {
 		},
 	}
 	assertTemplateMultiple(t, template, expected)
+}
+
+func TestEmptyArray(t *testing.T) {
+	template := `{
+		"$template": {
+			"test": ["{{[]}}"]
+		}
+	}`
+	expected := utils.JsonObject{
+		"test": utils.JsonArray{},
+	}
+	assertTemplate(t, template, expected)
+}
+
+func TestKeepTypes(t *testing.T) {
+	template := `{
+		"$template": {
+			"decimal": 0.0,
+			"integer": 0,
+			"string": "",
+			"array": [],
+			"object": {},
+			"null": null,
+			"true": true,
+			"false": false,
+			"templatedDecimal": "{{0.0}}",
+			"templatedInteger": "{{0}}",
+			"templatedString": "{{\"\"}}",
+			"templatedArray": "{{[]}}"
+		}
+	}`
+	expected := utils.JsonObject{
+		"decimal":          0.0,
+		"integer":          0,
+		"string":           "",
+		"array":            utils.JsonArray{},
+		"object":           utils.JsonObject{},
+		"true":             true,
+		"false":            false,
+		"templatedDecimal": 0.0,
+		"templatedInteger": 0,
+		"templatedString":  "",
+		"templatedArray":   utils.JsonArray{},
+	}
+	assertTemplate(t, template, expected)
 }
