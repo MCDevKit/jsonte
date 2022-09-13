@@ -3,6 +3,7 @@ package test
 import (
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"io/ioutil"
+	"sort"
 	"testing"
 )
 
@@ -39,6 +40,12 @@ func TestFakeOpenDir(t *testing.T) {
 	if len(open) != len(expected) {
 		t.Fatalf("Invalid length. Expected %d, got %d", len(expected), len(open))
 	}
+	sort.SliceStable(open, func(i, j int) bool {
+		return open[i] < open[j]
+	})
+	sort.SliceStable(expected, func(i, j int) bool {
+		return expected[i] < expected[j]
+	})
 	for i, file := range open {
 		if file != expected[i] {
 			t.Fatalf("Invalid file. Expected %s, got %s", expected[i], file)
@@ -105,6 +112,12 @@ func TestFakeOpenDirRecursive(t *testing.T) {
 	if len(open) != len(expected) {
 		t.Fatalf("Invalid length. Expected %d, got %d", len(expected), len(open))
 	}
+	sort.SliceStable(open, func(i, j int) bool {
+		return open[i] < open[j]
+	})
+	sort.SliceStable(expected, func(i, j int) bool {
+		return expected[i] < expected[j]
+	})
 	for i, file := range open {
 		if file != expected[i] {
 			t.Fatalf("Invalid file. Expected %s, got %s", expected[i], file)
@@ -127,6 +140,12 @@ func TestFakeOpenDirRecursive2(t *testing.T) {
 	if len(open) != len(expected) {
 		t.Fatalf("Invalid length. Expected %d, got %d", len(expected), len(open))
 	}
+	sort.SliceStable(open, func(i, j int) bool {
+		return open[i] < open[j]
+	})
+	sort.SliceStable(expected, func(i, j int) bool {
+		return expected[i] < expected[j]
+	})
 	for i, file := range open {
 		if file != expected[i] {
 			t.Fatalf("Invalid file. Expected %s, got %s", expected[i], file)

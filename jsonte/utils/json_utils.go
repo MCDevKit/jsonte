@@ -79,7 +79,7 @@ func ToBoolean(obj interface{}) bool {
 	if b, ok := obj.(JsonNumber); ok {
 		return b.BoolValue()
 	}
-	return false
+	return obj != nil
 }
 
 func ToNumber(obj interface{}) JsonNumber {
@@ -551,26 +551,28 @@ func DeepCopyArray(object JsonArray) JsonArray {
 	return result
 }
 
-func DeleteNulls(object JsonObject) {
+func DeleteNulls(object JsonObject) JsonObject {
 	for k, v := range object {
 		if IsObject(v) {
-			DeleteNulls(AsObject(v))
+			object[k] = DeleteNulls(AsObject(v))
 		} else if IsArray(v) {
-			DeleteNullsFromArray(AsArray(v))
+			object[k] = DeleteNullsFromArray(AsArray(v))
 		} else if v == nil {
 			delete(object, k)
 		}
 	}
+	return object
 }
 
-func DeleteNullsFromArray(array JsonArray) {
-	for _, v := range array {
+func DeleteNullsFromArray(array JsonArray) JsonArray {
+	for i, v := range array {
 		if IsObject(v) {
-			DeleteNulls(AsObject(v))
+			array[i] = DeleteNulls(AsObject(v))
 		} else if IsArray(v) {
-			DeleteNullsFromArray(AsArray(v))
+			array[i] = DeleteNullsFromArray(AsArray(v))
 		}
 	}
+	return array
 }
 
 func ParseJson(str []byte) (JsonObject, error) {

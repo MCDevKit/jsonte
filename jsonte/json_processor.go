@@ -16,6 +16,7 @@ type JsonModule struct {
 	Name     string
 	Scope    utils.JsonObject
 	Template utils.JsonObject
+	Copy     string
 }
 
 type TemplateVisitor struct {
@@ -49,10 +50,15 @@ func LoadModule(input string) (JsonModule, error) {
 			Message: "The $template field is missing or not an object",
 		}
 	}
+	c, isCopy := json["$copy"].(string)
+	if !isCopy {
+		c = ""
+	}
 	return JsonModule{
 		Name:     moduleName,
 		Scope:    scope,
 		Template: template,
+		Copy:     c,
 	}, nil
 }
 
@@ -95,7 +101,6 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 	var template utils.JsonObject
 
 	if file, ok := root["$files"]; ok {
-		//fileName := file.(utils.JsonObject)["fileName"]
 		array, err := Eval(file.(utils.JsonObject)["array"].(string), visitor.scope, "$files.array")
 		if err != nil {
 			return nil, err
@@ -136,7 +141,6 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 						template = utils.MergeObject(template, temp1)
 					}
 				}
-				utils.DeleteNulls(template)
 				mFileName, err := visitor.visitString(file.(utils.JsonObject)["fileName"].(string), "$files.fileName")
 				if err != nil {
 					return nil, err
@@ -147,6 +151,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				}
 				visitor.popScope()
 				visitor.popScope()
+				utils.DeleteNulls(result[mFileName.(string)].(utils.JsonObject))
 			}
 		} else {
 			return nil, &utils.TemplatingError{
@@ -170,11 +175,11 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 		if hasTemplate {
 			template = utils.MergeObject(template, root["$template"].(utils.JsonObject))
 		}
-		utils.DeleteNulls(template)
 		result[name], err = visitor.visitObject(utils.DeepCopyObject(template), "$template")
 		if err != nil {
 			return nil, err
 		}
+		utils.DeleteNulls(result[name].(utils.JsonObject))
 	}
 
 	return utils.UnwrapContainers(result).(utils.JsonObject), nil
@@ -283,6 +288,13 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 			}
 		}
 		visitor.scope.PushFront(mod.Scope)
+		if mod.Copy != "" {
+			object, err := processCopy(mod.Name, mod.Copy, visitor, modules, "$copy", -1)
+			if err != nil {
+				return nil, utils.WrapErrorf(err, "Error processing $copy for module %s", mod.Name)
+			}
+			template = utils.MergeObject(object, template)
+		}
 		parent, err := visitor.visitObject(mod.Template, "[Module "+module+"]")
 		visitor.scope.PopFront()
 		if err != nil {
@@ -485,7 +497,11 @@ func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element inter
 	if err != nil {
 		return nil, err
 	}
-	array = append(array, visit)
+	if arr, ok := visit.(utils.JsonArray); ok {
+		array = append(array, arr...)
+	} else {
+		array = append(array, visit)
+	}
 	return array, nil
 }
 
@@ -502,6 +518,9 @@ func (v *TemplateVisitor) visitString(str string, path string) (interface{}, err
 				Path:    path,
 				Message: "The expression evaluated to null",
 			}
+		}
+		if _, ok := result.Value.(string); !ok && str == match {
+			return result.Value, nil
 		}
 		if result.Action == utils.Literal {
 			return result.Value, nil
