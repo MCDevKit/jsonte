@@ -4,6 +4,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
 	"regexp"
+	"strings"
 )
 
 var mcFunctionPattern, _ = regexp.Compile("#\\{((?:\\\\.|[^{}])+)}")
@@ -14,7 +15,7 @@ func ProcessMCFunction(input string, scope utils.JsonObject) (string, error) {
 	matches := mcFunctionPattern.FindAllString(input, -1)
 	replacements := make(map[string]string, len(matches))
 	for _, match := range matches {
-		result, err := Eval(match, globalScope, "#")
+		result, err := Eval(strings.TrimPrefix(strings.TrimSuffix(match, "}"), "#{"), globalScope, "#")
 		if err != nil {
 			return "", err
 		}

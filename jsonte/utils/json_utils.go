@@ -591,7 +591,7 @@ func ParseJson(str []byte) (JsonObject, error) {
 		if serr, ok := err.(*json.SyntaxError); ok {
 			line, caret := offsetToCaret(string(str), int(serr.Offset))
 			if strings.HasPrefix(serr.Error(), "invalid character") && strings.HasSuffix(serr.Error(), "looking for beginning of object key string") && str[serr.Offset] == ',' {
-				return nil, WrapErrorf(serr, "Most likely trailing comma at line %d, column %d", line, caret)
+				return nil, WrapErrorf(serr, "Most likely trailing comma at line %d", line-1)
 			} else if strings.HasPrefix(serr.Error(), "invalid character") && strings.HasSuffix(serr.Error(), "looking for beginning of object key string") && str[serr.Offset] != '"' && str[serr.Offset-1] != '"' && str[serr.Offset-2] != '"' {
 				return nil, WrapErrorf(serr, "Most likely missing quote at line %d, column %d", line, caret)
 			} else {

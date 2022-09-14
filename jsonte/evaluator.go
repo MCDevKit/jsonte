@@ -25,17 +25,30 @@ func QuickEval(text string, path string) (Result, error) {
 	return Eval(text, deque.Deque[interface{}]{}, path)
 }
 
+type CollectingErrorListener struct {
+	*antlr.DefaultErrorListener
+	Error error
+}
+
+func (l *CollectingErrorListener) SyntaxError(recognizer antlr.Recognizer, offendingSymbol interface{}, line, column int, msg string, e antlr.RecognitionException) {
+	l.Error = utils.WrapErrorf(l.Error, "column: %d %s", column, msg)
+}
+
 func Eval(text string, scope deque.Deque[interface{}], path string) (Result, error) {
+	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
 	is := antlr.NewInputStream(text)
 	lexer := parser.NewJsonTemplateLexer(is)
 	lexer.RemoveErrorListeners()
-	lexer.AddErrorListener(antlr.NewConsoleErrorListener())
+	lexer.AddErrorListener(&listener)
 	stream := antlr.NewCommonTokenStream(lexer, 0)
 	p := parser.NewJsonTemplateParser(stream)
 	p.RemoveErrorListeners()
-	p.AddErrorListener(antlr.NewConsoleErrorListener())
+	p.AddErrorListener(&listener)
 	p.BuildParseTrees = true
 	tree := p.Expression()
+	if listener.Error != nil {
+		return Result{}, utils.WrapErrorf(listener.Error, "Failed to parse expression %s", text)
+	}
 	visitor := ExpressionVisitor{
 		scope: scope,
 		path:  &path,

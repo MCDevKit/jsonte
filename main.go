@@ -15,6 +15,13 @@ import (
 	"strings"
 )
 
+var (
+	commit      string
+	version     = "0.0.0"
+	date        string
+	buildSource = "DEV"
+)
+
 func main() {
 	functions.Init()
 	debug := false
@@ -142,15 +149,7 @@ func main() {
 								}
 								fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
 							} else {
-								abs, err := filepath.Abs(base)
-								if err != nil {
-									return utils.WrapErrorf(err, "An error occurred while creating the output file name")
-								}
-								rel, err := filepath.Rel(abs, filename)
-								if err != nil {
-									return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
-								}
-								fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
+								fmt.Println(color.GreenString("Writing file %s", filepath.Clean(filename)))
 							}
 							err = os.MkdirAll(filepath.Dir(filename), 0755)
 							if err != nil {
@@ -196,15 +195,7 @@ func main() {
 							}
 							fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
 						} else {
-							abs, err := filepath.Abs(base)
-							if err != nil {
-								return utils.WrapErrorf(err, "An error occurred while creating the output file name")
-							}
-							rel, err := filepath.Rel(abs, filename)
-							if err != nil {
-								return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
-							}
-							fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
+							fmt.Println(color.GreenString("Writing file %s", filepath.Clean(filename)))
 						}
 						err = os.MkdirAll(filepath.Dir(filename), 0755)
 						if err != nil {
@@ -243,6 +234,23 @@ func main() {
 			return nil
 		},
 	})
+	app.Action(Action{
+		Name:  "version",
+		Usage: "Print the version info",
+		Function: func(args []string) error {
+			fmt.Println("jsonte version " + version)
+			if buildSource == "DEV" {
+				fmt.Println("Development build")
+			}
+			if commit != "" {
+				fmt.Println("Commit: " + commit)
+			}
+			if date != "" {
+				fmt.Println("Built at " + date)
+			}
+			return nil
+		},
+	})
 	err := app.Run(os.Args)
 	if err != nil {
 		color.Red(err.Error())
@@ -255,16 +263,20 @@ func getScope(scope []string) (utils.JsonObject, error) {
 	for _, path := range scope {
 		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				return utils.WrapErrorf(err, "An error occurred while reading the scope file %s", path)
+				if os.IsNotExist(err) {
+					color.Yellow("Skipping non-existent scope file '%s'", path)
+					return nil
+				}
+				return utils.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
 			}
 			if !info.IsDir() && strings.HasSuffix(path, ".json") {
 				file, err := ioutil.ReadFile(path)
 				if err != nil {
-					return utils.WrapErrorf(err, "An error occurred while reading the scope file %s", path)
+					return utils.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
 				}
 				json, err := utils.ParseJson(file)
 				if err != nil {
-					return utils.WrapErrorf(err, "An error occurred while parsing the scope file %s", path)
+					return utils.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
 				}
 				result = utils.MergeObject(result, json)
 			}

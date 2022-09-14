@@ -516,7 +516,7 @@ func TestTrailingCommaError(t *testing.T) {
 		t.Error("Expected error")
 	}
 	s := err.Error()
-	if !strings.HasPrefix(s, "Most likely trailing comma at line 4, column 4\n") {
+	if !strings.HasPrefix(s, "Most likely trailing comma at line 3\n") {
 		t.Error("Expected trailing comma error")
 	}
 }
