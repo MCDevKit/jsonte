@@ -65,7 +65,7 @@ func (a *App) Action(action Action) {
 	a.actions[action.Name] = action
 }
 
-func (a *App) Run(args []string) error {
+func (a *App) Run(args []string, onParse func()) error {
 	cleanArgs := make([]string, 0)
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
@@ -107,6 +107,9 @@ func (a *App) Run(args []string) error {
 		} else {
 			cleanArgs = append(cleanArgs, arg)
 		}
+	}
+	if onParse != nil {
+		onParse()
 	}
 	for i, f := range a.flags {
 		if f.Required && !f.Found {

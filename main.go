@@ -6,13 +6,14 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
-	"github.com/fatih/color"
 	"github.com/gammazero/deque"
 	"github.com/gobwas/glob"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var (
@@ -23,8 +24,10 @@ var (
 )
 
 func main() {
+	start := time.Now().UnixMilli()
 	functions.Init()
 	debug := false
+	silent := false
 	removeSrc := false
 	minify := false
 	scope := make([]string, 0)
@@ -35,10 +38,11 @@ func main() {
 	app.BoolFlag(Flag{
 		Name:  "debug",
 		Usage: "Enable debug mode",
-		OnSet: func() {
-			utils.PrintStackTraces = debug
-		},
 	}, &debug)
+	app.BoolFlag(Flag{
+		Name:  "silent",
+		Usage: "Enable silent mode",
+	}, &silent)
 	app.BoolFlag(Flag{
 		Name:  "remove-src",
 		Usage: "Remove source files after compilation",
@@ -109,7 +113,7 @@ func main() {
 						if err != nil {
 							return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
 						}
-						fmt.Println(color.GreenString("Loaded module %s", rel))
+						utils.Logger.Infof("Loaded module %s", rel)
 						if removeSrc {
 							err = os.Remove(file)
 							if err != nil {
@@ -147,9 +151,9 @@ func main() {
 								if err != nil {
 									return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
 								}
-								fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
+								utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
 							} else {
-								fmt.Println(color.GreenString("Writing file %s", filepath.Clean(filename)))
+								utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
 							}
 							err = os.MkdirAll(filepath.Dir(filename), 0755)
 							if err != nil {
@@ -193,9 +197,9 @@ func main() {
 							if err != nil {
 								return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
 							}
-							fmt.Println(color.GreenString("Writing file %s", filepath.Clean(rel)))
+							utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
 						} else {
-							fmt.Println(color.GreenString("Writing file %s", filepath.Clean(filename)))
+							utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
 						}
 						err = os.MkdirAll(filepath.Dir(filename), 0755)
 						if err != nil {
@@ -251,11 +255,23 @@ func main() {
 			return nil
 		},
 	})
-	err := app.Run(os.Args)
+	err := app.Run(os.Args, func() {
+		if debug && silent {
+			utils.InitLogging(zap.DebugLevel)
+			utils.Logger.Warn("--debug and --silent are mutually exclusive")
+		} else if debug {
+			utils.InitLogging(zap.DebugLevel)
+		} else if silent {
+			utils.InitLogging(zap.WarnLevel)
+		} else {
+			utils.InitLogging(zap.InfoLevel)
+		}
+	})
 	if err != nil {
-		color.Red(err.Error())
+		utils.Logger.Error(err)
 		os.Exit(1)
 	}
+	fmt.Printf("time elapsed: %d", time.Now().UnixMilli()-start)
 }
 
 func getScope(scope []string) (utils.JsonObject, error) {
@@ -264,7 +280,7 @@ func getScope(scope []string) (utils.JsonObject, error) {
 		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				if os.IsNotExist(err) {
-					color.Yellow("Skipping non-existent scope file '%s'", path)
+					utils.Logger.Warnf("Skipping non-existent scope file '%s'", path)
 					return nil
 				}
 				return utils.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
