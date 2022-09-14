@@ -1,0 +1,26 @@
+{
+  "product": "jsonte",
+  "company": "MCDevKit",
+  "license": "LICENSE.rtf",
+  "upgrade-code": "97434d24-4ed6-43ea-8e2b-2081fca66a48",
+  "info": {
+  },
+  "files": [
+    {
+      "path": "dist/msi_windows_amd64_v1/jsonte.exe"
+    },
+    {
+      "path": "scripts/jsonte-update.ps1"
+    }
+  ],
+  "environments": [
+    {
+      "name": "path",
+      "value": "[INSTALLDIR]",
+      "permanent": "yes",
+      "system": "yes",
+      "action": "set",
+      "part": "last"
+    }
+  ]
+}
