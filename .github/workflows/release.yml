@@ -49,7 +49,7 @@ jobs:
       - name: Copy artifacts
         working-directory: './regolith-library'
         run: |
-          cp ../dist/win_binary_windows_amd64/jsonte.exe ./jsonte/jsonte.exe
+          cp ../dist/win_binary_windows_amd64_v1/jsonte.exe ./jsonte/jsonte.exe
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add ./jsonte/jsonte.exe
