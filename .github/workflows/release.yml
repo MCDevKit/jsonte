@@ -20,6 +20,15 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: 1.18
+      - name: Set up Wix Toolset
+        run: |
+          mkdir -p C:/wix
+          curl -o "C:/wix/wix311-binaries.zip" -OL https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip
+          unzip C:/wix/wix311-binaries.zip -d "C:/wix"
+          echo "C:\wix" >> $GITHUB_PATH
+          go install github.com/stirante/go-msi@latest
+          mkdir ./go-msi-tmp
+        shell: bash
       - name: Sync vendor directory
         run: |
           go mod vendor
