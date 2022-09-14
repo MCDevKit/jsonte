@@ -65,8 +65,18 @@ func TestToUpperCase(t *testing.T) {
 }
 
 func TestCapitalize(t *testing.T) {
-	eval := evaluate(t, `'hello'.capitalize()`)
-	assertString(t, eval, "Hello")
+	eval := evaluate(t, `'hello world'.capitalize()`)
+	assertString(t, eval, "Hello world")
+}
+
+func TestTitle(t *testing.T) {
+	eval := evaluate(t, `'hello world'.title()`)
+	assertString(t, eval, "Hello World")
+}
+
+func TestSwapCase(t *testing.T) {
+	eval := evaluate(t, `'Hello'.swapCase()`)
+	assertString(t, eval, "hELLO")
 }
 
 func TestStartsWith(t *testing.T) {

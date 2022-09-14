@@ -434,6 +434,34 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			} else {
 				return b
 			}
+		} else if str, ok := object.(string); ok {
+			if utils.IsNumber(i) {
+				value := utils.ToNumber(i).IntValue()
+				if value < 0 || value >= len(str) {
+					if context.Question() != nil {
+						return nil
+					} else {
+						return utils.WrappedErrorf("Index out of bounds: %d", value)
+					}
+				}
+				return string(rune(str[value]))
+			} else {
+				if context.Question() != nil {
+					return nil
+				} else {
+					return utils.WrappedErrorf("Index must be a number: %s", utils.ToString(i))
+				}
+			}
+		} else {
+			if context.Question() != nil {
+				return nil
+			} else {
+				if utils.IsNumber(i) {
+					return utils.WrappedErrorf("Cannot access index %d of '%s'", utils.ToNumber(i).IntValue(), utils.ToString(object))
+				} else {
+					return utils.WrappedErrorf("Cannot access property '%s' of '%s'", utils.ToString(i), utils.ToString(object))
+				}
+			}
 		}
 	}
 	if context.NUMBER() != nil {
