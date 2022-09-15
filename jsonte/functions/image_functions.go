@@ -7,6 +7,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"os"
 )
 
 const imageCache = "imageBounds"
@@ -32,6 +33,9 @@ func imageBounds(str string) (*image.Config, error) {
 	} else {
 		file, err := safeio.Resolver.Open(str)
 		if err != nil {
+			if os.IsNotExist(err) {
+				return nil, utils.WrappedErrorf("File %s does not exist", str)
+			}
 			return nil, utils.WrapErrorf(err, "Failed to open image file %s", str)
 		}
 

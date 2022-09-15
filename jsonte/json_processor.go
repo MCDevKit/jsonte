@@ -114,7 +114,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				if isCopy {
 					template, err = processCopy(c, visitor, modules, "$files.array", timeout)
 					if err != nil {
-						return nil, utils.WrapErrorf(err, "Failed to process $copy")
+						return nil, utils.PassError(err)
 					}
 				} else {
 					template = root["$template"].(utils.JsonObject)
@@ -122,7 +122,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				if isExtend {
 					template, err = extendTemplate(root["$extend"], template, visitor, modules)
 					if err != nil {
-						return nil, utils.WrapErrorf(err, "Failed to process $extend")
+						return nil, utils.PassError(err)
 					}
 				}
 				if isCopy && hasTemplate {
@@ -138,7 +138,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				}
 				result[mFileName.(string)], err = visitor.visitObject(utils.DeepCopyObject(template), "$template")
 				if err != nil {
-					return nil, utils.WrapErrorf(err, "Failed to process template")
+					return nil, utils.PassError(err)
 				}
 				visitor.popScope()
 				visitor.popScope()
@@ -151,13 +151,13 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 		if isCopy {
 			template, err = processCopy(c, visitor, modules, "$copy", timeout)
 			if err != nil {
-				return nil, utils.WrapErrorf(err, "Failed to process $copy")
+				return nil, utils.PassError(err)
 			}
 		}
 		if isExtend {
 			template, err = extendTemplate(root["$extend"], template, visitor, modules)
 			if err != nil {
-				return nil, utils.WrapErrorf(err, "Failed to process $extend")
+				return nil, utils.PassError(err)
 			}
 		}
 		if hasTemplate {
@@ -165,7 +165,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 		}
 		result[name], err = visitor.visitObject(utils.DeepCopyObject(template), "$template")
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to process template")
+			return nil, utils.PassError(err)
 		}
 		utils.DeleteNulls(result[name].(utils.JsonObject))
 	}
@@ -190,7 +190,7 @@ func processCopy(c interface{}, visitor TemplateVisitor, modules map[string]Json
 		if strings.HasSuffix(copyPath, ".templ") {
 			processedMap, err := Process("copy", string(all), visitor.globalScope, modules, timeout)
 			if err != nil {
-				return nil, utils.WrapErrorf(err, "Failed to process copy template")
+				return nil, utils.WrapErrorf(err, "Failed to process copy template %s", copyPath)
 			}
 			if len(processedMap) > 1 {
 				return nil, utils.WrappedJsonErrorf(path, "The copy template must compile to a single object")
@@ -329,7 +329,7 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 						v.popScope()
 						v.popScope()
 						if err != nil {
-							return nil, utils.WrapJsonErrorf(path, err, "Error processing iteration %s[%d]", key, i)
+							return nil, utils.PassError(err)
 						}
 						for k, v := range o.(utils.JsonObject) {
 							result[k] = v
@@ -342,7 +342,7 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 				if utils.ToBoolean(eval.Value) {
 					o, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
 					if err != nil {
-						return nil, utils.WrapJsonErrorf(path, err, "Error processing predicate %s", key)
+						return nil, utils.PassError(err)
 					}
 					if obj, ok := o.(utils.JsonObject); ok {
 						for k, v := range obj {
@@ -355,12 +355,12 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 			case utils.Value:
 				key, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
 				if err != nil {
-					return nil, utils.WrapJsonErrorf(path, err, "Error processing key %s", key)
+					return nil, utils.PassError(err)
 				}
 				key = utils.ToString(key)
 				result[key.(string)], err = v.visit(value, fmt.Sprintf("%s/%s", path, key))
 				if err != nil {
-					return nil, utils.WrapJsonErrorf(path, err, "Error processing value %s", key)
+					return nil, utils.PassError(err)
 				}
 			default:
 				return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", eval.Action.String())
@@ -368,18 +368,18 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 		} else if templatePattern.MatchString(key) {
 			key, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
-				return nil, utils.WrapJsonErrorf(path, err, "Error processing key %s", key)
+				return nil, utils.PassError(err)
 			}
 			key = utils.ToString(key)
 			result[key.(string)], err = v.visit(value, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
-				return nil, utils.WrapJsonErrorf(path, err, "Error processing value %s", key)
+				return nil, utils.PassError(err)
 			}
 		} else {
 			var err error
 			result[key], err = v.visit(value, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
-				return nil, utils.WrapJsonErrorf(path, err, "Error processing value %s", key)
+				return nil, utils.PassError(err)
 			}
 		}
 	}
@@ -391,7 +391,7 @@ func (v *TemplateVisitor) visitArray(arr utils.JsonArray, path string) (interfac
 	for i, value := range arr {
 		a, err := v.visitArrayElement(result, value, fmt.Sprintf("%s[%d]", path, i))
 		if err != nil {
-			return nil, utils.WrapJsonErrorf(path, err, "Error processing array element %d", i)
+			return nil, utils.PassError(err)
 		}
 		result = a
 	}
@@ -422,7 +422,7 @@ func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element inter
 								v.popScope()
 								v.popScope()
 								if err != nil {
-									return array, utils.WrapJsonErrorf(path, err, "Error processing iteration %s[%d]", key, i)
+									return array, utils.PassError(err)
 								}
 							}
 							return array, nil
@@ -437,7 +437,7 @@ func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element inter
 					case utils.Value:
 						visit, err := v.visit(element, path)
 						if err != nil {
-							return nil, utils.WrapJsonErrorf(path, err, "Error processing value %s", key)
+							return nil, utils.PassError(err)
 						}
 						array = append(array, visit)
 						return array, nil
@@ -450,7 +450,7 @@ func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element inter
 	}
 	visit, err := v.visit(element, path)
 	if err != nil {
-		return nil, utils.WrapJsonErrorf(path, err, "Error processing value %s", element)
+		return nil, utils.PassError(err)
 	}
 	if arr, ok := visit.(utils.JsonArray); ok {
 		array = append(array, arr...)
