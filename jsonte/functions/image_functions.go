@@ -34,7 +34,7 @@ func imageBounds(str string) (*image.Config, error) {
 		file, err := safeio.Resolver.Open(str)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return nil, utils.WrappedErrorf("File %s does not exist", str)
+				return nil, utils.WrappedErrorf("File '%s' does not exist", str)
 			}
 			return nil, utils.WrapErrorf(err, "Failed to open image file %s", str)
 		}

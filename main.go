@@ -82,7 +82,7 @@ func main() {
 						return utils.WrapError(err, "An error occurred while reading the output file")
 					}
 				} else if !stat.IsDir() {
-					return utils.WrappedErrorf("The output file %s is not a directory", out)
+					return utils.WrappedErrorf("The output file '%s' is not a directory", out)
 				}
 				outFile, err = filepath.Abs(out)
 			}
@@ -331,7 +331,7 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 		_, err := os.Stat(p)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return nil, utils.WrappedErrorf("The path %s does not exist", p)
+				return nil, utils.WrappedErrorf("The path '%s' does not exist", p)
 			}
 			return nil, utils.WrapErrorf(err, "An error occurred while reading the path %s", p)
 		}

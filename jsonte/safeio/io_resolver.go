@@ -79,7 +79,7 @@ func CreateFakeFS(files map[string][]byte) IOResolver {
 			if data, ok := files[path]; ok {
 				return io.NopCloser(bytes.NewReader(data)), nil
 			}
-			return nil, utils.WrappedErrorf("File %s not found", path)
+			return nil, utils.WrappedErrorf("File '%s' does not exist", path)
 		},
 		OpenDir: func(path string) ([]string, error) {
 			result := make([]string, 0)

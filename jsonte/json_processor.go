@@ -254,11 +254,11 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 	}
 	for _, module := range resolvedModules {
 		if _, ok := modules[module]; !ok {
-			return nil, utils.WrappedJsonErrorf("$extend", "The module %s does not exist", module)
+			return nil, utils.WrappedJsonErrorf("$extend", "The module '%s' does not exist", module)
 		}
 		mod := modules[module]
 		if mod.Template == nil {
-			return nil, utils.WrappedJsonErrorf("$extend", "The module %s does not have a template", module)
+			return nil, utils.WrappedJsonErrorf("$extend", "The module '%s' does not have a template", module)
 		}
 		visitor.scope.PushFront(mod.Scope)
 		if mod.Copy != "" {

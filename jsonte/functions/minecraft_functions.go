@@ -154,7 +154,7 @@ func getLatestFile(p string, m utils.NavigableMap[string, string]) (string, erro
 		}
 		return s, nil
 	}
-	return "", utils.WrapErrorf(os.ErrNotExist, "File %s does not exist", p)
+	return "", utils.WrapErrorf(os.ErrNotExist, "File '%s' does not exist", p)
 }
 
 func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string], error) {

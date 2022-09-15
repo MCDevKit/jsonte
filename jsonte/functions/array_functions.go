@@ -488,7 +488,7 @@ func encode(arr utils.JsonArray, space utils.JsonNumber, predicate utils.JsonLam
 		}
 		number := utils.ToNumber(i2)
 		if number.IntValue() < 0 || number.IntValue() >= space.IntValue() {
-			return utils.ToNumber(0), utils.WrappedErrorf("Number %s is out of range 0..%d", number.StringValue(), space.IntValue()-1)
+			return utils.ToNumber(0), utils.WrappedErrorf("Number %d is out of range 0..%d", number.IntValue(), space.IntValue()-1)
 		}
 		result += number.IntValue() << (i * bitsPerElement)
 	}
