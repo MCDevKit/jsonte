@@ -12,8 +12,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
-	"time"
 )
 
 var (
@@ -24,7 +24,6 @@ var (
 )
 
 func main() {
-	start := time.Now().UnixMilli()
 	functions.Init()
 	debug := false
 	silent := false
@@ -271,7 +270,6 @@ func main() {
 		utils.Logger.Error(err)
 		os.Exit(1)
 	}
-	fmt.Printf("time elapsed: %d", time.Now().UnixMilli()-start)
 }
 
 func getScope(scope []string) (utils.JsonObject, error) {
@@ -309,15 +307,20 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 	result := map[string][]string{}
 	includes := make([]glob.Glob, 0)
 	excludes := make([]glob.Glob, 0)
+	pathRegex, err := regexp.Compile("[/\\\\]")
+	if err != nil {
+		// Should never happen as it's constant
+		return nil, utils.WrapError(err, "An error occurred while compiling the path separator regex")
+	}
 	for _, i := range include {
-		g, err := glob.Compile(i)
+		g, err := glob.Compile(pathRegex.ReplaceAllString(i, "/"))
 		if err != nil {
 			return nil, utils.WrapErrorf(err, "An error occurred while compiling the include pattern %s", i)
 		}
 		includes = append(includes, g)
 	}
 	for _, e := range exclude {
-		g, err := glob.Compile(e)
+		g, err := glob.Compile(pathRegex.ReplaceAllString(e, "/"))
 		if err != nil {
 			return nil, utils.WrapErrorf(err, "An error occurred while compiling the exclude pattern %s", e)
 		}
@@ -340,14 +343,14 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 				if !strings.HasSuffix(path, ".templ") && !strings.HasSuffix(path, ".modl") && !strings.HasSuffix(path, ".mcfunction") {
 					return nil
 				}
-				for _, g := range excludes {
-					if g.Match(path) {
+				for _, g := range includes {
+					if g.Match(pathRegex.ReplaceAllString(path, "/")) {
+						files = append(files, path)
 						return nil
 					}
 				}
-				for _, g := range includes {
-					if g.Match(path) {
-						files = append(files, path)
+				for _, g := range excludes {
+					if g.Match(pathRegex.ReplaceAllString(path, "/")) {
 						return nil
 					}
 				}
