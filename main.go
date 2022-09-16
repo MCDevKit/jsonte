@@ -25,7 +25,11 @@ var (
 
 func main() {
 	functions.Init()
+	env, b := os.LookupEnv("DEBUG")
 	debug := false
+	if b && (env == "true" || env == "1") {
+		debug = true
+	}
 	silent := false
 	removeSrc := false
 	minify := false
