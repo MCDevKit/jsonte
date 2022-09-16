@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"strings"
 )
 
@@ -77,13 +78,13 @@ func (a *App) Run(args []string, onParse func()) error {
 					switch flag.Type {
 					case "bool":
 						if flag.Found {
-							return fmt.Errorf("flag --%s is already set", flag.Name)
+							return utils.WrappedErrorf("flag --%s is already set", flag.Name)
 						}
 						*flag.BoolDestination = true
 						flag.Found = true
 					case "string":
 						if flag.Found {
-							return fmt.Errorf("flag --%s is already set", flag.Name)
+							return utils.WrappedErrorf("flag --%s is already set", flag.Name)
 						}
 						*flag.StringDestination = args[i+1]
 						flag.Found = true
@@ -95,14 +96,13 @@ func (a *App) Run(args []string, onParse func()) error {
 						flag.Found = true
 						break
 					default:
-						return fmt.Errorf("unknown flag type: %s", flag.Type)
+						return utils.WrappedErrorf("unknown flag type: %s", flag.Type)
 					}
 				}
 			}
 			if !found {
-				fmt.Printf("unknown flag: %s\n", arg)
 				a.PrintHelp()
-				return nil
+				return utils.WrappedErrorf("unknown flag: %s", arg)
 			}
 		} else {
 			cleanArgs = append(cleanArgs, arg)
@@ -126,9 +126,8 @@ func (a *App) Run(args []string, onParse func()) error {
 	}
 	action, ok := a.actions[cleanArgs[0]]
 	if !ok {
-		fmt.Printf("unknown command: %s\n", cleanArgs[0])
 		a.PrintHelp()
-		return nil
+		return utils.WrappedErrorf("unknown command: %s", cleanArgs[0])
 	}
 
 	return action.Function(cleanArgs[1:])
