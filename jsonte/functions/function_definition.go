@@ -7,27 +7,39 @@ import (
 )
 
 type JsonFunction struct {
+	Group      string
 	Name       string
 	Args       []reflect.Type
 	Body       interface{}
 	WithError  bool
 	IsInstance bool
 	IsUnsafe   bool
+	Deprecated bool
 	Docs       Docs
 }
 
+var groups = map[string]Group{}
 var functions = make(map[string][]JsonFunction)
 var instanceFunctions = make(map[string]map[string][]JsonFunction)
 
+var initialized = false
+
 func Init() {
-	RegisterMathFunctions()
-	RegisterStringFunctions()
-	RegisterArrayFunctions()
-	RegisterImageFunctions()
-	RegisterAudioFunctions()
-	RegisterColorFunctions()
-	RegisterMinecraftFunctions()
-	RegisterFileFunctions()
+	if !initialized {
+		RegisterMathFunctions()
+		RegisterStringFunctions()
+		RegisterArrayFunctions()
+		RegisterImageFunctions()
+		RegisterAudioFunctions()
+		RegisterColorFunctions()
+		RegisterMinecraftFunctions()
+		RegisterFileFunctions()
+		initialized = true
+	}
+}
+
+func RegisterGroup(group Group) {
+	groups[group.Name] = group
 }
 
 func RegisterFunction(fn JsonFunction) {

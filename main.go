@@ -258,6 +258,14 @@ func main() {
 			return nil
 		},
 	})
+	app.Action(Action{
+		Name:   "docgen",
+		Hidden: true,
+		Usage:  "Generate documentation",
+		Function: func(args []string) error {
+			return functions.GenerateDocs()
+		},
+	})
 	err := app.Run(os.Args, func() {
 		if debug && silent {
 			utils.InitLogging(zap.DebugLevel)

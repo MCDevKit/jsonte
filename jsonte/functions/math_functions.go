@@ -6,113 +6,665 @@ import (
 )
 
 func RegisterMathFunctions() {
-	RegisterFunction(JsonFunction{
-		Name: "floor",
-		Body: floor,
+	const group = "math"
+	RegisterGroup(Group{
+		Name:    group,
+		Title:   "Math functions",
+		Summary: "Math functions allow for executing more complicated arithmetic.",
 	})
 	RegisterFunction(JsonFunction{
-		Name: "ceil",
-		Body: ceil,
+		Group: group,
+		Name:  "floor",
+		Body:  floor,
+		Docs: Docs{
+			Summary: "Returns the largest integer less than or equal to the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to floor.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 3",
+    "test": "{{floor(3.6)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "round",
-		Body: round,
+		Group: group,
+		Name:  "ceil",
+		Body:  ceil,
+		Docs: Docs{
+			Summary: "Returns the smallest integer greater than or equal to the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to ceil.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 4",
+    "test": "{{ceil(3.6)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "round",
-		Body: roundPrecision,
+		Group: group,
+		Name:  "round",
+		Body:  round,
+		Docs: Docs{
+			Summary: "Returns the nearest integer to the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to round.",
+				},
+				{
+					Name:     "precision",
+					Summary:  "The number of decimal places to round to.",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 3.142",
+    "test": "{{round(3.1415, 3)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "sin",
-		Body: sin,
+		Group: group,
+		Name:  "round",
+		Body:  roundPrecision,
 	})
 	RegisterFunction(JsonFunction{
-		Name: "cos",
-		Body: cos,
+		Group: group,
+		Name:  "sin",
+		Body:  sin,
+		Docs: Docs{
+			Summary: "Returns the sine of the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to get the sine of.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 0.7071067811865475",
+    "test": "{{sin(45)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "tan",
-		Body: tan,
+		Group: group,
+		Name:  "cos",
+		Body:  cos,
+		Docs: Docs{
+			Summary: "Returns the cosine of the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to get the cosine of.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 0.7071067811865476",
+    "test": "{{cos(45)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "asin",
-		Body: asin,
+		Group: group,
+		Name:  "tan",
+		Body:  tan,
+		Docs: Docs{
+			Summary: "Returns the tangent of the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to get the tangent of.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 1",
+    "test": "{{tan(45)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "acos",
-		Body: acos,
+		Group: group,
+		Name:  "asin",
+		Body:  asin,
+		Docs: Docs{
+			Summary: "Returns the arcsine of the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to get the arcsine of.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 44.991348337162016",
+    "test": "{{asin(0.707)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "atan",
-		Body: atan,
+		Group: group,
+		Name:  "acos",
+		Body:  acos,
+		Docs: Docs{
+			Summary: "Returns the arccosine of the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to get the arccosine of.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 45.008651662837984",
+    "test": "{{acos(0.707)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "atan2",
-		Body: atan2,
+		Group: group,
+		Name:  "atan",
+		Body:  atan,
+		Docs: Docs{
+			Summary: "Returns the arctangent of the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to get the arctangent of.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 45",
+    "test": "{{atan(1)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "sqrt",
-		Body: sqrt,
+		Group: group,
+		Name:  "atan2",
+		Body:  atan2,
+		Docs: Docs{
+			Summary: "Returns the arctangent of the given numbers.",
+			Arguments: []Argument{
+				{
+					Name:    "y",
+					Summary: "The first number to get the arctangent of.",
+				},
+				{
+					Name:    "x",
+					Summary: "The second number to get the arctangent of.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 45",
+    "test": "{{atan2(1, 1)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "abs",
-		Body: abs,
+		Group: group,
+		Name:  "sqrt",
+		Body:  sqrt,
+		Docs: Docs{
+			Summary: "Returns the square root of the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to get the square root of.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 3",
+    "test": "{{sqrt(9)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "min",
-		Body: min,
+		Group: group,
+		Name:  "abs",
+		Body:  abs,
+		Docs: Docs{
+			Summary: "Returns the absolute value of the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to get the absolute value of.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 3",
+    "test": "{{abs(-3)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "max",
-		Body: max,
+		Group: group,
+		Name:  "min",
+		Body:  min,
+		Docs: Docs{
+			Summary: "Returns the smallest of the given numbers.",
+			Arguments: []Argument{
+				{
+					Name:    "number1",
+					Summary: "The first number to compare.",
+				},
+				{
+					Name:    "number2",
+					Summary: "The second number to compare.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 3",
+    "test": "{{min(3, 5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "clamp",
-		Body: clamp,
+		Group: group,
+		Name:  "max",
+		Body:  max,
+		Docs: Docs{
+			Summary: "Returns the largest of the given numbers.",
+			Arguments: []Argument{
+				{
+					Name:    "number1",
+					Summary: "The first number to compare.",
+				},
+				{
+					Name:    "number2",
+					Summary: "The second number to compare.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 5",
+    "test": "{{max(3, 5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "pi",
-		Body: pi,
+		Group: group,
+		Name:  "clamp",
+		Body:  clamp,
+		Docs: Docs{
+			Summary: "Returns the given number clamped between the given minimum and maximum.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to clamp.",
+				},
+				{
+					Name:    "min",
+					Summary: "The minimum value.",
+				},
+				{
+					Name:    "max",
+					Summary: "The maximum value.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 5",
+    "test": "{{clamp(3, 5, 10)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "mod",
-		Body: mod,
+		Group: group,
+		Name:  "pi",
+		Body:  pi,
+		Docs: Docs{
+			Summary: "Returns the value of pi.",
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 3.141592653589793",
+    "test": "{{pi()}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "rotationToNormal",
-		Body: rotationToNormal,
+		Group: group,
+		Name:  "mod",
+		Body:  mod,
+		Docs: Docs{
+			Summary: "Returns the remainder of the first number divided by the second number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to divide.",
+				},
+				{
+					Name:    "divisor",
+					Summary: "The number to divide by.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 1",
+    "test": "{{mod(5, 2)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "bitwiseAnd",
-		Body: bitwiseAnd,
+		Group: group,
+		Name:  "rotationToNormal",
+		Body:  rotationToNormal,
+		Docs: Docs{
+			Summary: "Returns normal (direction) vector based on pitch and yaw rotation.",
+			Arguments: []Argument{
+				{
+					Name:    "pitch",
+					Summary: "A pitch rotation (rotation in x-axis)",
+				},
+				{
+					Name:    "yaw",
+					Summary: "A yaw rotation (rotation in y-axis)",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be [0,-0,1]",
+    "test": "{{rotationToNormal(0, 0)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "bitwiseOr",
-		Body: bitwiseOr,
+		Group: group,
+		Name:  "bitwiseAnd",
+		Body:  bitwiseAnd,
+		Docs: Docs{
+			Summary: "Returns the bitwise AND of the given numbers.",
+			Arguments: []Argument{
+				{
+					Name:    "number1",
+					Summary: "The first number to bitwise AND.",
+				},
+				{
+					Name:    "number2",
+					Summary: "The second number to bitwise AND.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 2",
+    "test": "{{bitwiseAnd(3, 2)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "bitwiseXor",
-		Body: bitwiseXor,
+		Group: group,
+		Name:  "bitwiseOr",
+		Body:  bitwiseOr,
+		Docs: Docs{
+			Summary: "Returns the bitwise OR of the given numbers.",
+			Arguments: []Argument{
+				{
+					Name:    "number1",
+					Summary: "The first number to bitwise OR.",
+				},
+				{
+					Name:    "number2",
+					Summary: "The second number to bitwise OR.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 3",
+    "test": "{{bitwiseOr(3, 2)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "bitwiseNot",
-		Body: bitwiseNot,
+		Group: group,
+		Name:  "bitwiseXor",
+		Body:  bitwiseXor,
+		Docs: Docs{
+			Summary: "Returns the bitwise XOR of the given numbers.",
+			Arguments: []Argument{
+				{
+					Name:    "number1",
+					Summary: "The first number to bitwise XOR.",
+				},
+				{
+					Name:    "number2",
+					Summary: "The second number to bitwise XOR.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 1",
+    "test": "{{bitwiseXor(3, 2)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "bitshiftLeft",
-		Body: bitshiftLeft,
+		Group: group,
+		Name:  "bitwiseNot",
+		Body:  bitwiseNot,
+		Docs: Docs{
+			Summary: "Returns the bitwise NOT of the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to bitwise NOT.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be -4",
+    "test": "{{bitwiseNot(3)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "bitshiftRight",
-		Body: bitshiftRight,
+		Group: group,
+		Name:  "bitshiftLeft",
+		Body:  bitshiftLeft,
+		Docs: Docs{
+			Summary: "Returns the bitwise left shift of the given numbers.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to bitwise left shift.",
+				},
+				{
+					Name:    "shift",
+					Summary: "The number of bits to shift.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 12",
+    "test": "{{bitshiftLeft(3, 2)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "numberOfDigits",
-		Body: numberOfDigits,
+		Group: group,
+		Name:  "bitshiftRight",
+		Body:  bitshiftRight,
+		Docs: Docs{
+			Summary: "Returns the bitwise right shift of the given numbers.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to bitwise right shift.",
+				},
+				{
+					Name:    "shift",
+					Summary: "The number of bits to shift.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 1",
+    "test": "{{bitshiftRight(3, 1)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "pow",
-		Body: pow,
+		Group: group,
+		Name:  "numberOfDigits",
+		Body:  numberOfDigits,
+		Docs: Docs{
+			Summary: "Returns the number of digits in the given number.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to count the number of digits.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 3",
+    "test": "{{numberOfDigits(123)}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "pow",
+		Body:  pow,
+		Docs: Docs{
+			Summary: "Returns the given number raised to the given power.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to raise to the given power.",
+				},
+				{
+					Name:    "power",
+					Summary: "The power to raise the given number to.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 27",
+    "test": "{{pow(3, 3)}}"
+  }
+}
+</code>`,
+		},
 	})
 }
 
@@ -253,11 +805,11 @@ func pi() utils.JsonNumber {
 	}
 }
 
-func rotationToNormal(xRot, yRot utils.JsonNumber) []utils.JsonNumber {
+func rotationToNormal(xRot, yRot utils.JsonNumber) utils.JsonArray {
 	x := roundPrecision(utils.ToNumber(cos(xRot).FloatValue()*sin(yRot).FloatValue()), utils.ToNumber(5))
 	y := roundPrecision(utils.ToNumber(-sin(xRot).FloatValue()), utils.ToNumber(5))
 	z := roundPrecision(utils.ToNumber(cos(yRot).FloatValue()*cos(xRot).FloatValue()), utils.ToNumber(5))
-	return []utils.JsonNumber{x, y, z}
+	return utils.JsonArray{x, y, z}
 }
 
 func bitwiseAnd(a, b utils.JsonNumber) utils.JsonNumber {

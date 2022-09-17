@@ -7,9 +7,16 @@ import (
 )
 
 func RegisterArrayFunctions() {
+	const group = "array"
+	RegisterGroup(Group{
+		Name:    group,
+		Title:   "Array functions",
+		Summary: "Array functions are for getting information on and transforming arrays.",
+	})
 	RegisterFunction(JsonFunction{
-		Name: "asArray",
-		Body: asArray,
+		Group: group,
+		Name:  "asArray",
+		Body:  asArray,
 		Docs: Docs{
 			Summary: "Converts an object to an array of objects with the given key and value",
 			Arguments: []Argument{
@@ -60,8 +67,9 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "keys",
-		Body: keys,
+		Group: group,
+		Name:  "keys",
+		Body:  keys,
 		Docs: Docs{
 			Summary: "Returns an array of the keys of the given object",
 			Arguments: []Argument{
@@ -97,8 +105,9 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "values",
-		Body: values,
+		Group: group,
+		Name:  "values",
+		Body:  values,
 		Docs: Docs{
 			Summary: "Returns an array of the values of the given object",
 			Arguments: []Argument{
@@ -135,6 +144,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "sort",
 		Body:       sort_,
 		IsInstance: true,
@@ -163,11 +173,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "sort",
 		Body:       sortMap,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "reverse",
 		Body:       reverse,
 		IsInstance: true,
@@ -191,6 +203,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "contains",
 		Body:       arrayContains,
 		IsInstance: true,
@@ -218,6 +231,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "indexOf",
 		Body:       arrayIndexOf,
 		IsInstance: true,
@@ -245,6 +259,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "lastIndexOf",
 		Body:       arrayLastIndexOf,
 		IsInstance: true,
@@ -272,6 +287,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "any",
 		Body:       any_,
 		IsInstance: true,
@@ -299,6 +315,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "all",
 		Body:       all,
 		IsInstance: true,
@@ -326,6 +343,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "count",
 		Body:       count,
 		IsInstance: true,
@@ -354,11 +372,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "count",
 		Body:       countFilter,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "sum",
 		Body:       sum,
 		IsInstance: true,
@@ -387,11 +407,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "sum",
 		Body:       sumMap,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "none",
 		Body:       none,
 		IsInstance: true,
@@ -419,6 +441,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "filter",
 		Body:       filter,
 		IsInstance: true,
@@ -446,6 +469,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "map",
 		Body:       map_,
 		IsInstance: true,
@@ -473,6 +497,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "flatMap",
 		Body:       flatMap,
 		IsInstance: true,
@@ -501,11 +526,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "flatMap",
 		Body:       flatMapSimple,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "range",
 		Body:       range_,
 		IsInstance: true,
@@ -529,6 +556,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "findFirst",
 		Body:       findFirst,
 		IsInstance: true,
@@ -557,11 +585,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "findFirst",
 		Body:       findFirstFilter,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "encode",
 		Body:       encode,
 		IsInstance: true,
@@ -594,11 +624,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "encode",
 		Body:       encodeSimple,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "sublist",
 		Body:       sublist,
 		IsInstance: true,
@@ -631,11 +663,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "sublist",
 		Body:       sublistStart,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "max",
 		Body:       maxArray,
 		IsInstance: true,
@@ -664,11 +698,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "max",
 		Body:       maxArraySimple,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "min",
 		Body:       minArray,
 		IsInstance: true,
@@ -697,11 +733,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "min",
 		Body:       minArraySimple,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "reduce",
 		Body:       reduce,
 		IsInstance: true,
@@ -734,11 +772,13 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "reduce",
 		Body:       reduceInit,
 		IsInstance: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "findLast",
 		Body:       findLast,
 		IsInstance: true,
@@ -767,6 +807,7 @@ the result will be
 		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:      group,
 		Name:       "findLast",
 		Body:       findLastFilter,
 		IsInstance: true,

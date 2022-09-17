@@ -25,6 +25,7 @@ type Flag struct {
 
 type Action struct {
 	Name        string
+	Hidden      bool
 	Usage       string
 	Description string
 	Function    func(args []string) error
@@ -144,6 +145,9 @@ func (a *App) PrintHelp() {
 	fmt.Println("")
 	fmt.Println("Commands:")
 	for _, action := range a.actions {
+		if action.Hidden {
+			continue
+		}
 		fmt.Printf("  %s\t%s\n", action.Name, action.Usage)
 	}
 }

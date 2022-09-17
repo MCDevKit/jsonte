@@ -34,9 +34,13 @@ issue](https://github.com/MCDevKit/jsonte/issues/new); it's that easy!
 
 1. Create a new file in `jsonte/functions` directory named `<group>_functions.go`.
 2. Create a function for registering all functions in that group. It should be named `Register<group>Functions`.
-3. Register all functions by to that group (refer to the next section for more info).
-4. Add a call to that function in `Init` function in `jsonte/functions/function_definition.go`.
-5. Add tests for all functions in that group in a new file called `test/<group>_functions_test.go`.
+3. Register group by calling `RegisterGroup` function with following struct:
+    - `Name` - name of the group
+    - `Title` - title of the group
+    - `Summary` - summary of the group
+4. Register all functions by to that group (refer to the next section for more info).
+5. Add a call to that function in `Init` function in `jsonte/functions/function_definition.go`.
+6. Add tests for all functions in that group in a new file called `test/<group>_functions_test.go`.
 
 ### Adding a new function
 
@@ -50,6 +54,7 @@ issue](https://github.com/MCDevKit/jsonte/issues/new); it's that easy!
     - `utils.JsonLambda` - lambda
 3. The function can also return an additional value of type `error`. If it's not `nil`, the error will be returned to the user.
 4. Register the function by calling `RegisterFunction` function in `Register<group>Functions` with struct of following fields:
+    - `Group` - name of the group
     - `Name` - name of the function
     - `Body` - function itself
     - `IsInstance` - could this function be called on an instance of an object (currently supported only for `array` and `string` types) 
