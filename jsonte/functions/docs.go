@@ -80,7 +80,7 @@ title: %[1]s
 %[3]s
 %[4]s
 %[5]s
-`, fn.Name, group.Title, fn.Docs.Summary, generateArgumentDocs(fn.Docs.Arguments), prepareExample(fn.Docs.Example))), 0644)
+`, fn.Name, group.Title, summary, generateArgumentDocs(fn.Docs.Arguments), prepareExample(fn.Docs.Example))), 0644)
 				if err != nil {
 					return utils.WrapErrorf(err, "Failed to write %s/%s.md", group.Name, fn.Name)
 				}
