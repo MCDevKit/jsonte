@@ -28,30 +28,24 @@ type Group struct {
 
 func GenerateDocs() error {
 	Init()
-	stat, err := os.Stat("docs")
+	dir, err := os.ReadDir(".")
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return utils.WrapErrorf(err, "Failed to check for docs directory!")
-		}
-	} else if !stat.IsDir() {
-		return utils.WrappedErrorf("docs is not a directory!")
+		return utils.WrapErrorf(err, "Failed to read current directory")
 	}
-	err = os.RemoveAll("docs")
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return utils.WrapErrorf(err, "Failed to remove docs directory!")
+	for _, file := range dir {
+		if file.IsDir() && strings.HasSuffix(file.Name(), "-functions") {
+			err := os.RemoveAll(file.Name())
+			if err != nil {
+				return utils.WrapErrorf(err, "Failed to remove directory %s", file.Name())
+			}
 		}
-	}
-	err = os.Mkdir("docs", 0755)
-	if err != nil {
-		return utils.WrapErrorf(err, "Failed to create docs directory")
 	}
 	for _, group := range groups {
-		err = os.Mkdir(fmt.Sprintf("docs/%s-functions", group.Name), 0755)
+		err = os.Mkdir(fmt.Sprintf("%s-functions", group.Name), 0755)
 		if err != nil {
-			return utils.WrapErrorf(err, "Failed to create docs/%s directory", group.Name)
+			return utils.WrapErrorf(err, "Failed to create %s directory", group.Name)
 		}
-		err = ioutil.WriteFile(fmt.Sprintf("docs/%s-functions/index.md", group.Name), []byte(fmt.Sprintf(`---
+		err = ioutil.WriteFile(fmt.Sprintf("%s-functions/index.md", group.Name), []byte(fmt.Sprintf(`---
 layout: page
 title: %[1]s
 parent: JSON Templating Engine
@@ -63,7 +57,7 @@ has_children: true
 %[2]s
 `, group.Title, group.Summary)), 0644)
 		if err != nil {
-			return utils.WrapErrorf(err, "Failed to write docs/%s/index.md", group.Name)
+			return utils.WrapErrorf(err, "Failed to write %s/index.md", group.Name)
 		}
 		for _, fns := range functions {
 			for _, fn := range fns {
@@ -74,7 +68,7 @@ has_children: true
 				if fn.IsUnsafe {
 					summary += "\n\n**This method is marked as unsafe. It can be disabled in certain environments.**"
 				}
-				err = ioutil.WriteFile(fmt.Sprintf("docs/%s-functions/%s.md", group.Name, fn.Name), []byte(fmt.Sprintf(`---
+				err = ioutil.WriteFile(fmt.Sprintf("%s-functions/%s.md", group.Name, fn.Name), []byte(fmt.Sprintf(`---
 layout: page
 grand_parent: JSON Templating Engine
 parent: %[2]s
@@ -88,7 +82,7 @@ title: %[1]s
 %[5]s
 `, fn.Name, group.Title, fn.Docs.Summary, generateArgumentDocs(fn.Docs.Arguments), prepareExample(fn.Docs.Example))), 0644)
 				if err != nil {
-					return utils.WrapErrorf(err, "Failed to write docs/%s/%s.md", group.Name, fn.Name)
+					return utils.WrapErrorf(err, "Failed to write %s/%s.md", group.Name, fn.Name)
 				}
 			}
 		}

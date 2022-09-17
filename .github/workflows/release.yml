@@ -57,3 +57,19 @@ jobs:
           git push origin main
           git tag jsonte-${{ github.ref_name }}
           git push --tags
+      - uses: actions/checkout@v2
+        with:
+          repository: 'MCDevKit/cmcc-docs'
+          token: ${{ secrets.GH_PAT }}
+          path: './docs'
+      - name: Push docs
+        working-directory: './docs'
+        run: |
+          cd json-templating-engine
+          ../dist/win_binary_windows_amd64_v1/jsonte.exe docgen
+          cd ..
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add ./json-templating-engine/*
+          git commit -m "JSON Templating Engine v${{github.ref_name}}"
+          git push origin main
