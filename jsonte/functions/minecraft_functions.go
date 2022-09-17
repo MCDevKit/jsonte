@@ -26,12 +26,14 @@ func RegisterMinecraftFunctions() {
 		Docs: Docs{
 			Summary: "Returns a path to the folder with Minecraft app. The value is cached after the first usage.",
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe'",
     "test": "{{getMinecraftInstallDir()}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -48,12 +50,14 @@ func RegisterMinecraftFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe\data\behavior_packs\vanilla_1.18.10\entities\axolotl.json'",
     "test": "{{getLatestBPFile('entities/axolotl.json')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -70,12 +74,14 @@ func RegisterMinecraftFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe\data\resource_packs\vanilla_1.18.10\textures\entity\axolotl\axolotl_wild.png'",
     "test": "{{getLatestRPFile('textures/entity/axolotl/axolotl_wild.png')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -91,11 +97,13 @@ func RegisterMinecraftFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "test": "{{listLatestRPFiles('entity')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -111,11 +119,13 @@ func RegisterMinecraftFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "test": "{{listLatestBPFiles('entities')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 }

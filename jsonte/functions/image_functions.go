@@ -33,11 +33,13 @@ func RegisterImageFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "test": "{{imageWidth('resources/textures/particle/particles.png')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -53,11 +55,13 @@ func RegisterImageFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "test": "{{imageHeight('resources/textures/particle/particles.png')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 }

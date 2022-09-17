@@ -35,11 +35,13 @@ func RegisterAudioFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "test": "{{audioDuration('resources/sounds/sound.wav')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 }

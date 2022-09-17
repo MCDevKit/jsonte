@@ -39,12 +39,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'this_is_a_test'",
     "test": "{{replace('this is a test', ' ', '_')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -65,12 +67,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'this,is,a,test'",
     "test": "{{join(['this', 'is', 'a', 'test'], ',')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -91,12 +95,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be true",
     "test": "{{contains('this is a test', 'test')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -117,12 +123,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be ['this', 'is', 'a', 'test']",
     "test": "{{split('this is a test', ' ')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -143,12 +151,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 8",
     "test": "{{indexOf('this is a test', 'test')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -169,12 +179,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 8",
     "test": "{{lastIndexOf('this is a test', 'test')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -191,12 +203,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 2139996864",
     "test": "{{hash('this is a test')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -213,12 +227,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'THIS IS A TEST'",
     "test": "{{toUpperCase('this is a test')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -235,12 +251,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'this is a test'",
     "test": "{{toLowerCase('THIS IS A TEST')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -266,12 +284,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'this'",
     "test": "{{substring('this is a test', 0, 4)}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -294,12 +314,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'This is a test'",
     "test": "{{capitalize('this is a test')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -320,12 +342,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be true",
     "test": "{{startsWith('this is a test', 'this')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -346,12 +370,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be true",
     "test": "{{endsWith('this is a test', 'test')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -376,12 +402,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'this-is-a-test'",
     "test": "{{regexReplace('this is a test', '\s', '-')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -398,12 +426,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be ['t', 'h', 'i', 's']",
     "test": "{{chars('this')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -420,12 +450,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 4",
     "test": "{{length('this')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -442,12 +474,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'this is a test'",
     "test": "{{trim('  this is a test  ')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -464,12 +498,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'This Is A Test'",
     "test": "{{title('this is a test')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -486,12 +522,14 @@ func RegisterStringFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'tHIS IS A TEST'",
     "test": "{{swapCase('This is a test')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 }

@@ -30,12 +30,14 @@ func RegisterFileFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be an object from the file data.json",
     "test": "{{load('data.json')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -56,12 +58,14 @@ func RegisterFileFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be an array of all files with .json extension in the data directory",
     "test": "{{fileList('data', "*.json")}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -89,12 +93,14 @@ func RegisterFileFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be an array of all files with .json extension in the data directory and its subdirectories",
     "test": "{{fileListRecurse('data', "*.json")}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -116,12 +122,14 @@ func RegisterFileFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be '.json'",
     "test": "{{fileExtension('data.json')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -137,12 +145,14 @@ func RegisterFileFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'data'",
     "test": "{{fileBaseName('data.json')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -158,12 +168,14 @@ func RegisterFileFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be the name of the file data.json",
     "test": "{{fileName('dir/data.json')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -179,12 +191,14 @@ func RegisterFileFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be 'data'",
     "test": "{{filePath('data.json')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 	RegisterFunction(JsonFunction{
@@ -201,12 +215,14 @@ func RegisterFileFunctions() {
 				},
 			},
 			Example: `
+<code>
 {
   "$template": {
     "$comment": "The field below will be true if the path is a directory",
     "test": "{{isDir('data')}}"
   }
-}`,
+}
+</code>`,
 		},
 	})
 }
