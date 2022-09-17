@@ -26,8 +26,8 @@ type JsonNumber struct {
 	Decimal bool
 }
 
-func (n JsonNumber) IntValue() int {
-	return int(n.Value)
+func (n JsonNumber) IntValue() int32 {
+	return int32(n.Value)
 }
 
 func toFixed(num float64, precision int) float64 {
@@ -44,7 +44,7 @@ func (n JsonNumber) FloatValue() float64 {
 }
 
 func (n JsonNumber) BoolValue() bool {
-	if n.Value == 0 {
+	if toFixed(n.Value, 10) == 0 {
 		return false
 	}
 	return true
@@ -54,7 +54,7 @@ func (n JsonNumber) StringValue() string {
 	if n.Decimal {
 		return strconv.FormatFloat(n.Value, 'f', -1, 64)
 	}
-	return strconv.FormatInt(int64(math.Floor(n.Value)), 10)
+	return strconv.FormatInt(int64(n.IntValue()), 10)
 }
 
 func ToBoolean(obj interface{}) bool {
@@ -105,6 +105,12 @@ func ToNumber(obj interface{}) JsonNumber {
 		}
 	}
 	if b, ok := obj.(int); ok {
+		return JsonNumber{
+			Value:   float64(b),
+			Decimal: false,
+		}
+	}
+	if b, ok := obj.(int32); ok {
 		return JsonNumber{
 			Value:   float64(b),
 			Decimal: false,
@@ -253,6 +259,9 @@ func IsNumber(obj interface{}) bool {
 		return true
 	}
 	if _, ok := obj.(int); ok {
+		return true
+	}
+	if _, ok := obj.(int32); ok {
 		return true
 	}
 	if _, ok := obj.(bool); ok {
@@ -464,7 +473,7 @@ func IsEqualArray(a, b JsonArray) bool {
 	return true
 }
 
-func CreateRange(start, end int) JsonArray {
+func CreateRange(start, end int32) JsonArray {
 	result := JsonArray{}
 	if start > end {
 		return result

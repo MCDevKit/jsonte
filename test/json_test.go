@@ -43,8 +43,14 @@ func compareJsonObject(t *testing.T, expected utils.JsonObject, actual utils.Jso
 				} else {
 					t.Errorf("Field %s is not a number (expected %s (%s), got %s (%s))", newPath, utils.ToString(v1), safeTypeName(v1), utils.ToString(value2), safeTypeName(value2))
 				}
-			} else if value1 != value2 {
-				t.Errorf("Field %s is not equal (expected %s (%s), got %s (%s)", newPath, utils.ToString(value1), safeTypeName(value1), utils.ToString(value2), safeTypeName(value2))
+			} else if utils.IsNumber(value1) && utils.IsNumber(value2) {
+				if utils.ToNumber(value1).FloatValue() != utils.ToNumber(value2).FloatValue() {
+					t.Errorf("Field %s is not equal (expected %s (%s), got %s (%s))", newPath, utils.ToString(value1), safeTypeName(value1), utils.ToString(value2), safeTypeName(value2))
+				}
+			} else {
+				if value1 != value2 {
+					t.Errorf("Field %s is not equal (expected %s (%s), got %s (%s))", newPath, utils.ToString(value1), safeTypeName(value1), utils.ToString(value2), safeTypeName(value2))
+				}
 			}
 		} else {
 			t.Errorf("Object does not contain key %s", key)
@@ -82,6 +88,10 @@ func compareJsonArray(t *testing.T, expected utils.JsonArray, actual utils.JsonA
 				}
 			} else {
 				t.Errorf("Element %s is not a number (expected %s (%s), got %s (%s))", newPath, utils.ToString(v1), safeTypeName(v1), utils.ToString(value2), safeTypeName(value2))
+			}
+		} else if utils.IsNumber(value1) && utils.IsNumber(value2) {
+			if utils.ToNumber(value1).FloatValue() != utils.ToNumber(value2).FloatValue() {
+				t.Errorf("Element %s is not equal (expected %s (%s), got %s (%s))", newPath, utils.ToString(value1), safeTypeName(value1), utils.ToString(value2), safeTypeName(value2))
 			}
 		} else {
 			if value1 != value2 {

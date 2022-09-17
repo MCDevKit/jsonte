@@ -13,6 +13,7 @@ type JsonFunction struct {
 	WithError  bool
 	IsInstance bool
 	IsUnsafe   bool
+	Docs       Docs
 }
 
 var functions = make(map[string][]JsonFunction)

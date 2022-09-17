@@ -408,7 +408,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		if utils.IsArray(object) {
 			if utils.IsNumber(i) {
 				value := utils.ToNumber(i).IntValue()
-				if value < 0 || value >= len(object.(utils.JsonArray)) {
+				if value < 0 || value >= int32(len(object.(utils.JsonArray))) {
 					if context.Question() != nil {
 						return nil
 					} else {
@@ -437,7 +437,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		} else if str, ok := object.(string); ok {
 			if utils.IsNumber(i) {
 				value := utils.ToNumber(i).IntValue()
-				if value < 0 || value >= len(str) {
+				if value < 0 || value >= int32(len(str)) {
 					if context.Question() != nil {
 						return nil
 					} else {

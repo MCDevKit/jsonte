@@ -10,19 +10,157 @@ func RegisterArrayFunctions() {
 	RegisterFunction(JsonFunction{
 		Name: "asArray",
 		Body: asArray,
+		Docs: Docs{
+			Summary: "Converts an object to an array of objects with the given key and value",
+			Arguments: []Argument{
+				{
+					Name:    "object",
+					Summary: "The object to convert",
+				},
+				{
+					Name:    "key",
+					Summary: "The key to use for the new objects",
+				},
+				{
+					Name:    "value",
+					Summary: "The value to use for the new objects",
+				},
+			},
+			Example: `
+Given scope
+<code>
+{
+  "testObject": {
+    "test1": "someVal",
+    "test2": "anotherVal"
+  }
+}
+</code>
+for query
+<code>
+{
+  "$template": {
+    "test": "{{asArray(testObject, 'key', 'value')}}"
+  }
+}
+</code>
+the result will be
+<code>
+[
+  {
+    "key": "test1",
+    "value": "someVal"
+  },
+  {
+    "key": "test2",
+    "value": "anotherVal"
+  }
+]
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name: "keys",
 		Body: keys,
+		Docs: Docs{
+			Summary: "Returns an array of the keys of the given object",
+			Arguments: []Argument{
+				{
+					Name:    "object",
+					Summary: "The object to get the keys from",
+				},
+			},
+			Example: `
+Given scope
+<code>
+{
+  "testObject": {
+    "test1": "someVal",
+    "test2": "anotherVal"
+  }
+}
+</code>
+for query
+<code>
+{
+  "$template": {
+    "test": "{{keys(testObject)}}"
+  }
+}
+</code>
+the result will be
+<code>
+[
+  "test1", "test2"
+]
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name: "values",
 		Body: values,
+		Docs: Docs{
+			Summary: "Returns an array of the values of the given object",
+			Arguments: []Argument{
+				{
+					Name:    "object",
+					Summary: "The object to get the values from",
+				},
+			},
+			Example: `
+Given scope
+<code>
+{
+  "testObject": {
+    "test1": "someVal",
+    "test2": "anotherVal"
+  }
+}
+</code>
+for query
+<code>
+{
+  "$template": {
+    "test": "{{values(testObject)}}"
+  }
+}
+</code>
+the result will be
+<code>
+[
+  "someVal",
+  "anotherVal"
+]
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "sort",
 		Body:       sort_,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Sorts the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to sort",
+				},
+				{
+					Name:     "selector(element, index)",
+					Summary:  "The selector to apply to each element before summing",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be [1, 2, 3, 5, 8, 10]",
+    "test": "{{[2, 3, 1, 5, 8, 10].sort()}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "sort",
@@ -33,36 +171,187 @@ func RegisterArrayFunctions() {
 		Name:       "reverse",
 		Body:       reverse,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Reverses the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to reverse",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be [10, 8, 5, 3, 2, 1]",
+	"test": "{{[1, 2, 3, 5, 8, 10].reverse()}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "contains",
 		Body:       arrayContains,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Checks if the given array contains the given value",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to check",
+				},
+				{
+					Name:    "value",
+					Summary: "The value to check for",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be true",
+	"test": "{{[1, 2, 3, 5, 8, 10].contains(5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "indexOf",
 		Body:       arrayIndexOf,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Returns the first index of the given value in the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to check",
+				},
+				{
+					Name:    "value",
+					Summary: "The value to check for",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 3",
+	"test": "{{[1, 2, 3, 5, 8, 10].indexOf(5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "lastIndexOf",
 		Body:       arrayLastIndexOf,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Returns the last index of the given value in the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to check",
+				},
+				{
+					Name:    "value",
+					Summary: "The value to check for",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 3",
+	"test": "{{[1, 2, 3, 5, 8, 10].indexOf(5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "any",
 		Body:       any_,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Checks if any of the elements in the given array match the given predicate",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to check",
+				},
+				{
+					Name:    "predicate(element, index)",
+					Summary: "The predicate to check against",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be true",
+	"test": "{{[1, 2, 3, 5, 8, 10].any(x => x > 5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "all",
 		Body:       all,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Checks if all of the elements in the given array match the given predicate",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to check",
+				},
+				{
+					Name:    "predicate(element, index)",
+					Summary: "The predicate to check against",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be false",
+	"test": "{{[1, 2, 3, 5, 8, 10].all(x => x > 5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "count",
 		Body:       count,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Counts the number of elements in the given array that match the given predicate",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to check",
+				},
+				{
+					Name:     "predicate(element, index)",
+					Summary:  "The predicate to filter by",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 3",
+	"test": "{{[1, 2, 3, 5, 8, 10].count(x => x >= 5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "count",
@@ -73,6 +362,29 @@ func RegisterArrayFunctions() {
 		Name:       "sum",
 		Body:       sum,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Sums the elements in the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to sum",
+				},
+				{
+					Name:     "selector(element, index)",
+					Summary:  "The selector to apply to each element before summing",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 31",
+	"test": "{{[1, 2, 3, 5, 8, 10].sum(x => x)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "sum",
@@ -83,21 +395,110 @@ func RegisterArrayFunctions() {
 		Name:       "none",
 		Body:       none,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Checks if none of the elements in the given array match the given predicate",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to check",
+				},
+				{
+					Name:    "predicate(element, index)",
+					Summary: "The predicate to check against",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be false",
+	"test": "{{[1, 2, 3, 5, 8, 10].none(x => x > 5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "filter",
 		Body:       filter,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Filters the elements in the given array based on the given predicate",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to filter",
+				},
+				{
+					Name:    "predicate(element, index)",
+					Summary: "The predicate to filter by",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be [5, 8, 10]",
+	"test": "{{[1, 2, 3, 5, 8, 10].filter(x => x >= 5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "map",
 		Body:       map_,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Maps the elements in the given array based on the given selector",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to map",
+				},
+				{
+					Name:    "selector(element, index)",
+					Summary: "The selector to apply to each element",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be [2, 4, 6, 10, 16, 20]",
+	"test": "{{[1, 2, 3, 5, 8, 10].map(x => x * 2)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "flatMap",
 		Body:       flatMap,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Maps the elements in the given array based on the given selector, then flattens the result",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to map",
+				},
+				{
+					Name:     "selector(element, index)",
+					Summary:  "The selector to apply to each element",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be [1, 2, 2, 4, 3, 6, 5, 10, 8, 16, 10, 20]",
+	"test": "{{[1, 2, 3, 5, 8, 10].flatMap(x => [x, x * 2])}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "flatMap",
@@ -108,11 +509,52 @@ func RegisterArrayFunctions() {
 		Name:       "range",
 		Body:       range_,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Creates an array of indices from the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to create indices for",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be [0, 1, 2, 3, 4, 5]",
+	"test": "{{[1, 2, 3, 5, 8, 10].range()}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "findFirst",
 		Body:       findFirst,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Finds the first element in the given array that matches the given predicate",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to find in",
+				},
+				{
+					Name:     "predicate(element, index)",
+					Summary:  "The predicate to match by",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 8",
+	"test": "{{[1, 2, 3, 5, 8, 10].findFirst(x => x >= 5)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "findFirst",
@@ -123,6 +565,33 @@ func RegisterArrayFunctions() {
 		Name:       "encode",
 		Body:       encode,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Encodes the given array of numbers to a single number in a bit width calculated with the given maximum",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to encode",
+				},
+				{
+					Name:    "maximum",
+					Summary: "The maximum value in the array. Must be power of 2.",
+				},
+				{
+					Name:     "selector(element, index)",
+					Summary:  "The selector to apply to each element before encoding",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be -2023406815 (1000 0111 0110 0101 0100 0011 0010 0001)",
+	"test": "{{(1..10).encode(16)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "encode",
@@ -133,6 +602,33 @@ func RegisterArrayFunctions() {
 		Name:       "sublist",
 		Body:       sublist,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Returns a sublist of the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to slice",
+				},
+				{
+					Name:    "start",
+					Summary: "The start index",
+				},
+				{
+					Name:     "end",
+					Summary:  "The end index",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be [1, 2, 3]",
+	"test": "{{[1, 2, 3, 5, 8, 10].sublist(0, 3)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "sublist",
@@ -143,6 +639,29 @@ func RegisterArrayFunctions() {
 		Name:       "max",
 		Body:       maxArray,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Finds the maximum value in the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to find the maximum value in",
+				},
+				{
+					Name:     "selector(element, index)",
+					Summary:  "The selector to apply to each element before finding the maximum value",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 10",
+	"test": "{{[1, 2, 3, 5, 8, 10].max()}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "max",
@@ -153,6 +672,29 @@ func RegisterArrayFunctions() {
 		Name:       "min",
 		Body:       minArray,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Finds the minimum value in the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to find the minimum value in",
+				},
+				{
+					Name:     "selector(element, index)",
+					Summary:  "The selector to apply to each element before finding the minimum value",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 1",
+	"test": "{{[1, 2, 3, 5, 8, 10].min()}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "min",
@@ -163,6 +705,33 @@ func RegisterArrayFunctions() {
 		Name:       "reduce",
 		Body:       reduce,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Reduces the given array to a single value using the given accumulator function",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to reduce",
+				},
+				{
+					Name:    "accumulator(accumulator, element, index)",
+					Summary: "The accumulator function",
+				},
+				{
+					Name:     "initialValue",
+					Summary:  "The initial value for the accumulator",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 29",
+	"test": "{{[1, 2, 3, 5, 8, 10].reduce((a, b) => a + b)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "reduce",
@@ -173,6 +742,29 @@ func RegisterArrayFunctions() {
 		Name:       "findLast",
 		Body:       findLast,
 		IsInstance: true,
+		Docs: Docs{
+			Summary: "Finds the last element in the array that matches the given predicate",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to search",
+				},
+				{
+					Name:     "predicate(element, index)",
+					Summary:  "The predicate to test each element against",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 10",
+	"test": "{{[1, 2, 3, 5, 8, 10].findLast(e => e % 2 == 0)}}"
+  }
+}
+</code>`,
+		},
 	})
 	RegisterFunction(JsonFunction{
 		Name:       "findLast",
@@ -439,7 +1031,7 @@ func range_(arr utils.JsonArray) utils.JsonArray {
 	if arr == nil {
 		return nil
 	}
-	return utils.CreateRange(0, len(arr)-1)
+	return utils.CreateRange(0, int32(len(arr))-1)
 }
 
 func findFirstFilter(arr utils.JsonArray, predicate utils.JsonLambda) (interface{}, error) {
@@ -476,7 +1068,7 @@ func encode(arr utils.JsonArray, space utils.JsonNumber, predicate utils.JsonLam
 	if arr == nil {
 		return utils.ToNumber(0), nil
 	}
-	result := 0
+	var result int32 = 0
 	bitsPerElement := int(math.Log(float64(space.IntValue())) / math.Log(2))
 	for i := 0; i < int(math.Min(float64(len(arr)), float64(32/bitsPerElement))); i++ {
 		i2, err := predicate([]interface{}{arr[i], i})
@@ -510,8 +1102,8 @@ func sublist(arr utils.JsonArray, start utils.JsonNumber, end utils.JsonNumber) 
 	if startIndex < 0 {
 		startIndex = 0
 	}
-	if endIndex > len(arr) {
-		endIndex = len(arr)
+	if endIndex > int32(len(arr)) {
+		endIndex = int32(len(arr))
 	}
 	return arr[startIndex:endIndex]
 }
