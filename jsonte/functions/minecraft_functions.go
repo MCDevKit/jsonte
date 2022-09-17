@@ -12,28 +12,111 @@ import (
 )
 
 func RegisterMinecraftFunctions() {
+	const group = "minecraft"
+	RegisterGroup(Group{
+		Name:    group,
+		Title:   "Minecraft functions",
+		Summary: "Functions specific to Minecraft.",
+	})
 	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "getMinecraftInstallDir",
 		Body:     getMinecraftInstallDir,
 		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Returns a path to the folder with Minecraft app. The value is cached after the first usage.",
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe'",
+    "test": "{{getMinecraftInstallDir()}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "getLatestBPFile",
 		Body:     getLatestBPFile,
 		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Returns a path to the latest behavior pack file.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file inside behavior pack.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe\data\behavior_packs\vanilla_1.18.10\entities\axolotl.json'",
+    "test": "{{getLatestBPFile('entities/axolotl.json')}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "getLatestRPFile",
 		Body:     getLatestRPFile,
 		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Returns a path to the latest resource pack file.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file inside resource pack.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe\data\resource_packs\vanilla_1.18.10\textures\entity\axolotl\axolotl_wild.png'",
+    "test": "{{getLatestRPFile('textures/entity/axolotl/axolotl_wild.png')}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "listLatestRPFiles",
-		Body: listLatestRPFiles,
+		Group: group,
+		Name:  "listLatestRPFiles",
+		Body:  listLatestRPFiles,
+		Docs: Docs{
+			Summary: "Returns an array of paths to the latest files in resource pack within given path.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the directory inside resource pack.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "test": "{{listLatestRPFiles('entity')}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "listLatestBPFiles",
-		Body: listLatestBPFiles,
+		Group: group,
+		Name:  "listLatestBPFiles",
+		Body:  listLatestBPFiles,
+		Docs: Docs{
+			Summary: "Returns an array of paths to the latest files in behavior pack within given path.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the directory inside behavior pack.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "test": "{{listLatestBPFiles('entities')}}"
+  }
+}`,
+		},
 	})
 }
 

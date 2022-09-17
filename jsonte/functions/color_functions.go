@@ -7,9 +7,32 @@ import (
 )
 
 func RegisterColorFunctions() {
+	const group = "color"
+	RegisterGroup(Group{
+		Name:    group,
+		Title:   "Color functions",
+		Summary: "Color functions are related to converting and manipulating colors.",
+	})
 	RegisterFunction(JsonFunction{
-		Name: "hexToArray",
-		Body: hexToArray,
+		Group: group,
+		Name:  "hexToArray",
+		Body:  hexToArray,
+		Docs: Docs{
+			Summary: "Converts a hex color to an array of RGB values.",
+			Arguments: []Argument{
+				{
+					Name:    "hex",
+					Summary: "The hex color to convert.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will be [0.2, 0.4, 0.6, 1]",
+    "test": "{{hexToArray('#336699')}}"
+  }
+}`,
+		},
 	})
 }
 
@@ -22,6 +45,7 @@ func hexToArray(str string) (utils.JsonArray, error) {
 		utils.ToNumber(float64(fast.R) / 255),
 		utils.ToNumber(float64(fast.G) / 255),
 		utils.ToNumber(float64(fast.B) / 255),
+		utils.ToNumber(float64(fast.A) / 255),
 	}, nil
 }
 

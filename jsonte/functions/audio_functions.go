@@ -15,10 +15,32 @@ import (
 const audioCache = "audioLength"
 
 func RegisterAudioFunctions() {
+	const group = "audio"
+	RegisterGroup(Group{
+		Name:    group,
+		Title:   "Audio functions",
+		Summary: "Audio functions are related to reading various information about audio files.",
+	})
 	utils.CreateCacheBucket(audioCache, 3600)
 	RegisterFunction(JsonFunction{
-		Name: "audioDuration",
-		Body: audioDuration,
+		Group: group,
+		Name:  "audioDuration",
+		Body:  audioDuration,
+		Docs: Docs{
+			Summary: "Returns the duration of an audio file in seconds.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the audio file.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "test": "{{audioDuration('resources/sounds/sound.wav')}}"
+  }
+}`,
+		},
 	})
 }
 

@@ -13,14 +13,52 @@ import (
 const imageCache = "imageBounds"
 
 func RegisterImageFunctions() {
+	const group = "image"
+	RegisterGroup(Group{
+		Name:    group,
+		Title:   "Image functions",
+		Summary: "Image functions are related to reading various information about images.",
+	})
 	utils.CreateCacheBucket(imageCache, 3600)
 	RegisterFunction(JsonFunction{
-		Name: "imageWidth",
-		Body: imageWidth,
+		Group: group,
+		Name:  "imageWidth",
+		Body:  imageWidth,
+		Docs: Docs{
+			Summary: "Gets the width of an image.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the image file.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "test": "{{imageWidth('resources/textures/particle/particles.png')}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "imageHeight",
-		Body: imageHeight,
+		Group: group,
+		Name:  "imageHeight",
+		Body:  imageHeight,
+		Docs: Docs{
+			Summary: "Gets the height of an image.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the image file.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "test": "{{imageHeight('resources/textures/particle/particles.png')}}"
+  }
+}`,
+		},
 	})
 }
 

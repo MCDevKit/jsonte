@@ -10,51 +10,204 @@ import (
 )
 
 func RegisterFileFunctions() {
+	const group = "file"
+	RegisterGroup(Group{
+		Name:    group,
+		Title:   "File functions",
+		Summary: "Functions related to files and file paths.",
+	})
 	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "load",
 		Body:     load,
 		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Loads a JSON file from the given path.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file to load.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will be an object from the file data.json",
+    "test": "{{load('data.json')}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "fileList",
 		Body:     fileList,
-		IsUnsafe: true,
+		IsUnsafe: true, Docs: Docs{
+			Summary: "Lists all files in a directory.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the directory to list.",
+				},
+				{
+					Name:     "filter",
+					Summary:  "A glob filter to match files against.",
+					Optional: true,
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will be an array of all files with .json extension in the data directory",
+    "test": "{{fileList('data', "*.json")}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "fileList",
 		Body:     fileListFilter,
 		IsUnsafe: true,
 	})
 	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "fileListRecurse",
 		Body:     fileListRecurse,
 		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Lists all files in a directory, recursively.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the directory to list.",
+				},
+				{
+					Name:     "filter",
+					Summary:  "A glob filter to match files against.",
+					Optional: true,
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will be an array of all files with .json extension in the data directory and its subdirectories",
+    "test": "{{fileListRecurse('data', "*.json")}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "fileListRecurse",
 		Body:     fileListRecurseFilter,
 		IsUnsafe: true,
 	})
 	RegisterFunction(JsonFunction{
-		Name: "fileExtension",
-		Body: fileExtension,
+		Group: group,
+		Name:  "fileExtension",
+		Body:  fileExtension,
+		Docs: Docs{
+			Summary: "Gets the extension of a file.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will be '.json'",
+    "test": "{{fileExtension('data.json')}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "fileBaseName",
-		Body: fileBaseName,
+		Group: group,
+		Name:  "fileBaseName",
+		Body:  fileBaseName,
+		Docs: Docs{
+			Summary: "Gets the base name of a file.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will be 'data'",
+    "test": "{{fileBaseName('data.json')}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "fileName",
-		Body: fileName,
+		Group: group,
+		Name:  "fileName",
+		Body:  fileName,
+		Docs: Docs{
+			Summary: "Gets the name of a file.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will be the name of the file data.json",
+    "test": "{{fileName('dir/data.json')}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
-		Name: "filePath",
-		Body: filePath,
+		Group: group,
+		Name:  "filePath",
+		Body:  filePath,
+		Docs: Docs{
+			Summary: "Gets the path of a file.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will be 'data'",
+    "test": "{{filePath('data.json')}}"
+  }
+}`,
+		},
 	})
 	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "isDir",
 		Body:     isDir,
 		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Checks if the given path is a directory.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file.",
+				},
+			},
+			Example: `
+{
+  "$template": {
+    "$comment": "The field below will be true if the path is a directory",
+    "test": "{{isDir('data')}}"
+  }
+}`,
+		},
 	})
 }
 

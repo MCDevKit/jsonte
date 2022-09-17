@@ -70,6 +70,10 @@ has_children: true
 				if fn.Group != group.Name || fn.Docs.Summary == "" {
 					continue
 				}
+				summary := fn.Docs.Summary
+				if fn.IsUnsafe {
+					summary += "\n\n**This method is marked as unsafe. It can be disabled in certain environments.**"
+				}
 				err = ioutil.WriteFile(fmt.Sprintf("docs/%s-functions/%s.md", group.Name, fn.Name), []byte(fmt.Sprintf(`---
 layout: page
 grand_parent: JSON Templating Engine
@@ -113,7 +117,11 @@ func generateArgumentDocs(arguments []Argument) string {
 	}
 	s := "## Arguments\n\n"
 	for _, arg := range arguments {
-		s += fmt.Sprintf("- `%s` - %s\n", arg.Name, arg.Summary)
+		op := ""
+		if arg.Optional {
+			op = "(optional) "
+		}
+		s += fmt.Sprintf("- `%s` - %s%s\n", arg.Name, op, arg.Summary)
 	}
 	return s
 }
