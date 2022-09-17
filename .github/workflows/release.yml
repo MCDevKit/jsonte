@@ -41,6 +41,11 @@ jobs:
           args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v2
+        with:
+          repository: 'MCDevKit/cmcc-docs'
+          token: ${{ secrets.GH_PAT }}
+          path: './docs'
       - name: Push docs
         working-directory: './docs'
         run: |
@@ -68,8 +73,3 @@ jobs:
           git push origin main
           git tag jsonte-${{ github.ref_name }}
           git push --tags
-      - uses: actions/checkout@v2
-        with:
-          repository: 'MCDevKit/cmcc-docs'
-          token: ${{ secrets.GH_PAT }}
-          path: './docs'
