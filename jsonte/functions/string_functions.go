@@ -379,7 +379,7 @@ func RegisterStringFunctions() {
 {
   "$template": {
     "$comment": "The field below will be 'this-is-a-test'",
-    "test": "{{regexReplace('this is a test', '\s', '-')}"
+    "test": "{{regexReplace('this is a test', '\s', '-')}}"
   }
 }`,
 		},
