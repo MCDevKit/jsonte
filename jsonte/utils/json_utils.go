@@ -26,6 +26,8 @@ type JsonNumber struct {
 	Decimal bool
 }
 
+var CacheDir string
+
 func (n JsonNumber) IntValue() int32 {
 	return int32(n.Value)
 }

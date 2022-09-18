@@ -262,13 +262,8 @@ func getLatestFile(p string, m utils.NavigableMap[string, string]) (string, erro
 func unzip(src, dest string) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {
-		return err
+		return utils.WrapErrorf(err, "An error occurred while reading zip file %s", src)
 	}
-	defer func() {
-		if err := r.Close(); err != nil {
-			panic(err)
-		}
-	}()
 
 	err = os.MkdirAll(dest, 0755)
 	if err != nil {
@@ -329,6 +324,11 @@ func unzip(src, dest string) error {
 		}
 	}
 
+	err = r.Close()
+	if err != nil {
+		return utils.WrapErrorf(err, "An error occurred while closing zip file %s", src)
+	}
+
 	return nil
 }
 
@@ -345,18 +345,23 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 			dirName = "BP"
 		}
 
-		stat, err := os.Stat(filepath.Join("packs", dirName))
+		base := "packs"
+		if utils.CacheDir != "" {
+			base = utils.CacheDir
+		}
+
+		stat, err := os.Stat(filepath.Join(base, dirName))
 		if err == nil && stat.IsDir() {
-			versions.Put("1.0.0", filepath.Join("packs", dirName))
+			versions.Put("1.0.0", filepath.Join(base, dirName))
 			return versions, nil
 		}
 		utils.Logger.Infof("Downloading %s", url)
 
-		err = os.Mkdir("packs", 0755)
+		err = os.MkdirAll(base, 0755)
 		if err != nil && !os.IsExist(err) {
-			return versions, utils.WrapErrorf(err, "An error occurred while creating packs directory")
+			return versions, utils.WrapErrorf(err, "An error occurred while creating cache directory")
 		}
-		out, err := os.Create(path.Join("packs", outName))
+		out, err := os.Create(path.Join(base, outName))
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while creating file %s", outName)
 		}
@@ -377,7 +382,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 
-		err = unzip(out.Name(), path.Join("packs", dirName))
+		err = unzip(out.Name(), path.Join(base, dirName))
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while extracting %s", outName)
 		}
@@ -386,7 +391,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 			return versions, utils.WrapErrorf(err, "An error occurred while removing %s", outName)
 		}
 
-		versions.Put("0.0.0", path.Join("packs", dirName))
+		versions.Put("0.0.0", path.Join(base, dirName))
 		return versions, err
 	}
 	packDir := path.Join(installDir, "data", "behavior_packs")

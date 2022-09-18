@@ -70,6 +70,10 @@ func main() {
 		Name:  "exclude",
 		Usage: "Exclude files",
 	}, &exclude)
+	app.StringFlag(Flag{
+		Name:  "cache-dir",
+		Usage: "Directory for the cache",
+	}, &utils.CacheDir)
 	app.Action(Action{
 		Name: "compile",
 		Function: func(args []string) error {
