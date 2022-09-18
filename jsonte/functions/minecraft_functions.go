@@ -1,13 +1,18 @@
 package functions
 
 import (
+	"archive/zip"
+	"fmt"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/stirante/jsonc"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -24,7 +29,7 @@ func RegisterMinecraftFunctions() {
 		Body:     getMinecraftInstallDir,
 		IsUnsafe: true,
 		Docs: Docs{
-			Summary: "Returns a path to the folder with Minecraft app. The value is cached after the first usage.",
+			Summary: "Returns a path to the folder with Minecraft app. The value is cached after the first usage.\n\n**This function works only on Windows with installed Minecraft Bedrock.**",
 			Example: `
 <code>
 {
@@ -138,6 +143,9 @@ var rpFiles = utils.NavigableMap[string, string]{}
 var bpFiles = utils.NavigableMap[string, string]{}
 
 func getMinecraftInstallDir() (string, error) {
+	if runtime.GOOS != "windows" {
+		return "", utils.WrappedErrorf("This function works only on Windows")
+	}
 	if installDir == "" {
 		output, err := exec.Command("powershell", "(Get-AppxPackage -Name Microsoft.MinecraftUWP).InstallLocation").Output()
 		if err != nil {
@@ -250,11 +258,136 @@ func getLatestFile(p string, m utils.NavigableMap[string, string]) (string, erro
 	return "", utils.WrapErrorf(os.ErrNotExist, "File '%s' does not exist", p)
 }
 
+// From https://stackoverflow.com/a/24792688/6459649
+func unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := r.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	err = os.MkdirAll(dest, 0755)
+	if err != nil {
+		return utils.WrapErrorf(err, "An error occurred while creating directory %s", dest)
+	}
+
+	// Closure to address file descriptors issue with all the deferred .Close() methods
+	extractAndWriteFile := func(f *zip.File) error {
+		rc, err := f.Open()
+		if err != nil {
+			return utils.WrapErrorf(err, "An error occurred while opening file %s", f.Name)
+		}
+
+		path := filepath.Join(dest, f.Name)
+
+		// Check for ZipSlip (Directory traversal)
+		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", path)
+		}
+
+		if f.FileInfo().IsDir() {
+			err := os.MkdirAll(path, f.Mode())
+			if err != nil {
+				return utils.WrapErrorf(err, "An error occurred while creating directory %s", path)
+			}
+		} else {
+			err := os.MkdirAll(filepath.Dir(path), f.Mode())
+			if err != nil {
+				return utils.WrapErrorf(err, "An error occurred while creating directory %s", filepath.Dir(path))
+			}
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return utils.WrapErrorf(err, "An error occurred while creating file %s", path)
+			}
+
+			_, err = io.Copy(f, rc)
+			if err != nil {
+				return utils.WrapErrorf(err, "An error occurred while writing file %s", path)
+			}
+
+			err = f.Close()
+			if err != nil {
+				return utils.WrapErrorf(err, "An error occurred while closing file %s", path)
+			}
+
+			err = rc.Close()
+			if err != nil {
+				return utils.WrapErrorf(err, "An error occurred while closing file %s", f.Name)
+			}
+		}
+		return nil
+	}
+
+	for _, f := range r.File {
+		err := extractAndWriteFile(f)
+		if err != nil {
+			return utils.WrapErrorf(err, "An error occurred while extracting file %s", f.Name)
+		}
+	}
+
+	return nil
+}
+
 func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string], error) {
 	versions := utils.NewNavigableMap[string, string]()
 	installDir, err := getMinecraftInstallDir()
 	if err != nil {
-		return versions, utils.WrapErrorf(err, "Failed to get Minecraft install directory")
+		url := "https://aka.ms/resourcepacktemplate"
+		outName := "resource_pack_template.zip"
+		dirName := "RP"
+		if isBp {
+			url = "https://aka.ms/behaviorpacktemplate"
+			outName = "behavior_pack_template.zip"
+			dirName = "BP"
+		}
+
+		stat, err := os.Stat(filepath.Join("packs", dirName))
+		if err == nil && stat.IsDir() {
+			versions.Put("1.0.0", filepath.Join("packs", dirName))
+			return versions, nil
+		}
+		utils.Logger.Infof("Downloading %s", url)
+
+		err = os.Mkdir("packs", 0755)
+		if err != nil && !os.IsExist(err) {
+			return versions, utils.WrapErrorf(err, "An error occurred while creating packs directory")
+		}
+		out, err := os.Create(path.Join("packs", outName))
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while creating file %s", outName)
+		}
+		resp, err := http.Get(url)
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+		}
+		_, err = io.Copy(out, resp.Body)
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+		}
+		err = out.Close()
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+		}
+		err = resp.Body.Close()
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+		}
+
+		err = unzip(out.Name(), path.Join("packs", dirName))
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while extracting %s", outName)
+		}
+		err = os.Remove(out.Name())
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while removing %s", outName)
+		}
+
+		versions.Put("0.0.0", path.Join("packs", dirName))
+		return versions, err
 	}
 	packDir := path.Join(installDir, "data", "behavior_packs")
 	if !isBp {
