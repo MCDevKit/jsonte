@@ -2,11 +2,13 @@ package utils
 
 import "sort"
 
+// NavigableMap is a map that can be navigated in order of keys. It is not thread-safe.
 type NavigableMap[K comparable, V any] struct {
 	keys []K
 	data map[K]V
 }
 
+// NewNavigableMap creates a new NavigableMap.
 func NewNavigableMap[K comparable, V any]() NavigableMap[K, V] {
 	return NavigableMap[K, V]{
 		data: map[K]V{},
@@ -14,10 +16,12 @@ func NewNavigableMap[K comparable, V any]() NavigableMap[K, V] {
 	}
 }
 
+// Get returns the value associated with the key.
 func (m *NavigableMap[K, V]) Get(key K) V {
 	return m.data[key]
 }
 
+// Put puts the value associated with the key.
 func (m *NavigableMap[K, V]) Put(key K, value V) {
 	m.data[key] = value
 	if !m.ContainsKey(key) {
@@ -25,6 +29,7 @@ func (m *NavigableMap[K, V]) Put(key K, value V) {
 	}
 }
 
+// Remove removes the value associated with the key.
 func (m *NavigableMap[K, V]) Remove(key K) {
 	delete(m.data, key)
 	for i, k := range m.keys {
@@ -35,6 +40,7 @@ func (m *NavigableMap[K, V]) Remove(key K) {
 	}
 }
 
+// ContainsKey returns true if the key exists.
 func (m *NavigableMap[K, V]) ContainsKey(key K) bool {
 	for _, k := range m.keys {
 		if k == key {
@@ -44,10 +50,12 @@ func (m *NavigableMap[K, V]) ContainsKey(key K) bool {
 	return false
 }
 
+// Keys returns the keys in order.
 func (m *NavigableMap[K, V]) Keys() []K {
 	return m.keys
 }
 
+// Values returns the values in order of keys.
 func (m *NavigableMap[K, V]) Values() []V {
 	var values []V
 	for _, k := range m.keys {
@@ -56,19 +64,23 @@ func (m *NavigableMap[K, V]) Values() []V {
 	return values
 }
 
+// Size returns the size of the map.
 func (m *NavigableMap[K, V]) Size() int {
 	return len(m.keys)
 }
 
+// IsEmpty returns true if the map is empty.
 func (m *NavigableMap[K, V]) IsEmpty() bool {
 	return m.Size() == 0
 }
 
+// Clear clears the map.
 func (m *NavigableMap[K, V]) Clear() {
 	m.keys = []K{}
 	m.data = map[K]V{}
 }
 
+// Sort sorts the map with the specified comparator.
 func (m *NavigableMap[K, V]) Sort(comparer func(K, K) int) {
 	sort.SliceStable(m.keys, func(i, j int) bool {
 		return comparer(m.keys[i], m.keys[j]) < 0

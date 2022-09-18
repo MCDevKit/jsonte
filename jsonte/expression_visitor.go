@@ -41,9 +41,10 @@ func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) interface{} {
 	case *parser.IndexContext:
 		return v.VisitIndex(val)
 	}
-	return nil
+	panic("Unknown tree type " + reflect.TypeOf(tree).String())
 }
 
+// resolveLambdaTree resolves a string to an AST tree
 func (v *ExpressionVisitor) resolveLambdaTree(src string) parser.ILambdaContext {
 	is := antlr.NewInputStream(src)
 	lexer := parser.NewJsonTemplateLexer(is)
@@ -57,18 +58,22 @@ func (v *ExpressionVisitor) resolveLambdaTree(src string) parser.ILambdaContext 
 	return p.Lambda()
 }
 
+// pushScope pushes a new scope to the stack
 func (v *ExpressionVisitor) pushScope(scope map[string]interface{}) {
 	v.scope.PushBack(scope)
 }
 
+// pushScopePair pushes a new entry to the stack
 func (v *ExpressionVisitor) pushScopePair(key string, value interface{}) {
 	v.scope.PushBack(map[string]interface{}{key: value})
 }
 
+// popScope pops the last scope from the stack
 func (v *ExpressionVisitor) popScope() {
 	v.scope.PopBack()
 }
 
+// negate negates a value
 func negate(value interface{}) interface{} {
 	if value == nil {
 		return nil
@@ -113,6 +118,7 @@ func getError(v interface{}) error {
 	return nil
 }
 
+// resolveScope resolves a value from the scope by name
 func (v *ExpressionVisitor) resolveScope(name string) interface{} {
 	for i := v.scope.Len() - 1; i >= 0; i-- {
 		m := v.scope.At(i)
@@ -132,6 +138,7 @@ func (v *ExpressionVisitor) resolveScope(name string) interface{} {
 }
 
 func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) interface{} {
+	// check the type of the expression
 	v.action = utils.Value
 	if ctx.Iteration() != nil {
 		v.action = utils.Iteration
@@ -142,6 +149,7 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) inter
 	if ctx.Question() != nil {
 		v.action = utils.Predicate
 	}
+	// check if the iteration value is named
 	name := DefaultName
 	if ctx.As() != nil {
 		name = ctx.Name().GetText()
@@ -164,6 +172,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 	if context.Not() != nil {
 		return !utils.ToBoolean(v.Visit(context.Field(0)))
 	}
+	// process field composed of two other fields
 	if len(context.AllField()) == 2 {
 		f1 := v.Visit(context.Field(0))
 		if isError(f1) {
@@ -288,6 +297,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			return NaN
 		}
 	} else if len(context.AllField()) == 3 {
+		// handle ternary operator
 		if context.Question() != nil {
 			f1 := v.Visit(context.Field(0))
 			if isError(f1) {
@@ -300,6 +310,8 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			}
 		}
 	}
+	// if the field is another field in parentheses, return the value of that field
+	// we need to also check if the first element is not a field, because if it is, it will be a function call
 	if context.LeftParen() != nil && len(context.AllField()) == 1 && context.GetChild(0) != context.Field(0) {
 		return v.Visit(context.Field(0))
 	} else if context.LeftParen() != nil && len(context.AllField()) == 1 && context.GetChild(0) == context.Field(0) {
@@ -354,6 +366,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			return function
 		}
 	}
+	// handle accessing a property of an object or calling an instance function
 	if context.Name() != nil && len(context.AllField()) == 1 {
 		text := context.Name().GetText()
 		object := v.Visit(context.Field(0))
@@ -362,6 +375,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		}
 		var newScope interface{} = nil
 		if object == nil {
+			// handle null-forgiving operator
 			if context.Question() != nil {
 				return nil
 			} else {
@@ -385,6 +399,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		}
 
 		if newScope == nil {
+			// handle null-forgiving operator
 			if v.action == utils.Predicate || context.Question() != nil {
 				return nil
 			} else {
@@ -396,6 +411,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 	if context.Name() != nil {
 		return v.Visit(context.Name())
 	}
+	// handle indexed access
 	if context.Index() != nil && len(context.AllField()) == 1 {
 		i := v.Visit(context.Index())
 		if isError(i) {
@@ -406,9 +422,11 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			return object
 		}
 		if utils.IsArray(object) {
+			// in case of an array, we need an integer index
 			if utils.IsNumber(i) {
 				value := utils.ToNumber(i).IntValue()
 				if value < 0 || value >= int32(len(object.(utils.JsonArray))) {
+					// handle null-forgiving operator
 					if context.Question() != nil {
 						return nil
 					} else {
@@ -417,6 +435,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				}
 				return object.(utils.JsonArray)[value]
 			} else {
+				// handle null-forgiving operator
 				if context.Question() != nil {
 					return nil
 				} else {
@@ -424,8 +443,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				}
 			}
 		} else if utils.IsObject(object) {
+			// in case of an object, we need a string index
 			value := utils.ToString(i)
 			if b, ok := object.(utils.JsonObject)[value]; !ok {
+				// handle null-forgiving operator
 				if context.Question() != nil {
 					return nil
 				} else {
@@ -435,9 +456,11 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				return b
 			}
 		} else if str, ok := object.(string); ok {
+			// in case of a string, we need an integer index
 			if utils.IsNumber(i) {
 				value := utils.ToNumber(i).IntValue()
 				if value < 0 || value >= int32(len(str)) {
+					// handle null-forgiving operator
 					if context.Question() != nil {
 						return nil
 					} else {
@@ -446,6 +469,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				}
 				return string(rune(str[value]))
 			} else {
+				// handle null-forgiving operator
 				if context.Question() != nil {
 					return nil
 				} else {
@@ -453,6 +477,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				}
 			}
 		} else {
+			// handle null-forgiving operator
 			if context.Question() != nil {
 				return nil
 			} else {
@@ -470,12 +495,15 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 	if context.ESCAPED_STRING() != nil {
 		return utils.UnescapeString(utils.ToString(context.ESCAPED_STRING().GetText()))
 	}
+	// literal array notation
 	if context.Array() != nil {
 		return v.Visit(context.Array())
 	}
+	// literal object notation
 	if context.Object() != nil {
 		return v.Visit(context.Object())
 	}
+	// negation
 	if context.Subtract() != nil && len(context.AllField()) == 1 {
 		f := v.Visit(context.Field(0))
 		if isError(f) {
@@ -483,11 +511,12 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		}
 		return negate(f)
 	}
-	return nil
+	return utils.WrappedErrorf("Failed to resolve field '%s'", context.GetText())
 }
 
 func (v *ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
 	text := context.GetText()
+	// "this" is a special case that always refers to the current full scope
 	if text == "this" {
 		scope := utils.JsonObject{}
 		for i := 0; i < v.scope.Len(); i++ {
@@ -525,10 +554,7 @@ func (v *ExpressionVisitor) VisitIndex(context *parser.IndexContext) interface{}
 	if context.Field() != nil {
 		return v.Visit(context.Field())
 	}
-	return utils.JsonNumber{
-		Value:   -1,
-		Decimal: false,
-	}
+	return utils.WrappedErrorf("Invalid index: %s", context.GetText())
 }
 
 func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) interface{} {
@@ -605,5 +631,5 @@ func (v *ExpressionVisitor) VisitFunction_param(ctx *parser.Function_paramContex
 	if ctx.Lambda() != nil {
 		return v.Visit(ctx.Lambda())
 	}
-	return nil
+	return utils.WrappedErrorf("Invalid function parameter: %s", ctx.GetText())
 }

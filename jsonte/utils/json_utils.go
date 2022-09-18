@@ -10,28 +10,39 @@ import (
 	"strings"
 )
 
+// JsonObject is a map of string to interface. It is used to represent a JSON object.
 type JsonObject map[string]interface{}
+
+// JsonArray is a slice of interface. It is used to represent a JSON array.
 type JsonArray []interface{}
 
+// Number is an interface that represents a number, that can be either integer or decimal.
 type Number interface {
+	// IntValue returns the number as an integer.
 	IntValue() int
+	// FloatValue returns the number as a float.
 	FloatValue() float64
+	// BoolValue returns the number as a boolean.
 	BoolValue() bool
+	// StringValue returns the number as a string.
 	StringValue() string
 }
 
+// JsonNumber is a struct that represents a number, that can be either integer or decimal.
 type JsonNumber struct {
 	Number
 	Value   float64
 	Decimal bool
 }
 
+// CacheDir is a directory used for cache
 var CacheDir string
 
 func (n JsonNumber) IntValue() int32 {
 	return int32(n.Value)
 }
 
+// toFixed rounds a float to a given precision.
 func toFixed(num float64, precision int) float64 {
 	output := math.Pow(10, float64(precision))
 	return math.Round(num*output) / output
@@ -59,6 +70,7 @@ func (n JsonNumber) StringValue() string {
 	return strconv.FormatInt(int64(n.IntValue()), 10)
 }
 
+// ToBoolean converts an interface to a boolean.
 func ToBoolean(obj interface{}) bool {
 	if obj == nil {
 		return false
@@ -84,6 +96,7 @@ func ToBoolean(obj interface{}) bool {
 	return obj != nil
 }
 
+// ToNumber converts an interface to a JSON number.
 func ToNumber(obj interface{}) JsonNumber {
 	if obj == nil {
 		return JsonNumber{
@@ -182,6 +195,7 @@ func ToNumber(obj interface{}) JsonNumber {
 	}
 }
 
+// ToString converts an interface to a string.
 func ToString(obj interface{}) string {
 	if obj == nil {
 		return "null"
@@ -214,6 +228,7 @@ func ToString(obj interface{}) string {
 	return strings.ReplaceAll(buffer.String(), "\n", "")
 }
 
+// ToPrettyString converts an interface to a string. In case of an object or array, it will be pretty printed.
 func ToPrettyString(obj interface{}) string {
 	if obj == nil {
 		return "null"
@@ -247,6 +262,7 @@ func ToPrettyString(obj interface{}) string {
 	return buffer.String()
 }
 
+// IsNumber returns true if the given interface is a number.
 func IsNumber(obj interface{}) bool {
 	if obj == nil {
 		return false
@@ -272,6 +288,7 @@ func IsNumber(obj interface{}) bool {
 	return false
 }
 
+// IsArray returns true if the given interface is an array.
 func IsArray(obj interface{}) bool {
 	if obj == nil {
 		return false
@@ -284,6 +301,7 @@ func IsArray(obj interface{}) bool {
 	return false
 }
 
+// AsArray returns the given interface as a JSON array.
 func AsArray(obj interface{}) JsonArray {
 	if obj == nil {
 		return nil
@@ -301,6 +319,7 @@ func AsArray(obj interface{}) JsonArray {
 	return nil
 }
 
+// AsObject returns the given interface as a JSON object.
 func AsObject(obj interface{}) JsonObject {
 	if obj == nil {
 		return nil
@@ -318,6 +337,7 @@ func AsObject(obj interface{}) JsonObject {
 	return nil
 }
 
+// IsObject returns true if the given interface is an object.
 func IsObject(obj interface{}) bool {
 	if obj == nil {
 		return false
@@ -330,6 +350,8 @@ func IsObject(obj interface{}) bool {
 	return false
 }
 
+// MergeObject merges two JSON objects into a new JSON object.
+// If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.
 func MergeObject(template, parent JsonObject) JsonObject {
 	result := JsonObject{}
 	for k, v := range template {
@@ -377,6 +399,7 @@ func MergeObject(template, parent JsonObject) JsonObject {
 	return result
 }
 
+// MergeArray merges two JSON arrays into a new JSON array.
 func MergeArray(template, parent JsonArray) JsonArray {
 	result := JsonArray{}
 	for _, v := range template {
@@ -404,6 +427,7 @@ func MergeArray(template, parent JsonArray) JsonArray {
 	return result
 }
 
+// IsEqual returns true if the given interfaces are equal.
 func IsEqual(a, b interface{}) bool {
 	if a == nil && b == nil {
 		return true
@@ -415,7 +439,7 @@ func IsEqual(a, b interface{}) bool {
 		return true
 	}
 	if IsNumber(a) && IsNumber(b) {
-		return ToNumber(a) == ToNumber(b)
+		return ToNumber(a).FloatValue() == ToNumber(b).FloatValue()
 	}
 	if IsArray(a) && IsArray(b) {
 		return IsEqualArray(a.(JsonArray), b.(JsonArray))
@@ -426,6 +450,7 @@ func IsEqual(a, b interface{}) bool {
 	return false
 }
 
+// Less returns true if the first interface is less than the second interface.
 func Less(a, b interface{}) bool {
 	if a == nil && b == nil {
 		return false
@@ -437,7 +462,7 @@ func Less(a, b interface{}) bool {
 		return true
 	}
 	if IsNumber(a) && IsNumber(b) {
-		if ToNumber(a).Value < ToNumber(b).Value {
+		if ToNumber(a).FloatValue() < ToNumber(b).FloatValue() {
 			return true
 		} else {
 			return false
@@ -451,6 +476,7 @@ func Less(a, b interface{}) bool {
 	return false
 }
 
+// IsEqualObject returns true if the given JSON objects are equal.
 func IsEqualObject(a, b JsonObject) bool {
 	if len(a) != len(b) {
 		return false
@@ -463,6 +489,7 @@ func IsEqualObject(a, b JsonObject) bool {
 	return true
 }
 
+// IsEqualArray returns true if the given JSON arrays are equal.
 func IsEqualArray(a, b JsonArray) bool {
 	if len(a) != len(b) {
 		return false
@@ -475,6 +502,7 @@ func IsEqualArray(a, b JsonArray) bool {
 	return true
 }
 
+// CreateRange creates a range of numbers from start to end as a JSON array.
 func CreateRange(start, end int32) JsonArray {
 	result := JsonArray{}
 	if start > end {
@@ -486,6 +514,7 @@ func CreateRange(start, end int32) JsonArray {
 	return result
 }
 
+// UnescapeString removes quotes and unescapes a string.
 func UnescapeString(str string) string {
 	if len(str) < 3 {
 		return ""
@@ -498,6 +527,8 @@ func UnescapeString(str string) string {
 	return str
 }
 
+// UnwrapContainers removes all containers from the given interface.
+// Currently only unpacks JsonNumber into an actual number with correct type.
 func UnwrapContainers(obj interface{}) interface{} {
 	if obj == nil {
 		return nil
@@ -540,6 +571,7 @@ func UnwrapContainers(obj interface{}) interface{} {
 
 }
 
+// DeepCopyObject creates a deep copy of the given JSON object.
 func DeepCopyObject(object JsonObject) JsonObject {
 	result := JsonObject{}
 	for k, v := range object {
@@ -554,6 +586,7 @@ func DeepCopyObject(object JsonObject) JsonObject {
 	return result
 }
 
+// DeepCopyArray creates a deep copy of the given JSON array.
 func DeepCopyArray(object JsonArray) JsonArray {
 	result := JsonArray{}
 	for _, v := range object {
@@ -568,6 +601,7 @@ func DeepCopyArray(object JsonArray) JsonArray {
 	return result
 }
 
+// DeleteNulls removes all keys with null values from the given JSON object.
 func DeleteNulls(object JsonObject) JsonObject {
 	for k, v := range object {
 		if IsObject(v) {
@@ -581,6 +615,7 @@ func DeleteNulls(object JsonObject) JsonObject {
 	return object
 }
 
+// DeleteNullsFromArray removes all keys inside elements of JSON object type with null values from the given JSON array.
 func DeleteNullsFromArray(array JsonArray) JsonArray {
 	for i, v := range array {
 		if IsObject(v) {
@@ -592,6 +627,7 @@ func DeleteNullsFromArray(array JsonArray) JsonArray {
 	return array
 }
 
+// ParseJson parses a JSON string into a JSON object. It includes support for comments and detects common syntax errors.
 func ParseJson(str []byte) (JsonObject, error) {
 	dat := make(JsonObject)
 	// Remove comments
@@ -660,7 +696,10 @@ func convertNumbersArray(object JsonArray) JsonArray {
 	return result
 }
 
+// JsonAction is an enum for the different actions that can be performed via jsonte.
 type JsonAction int
+
+// JsonLambda is a function that can be executed.
 type JsonLambda func(args []interface{}) (interface{}, error)
 
 const (
@@ -670,6 +709,7 @@ const (
 	Predicate
 )
 
+// String returns a string representation of the given JsonAction.
 func (a JsonAction) String() string {
 	switch a {
 	case Value:

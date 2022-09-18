@@ -17,8 +17,10 @@ type IOResolver struct {
 	IsDir            func(path string) (bool, error)
 }
 
+// Resolver Current Resolver used by jsonte to access IO
 var Resolver IOResolver = DefaultIOResolver
 
+// DefaultIOResolver Default IO Resolver, that uses the os package
 var DefaultIOResolver = IOResolver{
 	Open: func(path string) (io.ReadCloser, error) {
 		return os.Open(path)
@@ -61,6 +63,7 @@ var DefaultIOResolver = IOResolver{
 	},
 }
 
+// NoIOResolver Resolver that does not allow any IO
 var NoIOResolver = IOResolver{
 	Open: func(path string) (io.ReadCloser, error) {
 		return nil, utils.WrappedErrorf("IO is disabled")
@@ -73,6 +76,7 @@ var NoIOResolver = IOResolver{
 	},
 }
 
+// CreateFakeFS Creates a fake filesystem from a map of byte slices
 func CreateFakeFS(files map[string][]byte) IOResolver {
 	return IOResolver{
 		Open: func(path string) (io.ReadCloser, error) {
