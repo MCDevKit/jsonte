@@ -2,14 +2,12 @@ package functions
 
 import (
 	"archive/zip"
-	"fmt"
+	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/stirante/jsonc"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -147,7 +145,7 @@ func getMinecraftInstallDir() (string, error) {
 		return "", utils.WrappedErrorf("This function works only on Windows")
 	}
 	if installDir == "" {
-		output, err := exec.Command("powershell", "(Get-AppxPackage -Name Microsoft.MinecraftUWP).InstallLocation").Output()
+		output, err := safeio.Resolver.ExecCommand("powershell", "(Get-AppxPackage -Name Microsoft.MinecraftUWP).InstallLocation")
 		if err != nil {
 			return "", utils.WrapErrorf(err, "An error occurred while getting Minecraft install directory")
 		}
@@ -205,7 +203,7 @@ func listLatestFiles(p string, m utils.NavigableMap[string, string]) (utils.Json
 	keys := m.Keys()
 	for i := len(keys) - 1; i >= 0; i-- {
 		s := path.Join(m.Get(keys[i]), p)
-		_, err := os.Stat(s)
+		_, err := safeio.Resolver.Stat(s)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -213,23 +211,18 @@ func listLatestFiles(p string, m utils.NavigableMap[string, string]) (utils.Json
 				return nil, utils.WrapErrorf(err, "An error occurred while reading file %s", p)
 			}
 		}
-		err = filepath.Walk(s, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if !info.IsDir() {
-				rel, err := filepath.Rel(s, path)
-				if err != nil {
-					return err
-				}
-				if _, ok := result[rel]; !ok {
-					result[rel] = path
-				}
-			}
-			return nil
-		})
+		recursive, err := safeio.Resolver.OpenDirRecursive(s)
 		if err != nil {
 			return nil, utils.WrapErrorf(err, "An error occurred while reading file %s", p)
+		}
+		for _, f := range recursive {
+			rel, err := filepath.Rel(s, f)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := result[rel]; !ok {
+				result[rel] = f
+			}
 		}
 	}
 	arr := make(utils.JsonArray, len(result))
@@ -245,7 +238,7 @@ func getLatestFile(p string, m utils.NavigableMap[string, string]) (string, erro
 	keys := m.Keys()
 	for i := len(keys) - 1; i >= 0; i-- {
 		s := path.Join(m.Get(keys[i]), p)
-		_, err := os.Stat(s)
+		_, err := safeio.Resolver.Stat(s)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -260,12 +253,20 @@ func getLatestFile(p string, m utils.NavigableMap[string, string]) (string, erro
 
 // From https://stackoverflow.com/a/24792688/6459649
 func unzip(src, dest string) error {
-	r, err := zip.OpenReader(src)
+	stat, err := safeio.Resolver.Stat(src)
+	if err != nil {
+		return utils.WrapErrorf(err, "An error occurred while reading file %s", src)
+	}
+	open, err := safeio.Resolver.Open(src)
+	if err != nil {
+		return utils.WrapErrorf(err, "An error occurred while opening file %s", src)
+	}
+	r, err := zip.NewReader(open, stat.Size())
 	if err != nil {
 		return utils.WrapErrorf(err, "An error occurred while reading zip file %s", src)
 	}
 
-	err = os.MkdirAll(dest, 0755)
+	err = safeio.Resolver.MkdirAll(dest)
 	if err != nil {
 		return utils.WrapErrorf(err, "An error occurred while creating directory %s", dest)
 	}
@@ -281,20 +282,20 @@ func unzip(src, dest string) error {
 
 		// Check for ZipSlip (Directory traversal)
 		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return fmt.Errorf("illegal file path: %s", path)
+			return utils.WrappedErrorf("Illegal file path: %s", path)
 		}
 
 		if f.FileInfo().IsDir() {
-			err := os.MkdirAll(path, f.Mode())
+			err := safeio.Resolver.MkdirAll(path)
 			if err != nil {
 				return utils.WrapErrorf(err, "An error occurred while creating directory %s", path)
 			}
 		} else {
-			err := os.MkdirAll(filepath.Dir(path), f.Mode())
+			err := safeio.Resolver.MkdirAll(filepath.Dir(path))
 			if err != nil {
 				return utils.WrapErrorf(err, "An error occurred while creating directory %s", filepath.Dir(path))
 			}
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			f, err := safeio.Resolver.Create(path)
 			if err != nil {
 				return utils.WrapErrorf(err, "An error occurred while creating file %s", path)
 			}
@@ -311,7 +312,7 @@ func unzip(src, dest string) error {
 
 			err = rc.Close()
 			if err != nil {
-				return utils.WrapErrorf(err, "An error occurred while closing file %s", f.Name)
+				return utils.WrapErrorf(err, "An error occurred while closing file %s", path)
 			}
 		}
 		return nil
@@ -324,7 +325,7 @@ func unzip(src, dest string) error {
 		}
 	}
 
-	err = r.Close()
+	err = open.Close()
 	if err != nil {
 		return utils.WrapErrorf(err, "An error occurred while closing zip file %s", src)
 	}
@@ -350,26 +351,26 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 			base = utils.CacheDir
 		}
 
-		stat, err := os.Stat(filepath.Join(base, dirName))
+		stat, err := safeio.Resolver.Stat(path.Join(base, dirName))
 		if err == nil && stat.IsDir() {
-			versions.Put("1.0.0", filepath.Join(base, dirName))
+			versions.Put("1.0.0", path.Join(base, dirName))
 			return versions, nil
 		}
 		utils.Logger.Infof("Downloading %s", url)
 
-		err = os.MkdirAll(base, 0755)
+		err = safeio.Resolver.MkdirAll(base)
 		if err != nil && !os.IsExist(err) {
 			return versions, utils.WrapErrorf(err, "An error occurred while creating cache directory")
 		}
-		out, err := os.Create(path.Join(base, outName))
+		out, err := safeio.Resolver.Create(path.Join(base, outName))
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while creating file %s", outName)
 		}
-		resp, err := http.Get(url)
+		resp, err := safeio.Resolver.HttpGet(url)
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
-		_, err = io.Copy(out, resp.Body)
+		_, err = io.Copy(out, resp)
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
@@ -377,16 +378,16 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
-		err = resp.Body.Close()
+		err = resp.Close()
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 
-		err = unzip(out.Name(), path.Join(base, dirName))
+		err = unzip(path.Join(base, outName), path.Join(base, dirName))
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while extracting %s", outName)
 		}
-		err = os.Remove(out.Name())
+		err = safeio.Resolver.Remove(path.Join(base, outName))
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while removing %s", outName)
 		}

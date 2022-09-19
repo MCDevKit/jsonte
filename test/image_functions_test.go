@@ -10,9 +10,10 @@ var img, _ = base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCA
 
 func TestImageWidth(t *testing.T) {
 	safeio.Resolver = safeio.CreateFakeFS(
-		map[string][]byte{
+		map[string]interface{}{
 			"test.png": img,
 		},
+		false,
 	)
 	eval := evaluate(t, `imageWidth('test.png')`)
 	assertNumber(t, eval, 5)
@@ -21,9 +22,10 @@ func TestImageWidth(t *testing.T) {
 
 func TestImageHeight(t *testing.T) {
 	safeio.Resolver = safeio.CreateFakeFS(
-		map[string][]byte{
+		map[string]interface{}{
 			"test.png": img,
 		},
+		false,
 	)
 	eval := evaluate(t, `imageHeight('test.png')`)
 	assertNumber(t, eval, 5)

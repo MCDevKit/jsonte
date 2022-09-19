@@ -8,14 +8,15 @@ import (
 
 func prepareFS() {
 	safeio.Resolver = safeio.CreateFakeFS(
-		map[string][]byte{
+		map[string]interface{}{
 			"test.png":           img,
-			"test.txt":           []byte("Hello World!"),
-			"test2.txt":          []byte("Hello World!"),
-			"dir/test3.txt":      []byte("Hello World!"),
-			"dir/dir2/test4.txt": []byte("Hello World!"),
-			"test.json":          []byte(`{"test": "Hello World!"}`),
+			"test.txt":           "Hello World!",
+			"test2.txt":          "Hello World!",
+			"dir/test3.txt":      "Hello World!",
+			"dir/dir2/test4.txt": "Hello World!",
+			"test.json":          `{"test": "Hello World!"}`,
 		},
+		false,
 	)
 }
 

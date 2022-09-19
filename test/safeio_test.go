@@ -9,9 +9,9 @@ import (
 
 func TestFakeOpen(t *testing.T) {
 	expected := "Hello World!"
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"test.txt": []byte(expected),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"test.txt": expected,
+	}, false)
 	open, err := safeio.Resolver.Open("test.txt")
 	if err != nil {
 		t.Fatal(err)
@@ -27,12 +27,12 @@ func TestFakeOpen(t *testing.T) {
 
 func TestFakeOpenDir(t *testing.T) {
 	expected := []string{"test.txt", "test2.txt"}
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"test.txt":           []byte("Hello World!"),
-		"test2.txt":          []byte("Hello World!"),
-		"dir/test3.txt":      []byte("Hello World!"),
-		"dir/dir2/test4.txt": []byte("Hello World!"),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"test.txt":           "Hello World!",
+		"test2.txt":          "Hello World!",
+		"dir/test3.txt":      "Hello World!",
+		"dir/dir2/test4.txt": "Hello World!",
+	}, false)
 	open, err := safeio.Resolver.OpenDir(".")
 	if err != nil {
 		t.Fatal(err)
@@ -55,12 +55,12 @@ func TestFakeOpenDir(t *testing.T) {
 
 func TestFakeOpenDir2(t *testing.T) {
 	expected := []string{"test3.txt"}
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"test.txt":           []byte("Hello World!"),
-		"test2.txt":          []byte("Hello World!"),
-		"dir/test3.txt":      []byte("Hello World!"),
-		"dir/dir2/test4.txt": []byte("Hello World!"),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"test.txt":           "Hello World!",
+		"test2.txt":          "Hello World!",
+		"dir/test3.txt":      "Hello World!",
+		"dir/dir2/test4.txt": "Hello World!",
+	}, false)
 	open, err := safeio.Resolver.OpenDir("dir")
 	if err != nil {
 		t.Fatal(err)
@@ -77,12 +77,12 @@ func TestFakeOpenDir2(t *testing.T) {
 
 func TestFakeOpenDir3(t *testing.T) {
 	expected := []string{"test4.txt"}
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"test.txt":           []byte("Hello World!"),
-		"test2.txt":          []byte("Hello World!"),
-		"dir/test3.txt":      []byte("Hello World!"),
-		"dir/dir2/test4.txt": []byte("Hello World!"),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"test.txt":           "Hello World!",
+		"test2.txt":          "Hello World!",
+		"dir/test3.txt":      "Hello World!",
+		"dir/dir2/test4.txt": "Hello World!",
+	}, false)
 	open, err := safeio.Resolver.OpenDir("dir/dir2")
 	if err != nil {
 		t.Fatal(err)
@@ -99,12 +99,12 @@ func TestFakeOpenDir3(t *testing.T) {
 
 func TestFakeOpenDirRecursive(t *testing.T) {
 	expected := []string{"test3.txt", "dir2\\test4.txt"}
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"test.txt":           []byte("Hello World!"),
-		"test2.txt":          []byte("Hello World!"),
-		"dir/test3.txt":      []byte("Hello World!"),
-		"dir/dir2/test4.txt": []byte("Hello World!"),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"test.txt":           "Hello World!",
+		"test2.txt":          "Hello World!",
+		"dir/test3.txt":      "Hello World!",
+		"dir/dir2/test4.txt": "Hello World!",
+	}, false)
 	open, err := safeio.Resolver.OpenDirRecursive("dir")
 	if err != nil {
 		t.Fatal(err)
@@ -127,12 +127,12 @@ func TestFakeOpenDirRecursive(t *testing.T) {
 
 func TestFakeOpenDirRecursive2(t *testing.T) {
 	expected := []string{"test.txt", "test2.txt", "dir\\test3.txt", "dir\\dir2\\test4.txt"}
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"test.txt":           []byte("Hello World!"),
-		"test2.txt":          []byte("Hello World!"),
-		"dir/test3.txt":      []byte("Hello World!"),
-		"dir/dir2/test4.txt": []byte("Hello World!"),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"test.txt":           "Hello World!",
+		"test2.txt":          "Hello World!",
+		"dir/test3.txt":      "Hello World!",
+		"dir/dir2/test4.txt": "Hello World!",
+	}, false)
 	open, err := safeio.Resolver.OpenDirRecursive(".")
 	if err != nil {
 		t.Fatal(err)
@@ -150,5 +150,84 @@ func TestFakeOpenDirRecursive2(t *testing.T) {
 		if file != expected[i] {
 			t.Fatalf("Invalid file. Expected %s, got %s", expected[i], file)
 		}
+	}
+}
+
+func TestFakeCreate(t *testing.T) {
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"test.txt":           "Hello World!",
+		"test2.txt":          "Hello World!",
+		"dir/test3.txt":      "Hello World!",
+		"dir/dir2/test4.txt": "Hello World!",
+	}, false)
+	out, err := safeio.Resolver.Create("test5.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := out.Write([]byte("Hello World!"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 12 {
+		t.Fatalf("Invalid written length. Expected %d, got %d", 12, n)
+	}
+	in, err := safeio.Resolver.Open("test5.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := ioutil.ReadAll(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "Hello World!" {
+		t.Fatalf("Invalid data. Expected %s, got %s", "Hello World!", string(data))
+	}
+}
+
+func TestFakeCreate2(t *testing.T) {
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"test.txt":           "Hello World!",
+		"test2.txt":          "Hello World!",
+		"dir/test3.txt":      "Hello World!",
+		"dir/dir2/test4.txt": "Hello World!",
+	}, false)
+	out, err := safeio.Resolver.Create("dir/test5.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := out.Write([]byte("Hello World!"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 12 {
+		t.Fatalf("Invalid written length. Expected %d, got %d", 12, n)
+	}
+	in, err := safeio.Resolver.Open("dir/test5.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := ioutil.ReadAll(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "Hello World!" {
+		t.Fatalf("Invalid data. Expected %s, got %s", "Hello World!", string(data))
+	}
+}
+
+func TestFakeRemove(t *testing.T) {
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"test.txt":           "Hello World!",
+		"test2.txt":          "Hello World!",
+		"dir/test3.txt":      "Hello World!",
+		"dir/dir2/test4.txt": "Hello World!",
+	}, false)
+	err := safeio.Resolver.Remove("test.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = safeio.Resolver.Open("test.txt")
+	if err == nil {
+		t.Fatal("File should not exist")
 	}
 }

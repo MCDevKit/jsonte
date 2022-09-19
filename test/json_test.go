@@ -346,9 +346,9 @@ func TestSimpleCopy(t *testing.T) {
 		"asd": 123,
 		"overrideMe": -1
 	}`
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"file.json": []byte(file),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json": file,
+	}, false)
 	template := `{
 		"$copy": "file.json",
 		"$template": {
@@ -373,9 +373,9 @@ func TestTemplateCopy(t *testing.T) {
 			"overrideMe": -1
 		}
 	}`
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"file.templ": []byte(file),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.templ": file,
+	}, false)
 	template := `{
 		"$copy": "file.templ",
 		"$template": {
@@ -400,9 +400,9 @@ func TestDeleteNulls(t *testing.T) {
 			"overrideMe": -1
 		}
 	}`
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"file.templ": []byte(file),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.templ": file,
+	}, false)
 	template := `{
 		"$copy": "file.templ",
 		"$template": {
@@ -422,9 +422,9 @@ func TestCopyAndExtend(t *testing.T) {
 		"overrideMe": -1,
 		"removeMe": 1
 	}`
-	safeio.Resolver = safeio.CreateFakeFS(map[string][]byte{
-		"file.json": []byte(file),
-	})
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json": file,
+	}, false)
 	module := `{
 		"$module": "simple",
 		"$template": {

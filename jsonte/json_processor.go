@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// JsonModule represents a module that can be extended by a template
 type JsonModule struct {
 	Name     string
 	Scope    utils.JsonObject
@@ -27,6 +28,7 @@ type TemplateVisitor struct {
 
 const MaxInt64 = int64(^uint64(0) >> 1)
 
+// LoadModule loads a module from a file and returns a JsonModule
 func LoadModule(input string) (JsonModule, error) {
 	json, err := utils.ParseJson([]byte(input))
 	if err != nil {

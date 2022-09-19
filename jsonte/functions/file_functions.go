@@ -5,6 +5,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gobwas/glob"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -320,5 +321,12 @@ func filePath(s string) string {
 }
 
 func isDir(s string) (bool, error) {
-	return safeio.Resolver.IsDir(s)
+	stat, err := safeio.Resolver.Stat(s)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, utils.WrapErrorf(err, "Failed to stat path %s", s)
+	}
+	return stat.IsDir(), nil
 }
