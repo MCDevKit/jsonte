@@ -435,8 +435,8 @@ func IsEqual(a, b interface{}) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	if a == b {
-		return true
+	if (IsObject(a) != IsObject(b)) || (IsArray(a) != IsArray(b)) || (IsNumber(a) != IsNumber(b)) {
+		return false
 	}
 	if IsNumber(a) && IsNumber(b) {
 		return ToNumber(a).FloatValue() == ToNumber(b).FloatValue()
@@ -446,6 +446,9 @@ func IsEqual(a, b interface{}) bool {
 	}
 	if IsObject(a) && IsObject(b) {
 		return IsEqualObject(a.(JsonObject), b.(JsonObject))
+	}
+	if a == b {
+		return true
 	}
 	return false
 }
