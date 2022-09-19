@@ -3,6 +3,7 @@ package test
 import (
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"io/ioutil"
+	"path/filepath"
 	"sort"
 	"testing"
 )
@@ -98,7 +99,7 @@ func TestFakeOpenDir3(t *testing.T) {
 }
 
 func TestFakeOpenDirRecursive(t *testing.T) {
-	expected := []string{"test3.txt", "dir2\\test4.txt"}
+	expected := []string{"test3.txt", "dir2/test4.txt"}
 	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
 		"test.txt":           "Hello World!",
 		"test2.txt":          "Hello World!",
@@ -119,14 +120,14 @@ func TestFakeOpenDirRecursive(t *testing.T) {
 		return expected[i] < expected[j]
 	})
 	for i, file := range open {
-		if file != expected[i] {
+		if file != filepath.Clean(expected[i]) {
 			t.Fatalf("Invalid file. Expected %s, got %s", expected[i], file)
 		}
 	}
 }
 
 func TestFakeOpenDirRecursive2(t *testing.T) {
-	expected := []string{"test.txt", "test2.txt", "dir\\test3.txt", "dir\\dir2\\test4.txt"}
+	expected := []string{"test.txt", "test2.txt", "dir/test3.txt", "dir/dir2/test4.txt"}
 	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
 		"test.txt":           "Hello World!",
 		"test2.txt":          "Hello World!",
@@ -147,7 +148,7 @@ func TestFakeOpenDirRecursive2(t *testing.T) {
 		return expected[i] < expected[j]
 	})
 	for i, file := range open {
-		if file != expected[i] {
+		if file != filepath.Clean(expected[i]) {
 			t.Fatalf("Invalid file. Expected %s, got %s", expected[i], file)
 		}
 	}

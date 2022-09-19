@@ -1,8 +1,10 @@
 package test
 
 import (
+	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"path/filepath"
 	"testing"
 )
 
@@ -20,38 +22,46 @@ func prepareFS() {
 	)
 }
 
+func assertFileList(t *testing.T, eval jsonte.Result, expected utils.JsonArray) {
+	t.Helper()
+	for i, i2 := range expected {
+		expected[i] = filepath.Clean(i2.(string))
+	}
+	assertArray(t, eval, expected)
+}
+
 func TestFileList(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileList('.').sort()`)
-	assertArray(t, eval, utils.JsonArray{"test.json", "test.png", "test.txt", "test2.txt"})
+	assertFileList(t, eval, utils.JsonArray{"test.json", "test.png", "test.txt", "test2.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestFileList2(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileList('dir').sort()`)
-	assertArray(t, eval, utils.JsonArray{"test3.txt"})
+	assertFileList(t, eval, utils.JsonArray{"test3.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestFileList3(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileList('.', '*.txt').sort()`)
-	assertArray(t, eval, utils.JsonArray{"test.txt", "test2.txt"})
+	assertFileList(t, eval, utils.JsonArray{"test.txt", "test2.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestFileList4(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileListRecurse('.').sort()`)
-	assertArray(t, eval, utils.JsonArray{"dir\\dir2\\test4.txt", "dir\\test3.txt", "test.json", "test.png", "test.txt", "test2.txt"})
+	assertFileList(t, eval, utils.JsonArray{"dir/dir2/test4.txt", "dir/test3.txt", "test.json", "test.png", "test.txt", "test2.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestFileList5(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileListRecurse('.', '*.txt').sort()`)
-	assertArray(t, eval, utils.JsonArray{"dir\\dir2\\test4.txt", "dir\\test3.txt", "test.txt", "test2.txt"})
+	assertFileList(t, eval, utils.JsonArray{"dir/dir2/test4.txt", "dir/test3.txt", "test.txt", "test2.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
