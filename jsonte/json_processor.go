@@ -58,6 +58,7 @@ func LoadModule(input string) (JsonModule, error) {
 	}, nil
 }
 
+// Process processes a template and returns a map of the processed templates
 func Process(name, input string, globalScope utils.JsonObject, modules map[string]JsonModule, timeout int64) (map[string]interface{}, error) {
 	// Set up the deadline
 	deadline := time.Now().UnixMilli() + timeout
@@ -96,6 +97,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 	visitor.pushScope(utils.DeepCopyObject(scope))
 	var template utils.JsonObject
 
+	// handle generating multiple files
 	if file, ok := root["$files"]; ok {
 		array, err := Eval(file.(utils.JsonObject)["array"].(string), visitor.scope, "$files.array")
 		if err != nil {
