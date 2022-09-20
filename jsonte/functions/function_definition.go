@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"fmt"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"reflect"
 	"strings"
@@ -124,17 +125,17 @@ func callFunctionImpl(name string, fns []JsonFunction, args []interface{}) (inte
 	if len(matching) == 0 {
 		expected := make([]string, 0)
 		for _, fn := range sizeMatching {
-			expected = append(expected, paramsToString(fn.Args))
+			expected = append(expected, paramsToString(nil, fn.Args))
 		}
 		argTypes := make([]reflect.Type, 0)
 		for _, arg := range args {
 			argTypes = append(argTypes, reflect.TypeOf(arg))
 		}
-		return nil, utils.WrappedErrorf("Incorrect argument types for function \"%s\". Expected: %s, got: %s", name, strings.Join(expected, ", "), paramsToString(argTypes))
+		return nil, utils.WrappedErrorf("Incorrect argument types for function \"%s\". Expected: %s, got: %s", name, strings.Join(expected, ", "), paramsToString(args, argTypes))
 	} else if len(matching) > 1 {
 		matched := make([]string, 0)
 		for _, fn := range matching {
-			matched = append(matched, paramsToString(fn.Args))
+			matched = append(matched, paramsToString(args, fn.Args))
 		}
 		return nil, utils.WrapErrorf(nil, "Ambiguous function call for \"%s\". Matched: %s", name, strings.Join(matched, ", "))
 	} else {
@@ -163,10 +164,14 @@ func checkParams(fn JsonFunction, args []interface{}) bool {
 	return true
 }
 
-func paramsToString(args []reflect.Type) string {
+func paramsToString(args []interface{}, argTypes []reflect.Type) string {
 	join := make([]string, 0)
-	for _, arg := range args {
-		join = append(join, typeToString(arg))
+	for i, arg := range argTypes {
+		if args != nil {
+			join = append(join, fmt.Sprintf("%s (%s)", utils.ToString(args[i]), typeToString(arg)))
+		} else {
+			join = append(join, typeToString(arg))
+		}
 	}
 	return "(" + strings.Join(join, ", ") + ")"
 }
@@ -198,5 +203,5 @@ func typeToString(t reflect.Type) string {
 	case reflect.Func:
 		return "lambda"
 	}
-	return "unknown"
+	return "Unsupported (report bug): " + t.Name()
 }

@@ -110,7 +110,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 			for i, item := range arr {
 				checkDeadline(deadline)
 				extra := utils.JsonObject{
-					"index": i,
+					"index": utils.ToNumber(i),
 					"value": item,
 				}
 				visitor.pushScope(extra)
@@ -325,7 +325,7 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 				if arr, ok := eval.Value.(utils.JsonArray); ok {
 					for i := range arr {
 						v.pushScope(utils.JsonObject{
-							"index":   i,
+							"index":   utils.ToNumber(i),
 							eval.Name: arr[i],
 						})
 						v.pushScope(arr[i])
@@ -417,7 +417,7 @@ func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element inter
 						if arr, ok := eval.Value.(utils.JsonArray); ok {
 							for i := range arr {
 								v.pushScope(utils.JsonObject{
-									"index":   i,
+									"index":   utils.ToNumber(i),
 									eval.Name: arr[i],
 								})
 								v.pushScope(arr[i])
