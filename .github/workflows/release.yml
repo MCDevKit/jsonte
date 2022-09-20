@@ -67,6 +67,8 @@ jobs:
         working-directory: './regolith-library'
         run: |
           cp ../dist/win_binary_windows_amd64_v1/jsonte.exe ./jsonte/
+          cp ../dist/binary_linux_amd64_v1/jsonte ./jsonte/jsonte-linux
+          cp ../dist/binary_darwin_amd64_v1/jsonte ./jsonte/jsonte-mac
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add ./jsonte/jsonte.exe
