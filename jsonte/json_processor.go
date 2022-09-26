@@ -76,7 +76,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 	// Define scope
 	scope := utils.DeepCopyObject(globalScope)
 	if s, ok := root["$scope"]; ok {
-		scope = utils.MergeObject(s.(utils.JsonObject), scope)
+		scope = utils.MergeObject(s.(utils.JsonObject), scope, false)
 	}
 
 	c, isCopy := root["$copy"].(string)
@@ -131,9 +131,9 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				}
 				if isCopy && hasTemplate {
 					if temp, ok := root["$template"].(utils.JsonObject); ok {
-						template = utils.MergeObject(template, temp)
+						template = utils.MergeObject(template, temp, false)
 					} else if temp1, ok := root["$template"].(map[string]interface{}); ok {
-						template = utils.MergeObject(template, temp1)
+						template = utils.MergeObject(template, temp1, false)
 					}
 				}
 				mFileName, err := visitor.visitString(file.(utils.JsonObject)["fileName"].(string), "$files.fileName")
@@ -144,6 +144,7 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				if err != nil {
 					return nil, utils.PassError(err)
 				}
+				result[mFileName.(string)] = utils.MergeObject(nil, result[mFileName.(string)].(utils.JsonObject), false)
 				visitor.popScope()
 				visitor.popScope()
 				utils.DeleteNulls(result[mFileName.(string)].(utils.JsonObject))
@@ -165,12 +166,13 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 			}
 		}
 		if hasTemplate {
-			template = utils.MergeObject(template, root["$template"].(utils.JsonObject))
+			template = utils.MergeObject(template, root["$template"].(utils.JsonObject), false)
 		}
 		result[name], err = visitor.visitObject(utils.DeepCopyObject(template), "$template")
 		if err != nil {
 			return nil, utils.PassError(err)
 		}
+		result[name] = utils.MergeObject(nil, result[name].(utils.JsonObject), false)
 		utils.DeleteNulls(result[name].(utils.JsonObject))
 	}
 
@@ -270,14 +272,14 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 			if err != nil {
 				return nil, utils.WrapErrorf(err, "Error processing $copy for module %s", mod.Name)
 			}
-			template = utils.MergeObject(object, template)
+			template = utils.MergeObject(object, template, true)
 		}
 		parent, err := visitor.visitObject(mod.Template, "[Module "+module+"]")
 		visitor.scope.PopFront()
 		if err != nil {
 			return nil, utils.WrapErrorf(err, "Error processing template for module %s", mod.Name)
 		}
-		template = utils.MergeObject(template, parent.(utils.JsonObject))
+		template = utils.MergeObject(template, parent.(utils.JsonObject), true)
 	}
 	return template, nil
 }

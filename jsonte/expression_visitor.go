@@ -230,7 +230,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					Decimal: n1.Decimal || n2.Decimal,
 				}
 			} else if utils.IsArray(f1) && utils.IsArray(f2) {
-				array := utils.MergeArray(f1.(utils.JsonArray), f2.(utils.JsonArray))
+				array := utils.MergeArray(f1.(utils.JsonArray), f2.(utils.JsonArray), false)
 				return array
 			} else if utils.IsObject(f1) && utils.IsObject(f2) {
 				var result utils.JsonArray = nil

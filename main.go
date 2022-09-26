@@ -308,7 +308,7 @@ func getScope(scope []string) (utils.JsonObject, error) {
 				if err != nil {
 					return utils.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
 				}
-				result = utils.MergeObject(result, json)
+				result = utils.MergeObject(result, json, false)
 			}
 			return nil
 		})

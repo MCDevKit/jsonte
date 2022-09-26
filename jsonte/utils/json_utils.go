@@ -352,7 +352,7 @@ func IsObject(obj interface{}) bool {
 
 // MergeObject merges two JSON objects into a new JSON object.
 // If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.
-func MergeObject(template, parent JsonObject) JsonObject {
+func MergeObject(template, parent JsonObject, keepOverrides bool) JsonObject {
 	result := JsonObject{}
 	for k, v := range template {
 		if IsObject(v) {
@@ -373,23 +373,27 @@ func MergeObject(template, parent JsonObject) JsonObject {
 	}
 	for k, v := range parent {
 		if strings.HasPrefix(k, "$") && k != "$comment" {
-			result[strings.TrimPrefix(k, "$")] = v
+			if keepOverrides {
+				result[k] = v
+			} else {
+				result[strings.TrimPrefix(k, "$")] = v
+			}
 		} else if _, ok := template[k]; !ok {
 			if IsObject(v) {
-				merge := MergeObject(nil, v.(JsonObject))
+				merge := MergeObject(nil, v.(JsonObject), keepOverrides)
 				result[k] = merge
 			} else if IsArray(v) {
-				merge := MergeArray(nil, v.(JsonArray))
+				merge := MergeArray(nil, v.(JsonArray), keepOverrides)
 				result[k] = merge
 			} else {
 				result[k] = v
 			}
 		} else {
 			if IsObject(v) && IsObject(result[k]) {
-				merge := MergeObject(template[k].(JsonObject), v.(JsonObject))
+				merge := MergeObject(template[k].(JsonObject), v.(JsonObject), keepOverrides)
 				result[k] = merge
 			} else if IsArray(v) && IsArray(template[k]) {
-				merge := MergeArray(template[k].(JsonArray), v.(JsonArray))
+				merge := MergeArray(template[k].(JsonArray), v.(JsonArray), keepOverrides)
 				result[k] = merge
 			} else {
 				result[k] = v
@@ -400,14 +404,14 @@ func MergeObject(template, parent JsonObject) JsonObject {
 }
 
 // MergeArray merges two JSON arrays into a new JSON array.
-func MergeArray(template, parent JsonArray) JsonArray {
+func MergeArray(template, parent JsonArray, keepOverrides bool) JsonArray {
 	result := JsonArray{}
 	for _, v := range template {
 		if IsObject(v) {
-			merge := MergeObject(nil, v.(JsonObject))
+			merge := MergeObject(nil, v.(JsonObject), keepOverrides)
 			result = append(result, merge)
 		} else if IsArray(v) {
-			merge := MergeArray(nil, v.(JsonArray))
+			merge := MergeArray(nil, v.(JsonArray), keepOverrides)
 			result = append(result, merge)
 		} else {
 			result = append(result, v)
@@ -415,10 +419,10 @@ func MergeArray(template, parent JsonArray) JsonArray {
 	}
 	for _, v := range parent {
 		if IsObject(v) {
-			merge := MergeObject(nil, v.(JsonObject))
+			merge := MergeObject(nil, v.(JsonObject), keepOverrides)
 			result = append(result, merge)
 		} else if IsArray(v) {
-			merge := MergeArray(nil, v.(JsonArray))
+			merge := MergeArray(nil, v.(JsonArray), keepOverrides)
 			result = append(result, merge)
 		} else {
 			result = append(result, v)
