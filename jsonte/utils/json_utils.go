@@ -371,12 +371,20 @@ func MergeObject(template, parent JsonObject, keepOverrides bool) JsonObject {
 			result[k] = v
 		}
 	}
+	skipKeys := make([]string, 0)
+out:
 	for k, v := range parent {
+		for _, key := range skipKeys {
+			if key == k {
+				continue out
+			}
+		}
 		if strings.HasPrefix(k, "$") && k != "$comment" {
 			if keepOverrides {
 				result[k] = v
 			} else {
 				result[strings.TrimPrefix(k, "$")] = v
+				skipKeys = append(skipKeys, strings.TrimPrefix(k, "$"))
 			}
 		} else if _, ok := template[k]; !ok {
 			if IsObject(v) {
