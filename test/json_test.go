@@ -546,3 +546,42 @@ func TestNoQuotesObjectKey(t *testing.T) {
 		t.Error("Expected quote error")
 	}
 }
+
+func TestModuleOverride(t *testing.T) {
+	module := `{
+		"$module": "simple",
+		"$template": {
+			"groups": {
+				"$object_1": {
+					"value": 0
+				}
+			}
+		}
+	}`
+	template := `{
+		"$extend": "simple",
+		"$template": {
+			"groups": {
+				"{{#1..3}}": {
+					"object_{{value}}": {
+						"value": "{{=value}}"
+					}
+				}
+			}
+		}
+	}`
+	expected := utils.JsonObject{
+		"groups": utils.JsonObject{
+			"object_1": utils.JsonObject{
+				"value": 0,
+			},
+			"object_2": utils.JsonObject{
+				"value": 2,
+			},
+			"object_3": utils.JsonObject{
+				"value": 3,
+			},
+		},
+	}
+	assertTemplateWithModule(t, template, module, expected)
+}
