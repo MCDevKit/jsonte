@@ -805,11 +805,11 @@ func pi() utils.JsonNumber {
 	}
 }
 
-func rotationToNormal(xRot, yRot utils.JsonNumber) utils.JsonArray {
+func rotationToNormal(xRot, yRot utils.JsonNumber) []interface{} {
 	x := roundPrecision(utils.ToNumber(cos(xRot).FloatValue()*sin(yRot).FloatValue()), utils.ToNumber(5))
 	y := roundPrecision(utils.ToNumber(-sin(xRot).FloatValue()), utils.ToNumber(5))
 	z := roundPrecision(utils.ToNumber(cos(yRot).FloatValue()*cos(xRot).FloatValue()), utils.ToNumber(5))
-	return utils.JsonArray{x, y, z}
+	return []interface{}{x, y, z}
 }
 
 func bitwiseAnd(a, b utils.JsonNumber) utils.JsonNumber {

@@ -3,7 +3,6 @@ package test
 import (
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"path/filepath"
 	"testing"
 )
@@ -22,7 +21,7 @@ func prepareFS() {
 	)
 }
 
-func assertFileList(t *testing.T, eval jsonte.Result, expected utils.JsonArray) {
+func assertFileList(t *testing.T, eval jsonte.Result, expected []interface{}) {
 	t.Helper()
 	for i, i2 := range expected {
 		expected[i] = filepath.Clean(i2.(string))
@@ -33,35 +32,35 @@ func assertFileList(t *testing.T, eval jsonte.Result, expected utils.JsonArray) 
 func TestFileList(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileList('.').sort()`)
-	assertFileList(t, eval, utils.JsonArray{"test.json", "test.png", "test.txt", "test2.txt"})
+	assertFileList(t, eval, []interface{}{"test.json", "test.png", "test.txt", "test2.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestFileList2(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileList('dir').sort()`)
-	assertFileList(t, eval, utils.JsonArray{"test3.txt"})
+	assertFileList(t, eval, []interface{}{"test3.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestFileList3(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileList('.', '*.txt').sort()`)
-	assertFileList(t, eval, utils.JsonArray{"test.txt", "test2.txt"})
+	assertFileList(t, eval, []interface{}{"test.txt", "test2.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestFileList4(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileListRecurse('.').sort()`)
-	assertFileList(t, eval, utils.JsonArray{"dir/dir2/test4.txt", "dir/test3.txt", "test.json", "test.png", "test.txt", "test2.txt"})
+	assertFileList(t, eval, []interface{}{"dir/dir2/test4.txt", "dir/test3.txt", "test.json", "test.png", "test.txt", "test2.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestFileList5(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileListRecurse('.', '*.txt').sort()`)
-	assertFileList(t, eval, utils.JsonArray{"dir/dir2/test4.txt", "dir/test3.txt", "test.txt", "test2.txt"})
+	assertFileList(t, eval, []interface{}{"dir/dir2/test4.txt", "dir/test3.txt", "test.txt", "test2.txt"})
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 

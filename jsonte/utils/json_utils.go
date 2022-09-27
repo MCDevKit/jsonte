@@ -1,20 +1,12 @@
 package utils
 
 import (
-	"bytes"
 	"encoding/json"
-	"github.com/stirante/jsonc"
 	"math"
 	"reflect"
 	"strconv"
 	"strings"
 )
-
-// JsonObject is a map of string to interface. It is used to represent a JSON object.
-type JsonObject map[string]interface{}
-
-// JsonArray is a slice of interface. It is used to represent a JSON array.
-type JsonArray []interface{}
 
 // Number is an interface that represents a number, that can be either integer or decimal.
 type Number interface {
@@ -212,20 +204,20 @@ func ToString(obj interface{}) string {
 	if b, ok := obj.(int); ok {
 		return strconv.FormatInt(int64(b), 10)
 	}
+	if b, ok := obj.(int32); ok {
+		return strconv.FormatInt(int64(b), 10)
+	}
 	if b, ok := obj.(bool); ok && b {
 		return strconv.FormatBool(b)
 	}
 	if b, ok := obj.(string); ok {
 		return b
 	}
-	buffer := &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(UnwrapContainers(obj))
+	str, err := MarshalJSONCObject(UnwrapContainers(obj).(NavigableMap[string, interface{}]), false, false)
 	if err != nil {
 		return "null"
 	}
-	return strings.ReplaceAll(buffer.String(), "\n", "")
+	return strings.ReplaceAll(string(str), "\n", "")
 }
 
 // ToPrettyString converts an interface to a string. In case of an object or array, it will be pretty printed.
@@ -245,21 +237,20 @@ func ToPrettyString(obj interface{}) string {
 	if b, ok := obj.(int); ok {
 		return strconv.FormatInt(int64(b), 10)
 	}
+	if b, ok := obj.(int32); ok {
+		return strconv.FormatInt(int64(b), 10)
+	}
 	if b, ok := obj.(bool); ok && b {
 		return strconv.FormatBool(b)
 	}
 	if b, ok := obj.(string); ok {
 		return b
 	}
-	buffer := &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
-	err := encoder.Encode(UnwrapContainers(obj))
+	str, err := MarshalJSONCObject(UnwrapContainers(obj).(NavigableMap[string, interface{}]), true, true)
 	if err != nil {
 		return "null"
 	}
-	return buffer.String()
+	return string(str)
 }
 
 // IsNumber returns true if the given interface is a number.
@@ -302,7 +293,7 @@ func IsArray(obj interface{}) bool {
 }
 
 // AsArray returns the given interface as a JSON array.
-func AsArray(obj interface{}) JsonArray {
+func AsArray(obj interface{}) []interface{} {
 	if obj == nil {
 		return nil
 	}
@@ -310,7 +301,7 @@ func AsArray(obj interface{}) JsonArray {
 	switch rt.Kind() {
 	case reflect.Slice, reflect.Array:
 		rv := reflect.ValueOf(obj)
-		result := make(JsonArray, rv.Len())
+		result := make([]interface{}, rv.Len())
 		for i := 0; i < rv.Len(); i++ {
 			result[i] = rv.Index(i).Interface()
 		}
@@ -320,27 +311,33 @@ func AsArray(obj interface{}) JsonArray {
 }
 
 // AsObject returns the given interface as a JSON object.
-func AsObject(obj interface{}) JsonObject {
+func AsObject(obj interface{}) NavigableMap[string, interface{}] {
 	if obj == nil {
-		return nil
+		return NewNavigableMap[string, interface{}]()
+	}
+	if b, ok := obj.(NavigableMap[string, interface{}]); ok {
+		return b
 	}
 	rt := reflect.TypeOf(obj)
 	switch rt.Kind() {
 	case reflect.Map:
 		rv := reflect.ValueOf(obj)
-		result := make(JsonObject)
+		result := NewNavigableMap[string, interface{}]()
 		for _, key := range rv.MapKeys() {
-			result[key.String()] = rv.MapIndex(key).Interface()
+			result.Put(key.String(), rv.MapIndex(key).Interface())
 		}
 		return result
 	}
-	return nil
+	return NewNavigableMap[string, interface{}]()
 }
 
 // IsObject returns true if the given interface is an object.
 func IsObject(obj interface{}) bool {
 	if obj == nil {
 		return false
+	}
+	if _, ok := obj.(NavigableMap[string, interface{}]); ok {
+		return true
 	}
 	rt := reflect.TypeOf(obj)
 	switch rt.Kind() {
@@ -352,28 +349,28 @@ func IsObject(obj interface{}) bool {
 
 // MergeObject merges two JSON objects into a new JSON object.
 // If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.
-func MergeObject(template, parent JsonObject, keepOverrides bool) JsonObject {
-	result := JsonObject{}
-	for k, v := range template {
+func MergeObject(template, parent NavigableMap[string, interface{}], keepOverrides bool) NavigableMap[string, interface{}] {
+	result := NewNavigableMap[string, interface{}]()
+	for _, k := range template.Keys() {
+		v := template.Get(k)
 		if IsObject(v) {
-			if val, ok := v.(map[string]interface{}); ok {
-				result[k] = DeepCopyObject(val)
-			} else if val, ok := v.(JsonObject); ok {
-				result[k] = DeepCopyObject(val)
+			if val, ok := v.(NavigableMap[string, interface{}]); ok {
+				result.Put(k, DeepCopyObject(val))
 			}
 		} else if IsArray(v) {
 			if val, ok := v.([]interface{}); ok {
-				result[k] = DeepCopyArray(val)
-			} else if val, ok := v.(JsonArray); ok {
-				result[k] = DeepCopyArray(val)
+				result.Put(k, DeepCopyArray(val))
+			} else if val, ok := v.([]interface{}); ok {
+				result.Put(k, DeepCopyArray(val))
 			}
 		} else {
-			result[k] = v
+			result.Put(k, v)
 		}
 	}
 	skipKeys := make([]string, 0)
 out:
-	for k, v := range parent {
+	for _, k := range parent.Keys() {
+		v := parent.Get(k)
 		for _, key := range skipKeys {
 			if key == k {
 				continue out
@@ -381,30 +378,30 @@ out:
 		}
 		if strings.HasPrefix(k, "$") && k != "$comment" {
 			if keepOverrides {
-				result[k] = v
+				result.Put(k, v)
 			} else {
-				result[strings.TrimPrefix(k, "$")] = v
+				result.Put(strings.TrimPrefix(k, "$"), v)
 				skipKeys = append(skipKeys, strings.TrimPrefix(k, "$"))
 			}
-		} else if _, ok := template[k]; !ok {
+		} else if !template.ContainsKey(k) {
 			if IsObject(v) {
-				merge := MergeObject(nil, v.(JsonObject), keepOverrides)
-				result[k] = merge
+				merge := MergeObject(NewNavigableMap[string, interface{}](), v.(NavigableMap[string, interface{}]), keepOverrides)
+				result.Put(k, merge)
 			} else if IsArray(v) {
-				merge := MergeArray(nil, v.(JsonArray), keepOverrides)
-				result[k] = merge
+				merge := MergeArray(nil, v.([]interface{}), keepOverrides)
+				result.Put(k, merge)
 			} else {
-				result[k] = v
+				result.Put(k, v)
 			}
 		} else {
-			if IsObject(v) && IsObject(result[k]) {
-				merge := MergeObject(template[k].(JsonObject), v.(JsonObject), keepOverrides)
-				result[k] = merge
-			} else if IsArray(v) && IsArray(template[k]) {
-				merge := MergeArray(template[k].(JsonArray), v.(JsonArray), keepOverrides)
-				result[k] = merge
+			if IsObject(v) && IsObject(result.Get(k)) {
+				merge := MergeObject(template.Get(k).(NavigableMap[string, interface{}]), v.(NavigableMap[string, interface{}]), keepOverrides)
+				result.Put(k, merge)
+			} else if IsArray(v) && IsArray(template.Get(k)) {
+				merge := MergeArray(template.Get(k).([]interface{}), v.([]interface{}), keepOverrides)
+				result.Put(k, merge)
 			} else {
-				result[k] = v
+				result.Put(k, v)
 			}
 		}
 	}
@@ -412,14 +409,14 @@ out:
 }
 
 // MergeArray merges two JSON arrays into a new JSON array.
-func MergeArray(template, parent JsonArray, keepOverrides bool) JsonArray {
-	result := JsonArray{}
+func MergeArray(template, parent []interface{}, keepOverrides bool) []interface{} {
+	var result []interface{}
 	for _, v := range template {
 		if IsObject(v) {
-			merge := MergeObject(nil, v.(JsonObject), keepOverrides)
+			merge := MergeObject(NewNavigableMap[string, interface{}](), v.(NavigableMap[string, interface{}]), keepOverrides)
 			result = append(result, merge)
 		} else if IsArray(v) {
-			merge := MergeArray(nil, v.(JsonArray), keepOverrides)
+			merge := MergeArray(nil, v.([]interface{}), keepOverrides)
 			result = append(result, merge)
 		} else {
 			result = append(result, v)
@@ -427,10 +424,10 @@ func MergeArray(template, parent JsonArray, keepOverrides bool) JsonArray {
 	}
 	for _, v := range parent {
 		if IsObject(v) {
-			merge := MergeObject(nil, v.(JsonObject), keepOverrides)
+			merge := MergeObject(NewNavigableMap[string, interface{}](), v.(NavigableMap[string, interface{}]), keepOverrides)
 			result = append(result, merge)
 		} else if IsArray(v) {
-			merge := MergeArray(nil, v.(JsonArray), keepOverrides)
+			merge := MergeArray(nil, v.([]interface{}), keepOverrides)
 			result = append(result, merge)
 		} else {
 			result = append(result, v)
@@ -454,10 +451,10 @@ func IsEqual(a, b interface{}) bool {
 		return ToNumber(a).FloatValue() == ToNumber(b).FloatValue()
 	}
 	if IsArray(a) && IsArray(b) {
-		return IsEqualArray(a.(JsonArray), b.(JsonArray))
+		return IsEqualArray(a.([]interface{}), b.([]interface{}))
 	}
 	if IsObject(a) && IsObject(b) {
-		return IsEqualObject(a.(JsonObject), b.(JsonObject))
+		return IsEqualObject(a.(NavigableMap[string, interface{}]), b.(NavigableMap[string, interface{}]))
 	}
 	if a == b {
 		return true
@@ -492,12 +489,12 @@ func Less(a, b interface{}) bool {
 }
 
 // IsEqualObject returns true if the given JSON objects are equal.
-func IsEqualObject(a, b JsonObject) bool {
-	if len(a) != len(b) {
+func IsEqualObject(a, b NavigableMap[string, interface{}]) bool {
+	if a.Size() != b.Size() {
 		return false
 	}
-	for k, v := range a {
-		if !IsEqual(b[k], v) {
+	for _, k := range a.Keys() {
+		if !IsEqual(b.Get(k), a.Get(k)) {
 			return false
 		}
 	}
@@ -505,7 +502,7 @@ func IsEqualObject(a, b JsonObject) bool {
 }
 
 // IsEqualArray returns true if the given JSON arrays are equal.
-func IsEqualArray(a, b JsonArray) bool {
+func IsEqualArray(a, b []interface{}) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -518,8 +515,8 @@ func IsEqualArray(a, b JsonArray) bool {
 }
 
 // CreateRange creates a range of numbers from start to end as a JSON array.
-func CreateRange(start, end int32) JsonArray {
-	result := JsonArray{}
+func CreateRange(start, end int32) []interface{} {
+	var result []interface{}
 	if start > end {
 		return result
 	}
@@ -555,55 +552,41 @@ func UnwrapContainers(obj interface{}) interface{} {
 			return b.IntValue()
 		}
 	}
-	rt := reflect.TypeOf(obj)
-	switch rt.Kind() {
-	case reflect.Slice, reflect.Array:
-		result := JsonArray{}
-		if o, ok := obj.(JsonArray); ok {
-			for _, v := range o {
-				result = append(result, UnwrapContainers(v))
-			}
-		} else {
-			for _, v := range obj.([]interface{}) {
-				result = append(result, UnwrapContainers(v))
-			}
+	if IsObject(obj) {
+		object := AsObject(obj)
+		for _, k := range object.Keys() {
+			object.Put(k, UnwrapContainers(object.Get(k)))
 		}
-		return result
-	case reflect.Map:
-		result := JsonObject{}
-		if o, ok := obj.(JsonObject); ok {
-			for k, v := range o {
-				result[k] = UnwrapContainers(v)
-			}
-		} else {
-			for k, v := range obj.(map[string]interface{}) {
-				result[k] = UnwrapContainers(v)
-			}
+		return object
+	} else if IsArray(obj) {
+		array := AsArray(obj)
+		for k, v := range array {
+			array[k] = UnwrapContainers(v)
 		}
-		return result
+		return array
 	}
 	return obj
-
 }
 
 // DeepCopyObject creates a deep copy of the given JSON object.
-func DeepCopyObject(object JsonObject) JsonObject {
-	result := JsonObject{}
-	for k, v := range object {
+func DeepCopyObject(object NavigableMap[string, interface{}]) NavigableMap[string, interface{}] {
+	result := NewNavigableMap[string, interface{}]()
+	for _, k := range object.Keys() {
+		v := object.Get(k)
 		if IsObject(v) {
-			result[k] = DeepCopyObject(AsObject(v))
+			result.Put(k, DeepCopyObject(AsObject(v)))
 		} else if IsArray(v) {
-			result[k] = DeepCopyArray(AsArray(v))
+			result.Put(k, DeepCopyArray(AsArray(v)))
 		} else {
-			result[k] = v
+			result.Put(k, v)
 		}
 	}
 	return result
 }
 
 // DeepCopyArray creates a deep copy of the given JSON array.
-func DeepCopyArray(object JsonArray) JsonArray {
-	result := JsonArray{}
+func DeepCopyArray(object []interface{}) []interface{} {
+	var result []interface{}
 	for _, v := range object {
 		if IsObject(v) {
 			result = append(result, DeepCopyObject(AsObject(v)))
@@ -617,21 +600,22 @@ func DeepCopyArray(object JsonArray) JsonArray {
 }
 
 // DeleteNulls removes all keys with null values from the given JSON object.
-func DeleteNulls(object JsonObject) JsonObject {
-	for k, v := range object {
+func DeleteNulls(object NavigableMap[string, interface{}]) NavigableMap[string, interface{}] {
+	for _, k := range object.Keys() {
+		v := object.Get(k)
 		if IsObject(v) {
-			object[k] = DeleteNulls(AsObject(v))
+			object.Put(k, DeleteNulls(AsObject(v)))
 		} else if IsArray(v) {
-			object[k] = DeleteNullsFromArray(AsArray(v))
+			object.Put(k, DeleteNullsFromArray(AsArray(v)))
 		} else if v == nil {
-			delete(object, k)
+			object.Remove(k)
 		}
 	}
 	return object
 }
 
 // DeleteNullsFromArray removes all keys inside elements of JSON object type with null values from the given JSON array.
-func DeleteNullsFromArray(array JsonArray) JsonArray {
+func DeleteNullsFromArray(array []interface{}) []interface{} {
 	for i, v := range array {
 		if IsObject(v) {
 			array[i] = DeleteNulls(AsObject(v))
@@ -643,60 +627,34 @@ func DeleteNullsFromArray(array JsonArray) JsonArray {
 }
 
 // ParseJson parses a JSON string into a JSON object. It includes support for comments and detects common syntax errors.
-func ParseJson(str []byte) (JsonObject, error) {
-	dat := make(JsonObject)
-	// Remove comments
-	d := json.NewDecoder(bytes.NewBuffer(jsonc.ToJSON(str)))
-	// Set the UseNumber option to true to unmarshal numbers into strings
-	d.UseNumber()
-	if err := d.Decode(&dat); err != nil {
-		if serr, ok := err.(*json.SyntaxError); ok {
-			line, caret := offsetToCaret(string(str), int(serr.Offset))
-			if strings.HasPrefix(serr.Error(), "invalid character") && strings.HasSuffix(serr.Error(), "looking for beginning of object key string") && str[serr.Offset] == ',' {
-				return nil, WrapErrorf(serr, "Most likely trailing comma at line %d", line-1)
-			} else if strings.HasPrefix(serr.Error(), "invalid character") && strings.HasSuffix(serr.Error(), "looking for beginning of object key string") && str[serr.Offset] != '"' && str[serr.Offset-1] != '"' && str[serr.Offset-2] != '"' {
-				return nil, WrapErrorf(serr, "Most likely missing quote at line %d, column %d", line, caret)
-			} else {
-				return nil, WrapErrorf(serr, "JSON syntax error at line %d, column %d", line, caret)
-			}
-		}
-		return nil, err
+func ParseJson(str []byte) (NavigableMap[string, interface{}], error) {
+	dat, err := UnmarshallJSONCObject(str)
+	if err != nil {
+		return NewNavigableMap[string, interface{}](), err
 	}
 	// Convert all numbers to JsonNumber
 	return convertNumbersObject(dat), nil
 }
 
-func offsetToCaret(str string, offset int) (int, int) {
-	line := 1
-	caret := 1
-	for i := 0; i < offset; i++ {
-		caret++
-		if str[i] == '\n' {
-			line++
-			caret = 1
-		}
-	}
-	return line, caret
-}
-
-func convertNumbersObject(object JsonObject) JsonObject {
-	result := JsonObject{}
-	for k, v := range object {
+func convertNumbersObject(object NavigableMap[string, interface{}]) NavigableMap[string, interface{}] {
+	result := NewNavigableMap[string, interface{}]()
+	for _, k := range object.Keys() {
+		v := object.Get(k)
 		if IsObject(v) {
-			result[k] = convertNumbersObject(AsObject(v))
+			result.Put(k, convertNumbersObject(AsObject(v)))
 		} else if IsArray(v) {
-			result[k] = convertNumbersArray(AsArray(v))
+			result.Put(k, convertNumbersArray(AsArray(v)))
 		} else if _, ok := v.(json.Number); ok {
-			result[k] = ToNumber(v)
+			result.Put(k, ToNumber(v))
 		} else {
-			result[k] = v
+			result.Put(k, v)
 		}
 	}
 	return result
 }
 
-func convertNumbersArray(object JsonArray) JsonArray {
-	result := JsonArray{}
+func convertNumbersArray(object []interface{}) []interface{} {
+	var result []interface{}
 	for _, v := range object {
 		if IsObject(v) {
 			result = append(result, convertNumbersObject(AsObject(v)))

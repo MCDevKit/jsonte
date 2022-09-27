@@ -176,29 +176,29 @@ func getLatestRPFile(p string) (string, error) {
 	return getLatestFile(p, rpFiles)
 }
 
-func listLatestRPFiles(p string) (utils.JsonArray, error) {
+func listLatestRPFiles(p string) ([]interface{}, error) {
 	if rpFiles.IsEmpty() {
 		rp, err := findPackVersions(false, VanillaRpUUID)
 		if err != nil {
-			return utils.JsonArray{}, utils.WrapErrorf(err, "An error occurred while reading resource packs")
+			return []interface{}{}, utils.WrapErrorf(err, "An error occurred while reading resource packs")
 		}
 		rpFiles = rp
 	}
 	return listLatestFiles(p, rpFiles)
 }
 
-func listLatestBPFiles(p string) (utils.JsonArray, error) {
+func listLatestBPFiles(p string) ([]interface{}, error) {
 	if bpFiles.IsEmpty() {
 		bp, err := findPackVersions(true, VanillaBpUUID)
 		if err != nil {
-			return utils.JsonArray{}, utils.WrapErrorf(err, "An error occurred while reading behavior packs")
+			return []interface{}{}, utils.WrapErrorf(err, "An error occurred while reading behavior packs")
 		}
 		bpFiles = bp
 	}
 	return listLatestFiles(p, bpFiles)
 }
 
-func listLatestFiles(p string, m utils.NavigableMap[string, string]) (utils.JsonArray, error) {
+func listLatestFiles(p string, m utils.NavigableMap[string, string]) ([]interface{}, error) {
 	result := map[string]string{}
 	keys := m.Keys()
 	for i := len(keys) - 1; i >= 0; i-- {
@@ -225,7 +225,7 @@ func listLatestFiles(p string, m utils.NavigableMap[string, string]) (utils.Json
 			}
 		}
 	}
-	arr := make(utils.JsonArray, len(result))
+	arr := make([]interface{}, len(result))
 	i := 0
 	for _, v := range result {
 		arr[i] = v

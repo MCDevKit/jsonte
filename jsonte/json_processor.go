@@ -15,14 +15,14 @@ import (
 // JsonModule represents a module that can be extended by a template
 type JsonModule struct {
 	Name     string
-	Scope    utils.JsonObject
-	Template utils.JsonObject
+	Scope    utils.NavigableMap[string, interface{}]
+	Template utils.NavigableMap[string, interface{}]
 	Copy     string
 }
 
 type TemplateVisitor struct {
 	scope       deque.Deque[interface{}]
-	globalScope utils.JsonObject
+	globalScope utils.NavigableMap[string, interface{}]
 	deadline    int64
 }
 
@@ -34,19 +34,19 @@ func LoadModule(input string) (JsonModule, error) {
 	if err != nil {
 		return JsonModule{}, utils.WrapErrorf(err, "Failed to parse JSON module")
 	}
-	moduleName, ok := json["$module"].(string)
+	moduleName, ok := json.Get("$module").(string)
 	if !ok {
 		return JsonModule{}, utils.WrappedErrorf("$module", "The module does not have a name")
 	}
-	scope, ok := json["$scope"].(utils.JsonObject)
+	scope, ok := json.Get("$scope").(utils.NavigableMap[string, interface{}])
 	if !ok {
-		scope = utils.JsonObject{}
+		scope = utils.NewNavigableMap[string, interface{}]()
 	}
-	template, ok := json["$template"].(utils.JsonObject)
+	template, ok := json.Get("$template").(utils.NavigableMap[string, interface{}])
 	if !ok {
 		return JsonModule{}, utils.WrappedJsonErrorf("$template", "The module does not have a template")
 	}
-	c, isCopy := json["$copy"].(string)
+	c, isCopy := json.Get("$copy").(string)
 	if !isCopy {
 		c = ""
 	}
@@ -59,7 +59,7 @@ func LoadModule(input string) (JsonModule, error) {
 }
 
 // Process processes a template and returns a map of the processed templates
-func Process(name, input string, globalScope utils.JsonObject, modules map[string]JsonModule, timeout int64) (map[string]interface{}, error) {
+func Process(name, input string, globalScope utils.NavigableMap[string, interface{}], modules map[string]JsonModule, timeout int64) (utils.NavigableMap[string, interface{}], error) {
 	// Set up the deadline
 	deadline := time.Now().UnixMilli() + timeout
 	if timeout <= 0 {
@@ -67,25 +67,29 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 	}
 
 	// Parse the input
-	result := make(utils.JsonObject)
+	result := utils.NewNavigableMap[string, interface{}]()
 	root, err := utils.ParseJson([]byte(input))
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "Failed to parse JSON")
+		return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to parse JSON")
 	}
 
 	// Define scope
 	scope := utils.DeepCopyObject(globalScope)
-	if s, ok := root["$scope"]; ok {
-		scope = utils.MergeObject(s.(utils.JsonObject), scope, false)
+	if root.ContainsKey("$scope") {
+		scope = utils.MergeObject(root.Get("$scope").(utils.NavigableMap[string, interface{}]), scope, false)
 	}
 
-	c, isCopy := root["$copy"].(string)
-	_, isExtend := root["$extend"]
-	_, hasTemplate := root["$template"]
+	isCopy := root.ContainsKey("$copy")
+	var c string
+	if isCopy {
+		c, isCopy = root.Get("$copy").(string)
+	}
+	isExtend := root.ContainsKey("$extend")
+	hasTemplate := root.ContainsKey("$template")
 
 	// If none of the options are defined, return unmodified JSON
 	if !hasTemplate && !isCopy && !isExtend {
-		result[name] = root
+		result.Put(name, root)
 		return result, nil
 	}
 
@@ -95,21 +99,22 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 		deadline:    deadline,
 	}
 	visitor.pushScope(utils.DeepCopyObject(scope))
-	var template utils.JsonObject
+	var template utils.NavigableMap[string, interface{}]
 
 	// handle generating multiple files
-	if file, ok := root["$files"]; ok {
-		array, err := Eval(file.(utils.JsonObject)["array"].(string), visitor.scope, "$files.array")
+	if root.ContainsKey("$files") {
+		file := root.Get("$files").(utils.NavigableMap[string, interface{}])
+		array, err := Eval(file.Get("array").(string), visitor.scope, "$files.array")
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to evaluate $files.array")
+			return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to evaluate $files.array")
 		}
 		if array.Value == nil {
-			return nil, utils.WrappedJsonErrorf("$files.array", "The array evaluated to null")
+			return utils.NewNavigableMap[string, interface{}](), utils.WrappedJsonErrorf("$files.array", "The array evaluated to null")
 		}
-		if arr, ok := array.Value.(utils.JsonArray); ok {
+		if arr, ok := array.Value.([]interface{}); ok {
 			for i, item := range arr {
 				checkDeadline(deadline)
-				extra := utils.JsonObject{
+				extra := map[string]interface{}{
 					"index": utils.ToNumber(i),
 					"value": item,
 				}
@@ -118,112 +123,112 @@ func Process(name, input string, globalScope utils.JsonObject, modules map[strin
 				if isCopy {
 					template, err = processCopy(c, visitor, modules, "$files.array", timeout)
 					if err != nil {
-						return nil, utils.PassError(err)
+						return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
 					}
 				} else {
-					template = root["$template"].(utils.JsonObject)
+					template = root.Get("$template").(utils.NavigableMap[string, interface{}])
 				}
 				if isExtend {
-					template, err = extendTemplate(root["$extend"], template, visitor, modules)
+					template, err = extendTemplate(root.Get("$extend"), template, visitor, modules)
 					if err != nil {
-						return nil, utils.PassError(err)
+						return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
 					}
 				}
 				if isCopy && hasTemplate {
-					if temp, ok := root["$template"].(utils.JsonObject); ok {
+					if temp, ok := root.Get("$template").(utils.NavigableMap[string, interface{}]); ok {
 						template = utils.MergeObject(template, temp, false)
-					} else if temp1, ok := root["$template"].(map[string]interface{}); ok {
+					} else if temp1, ok := root.Get("$template").(utils.NavigableMap[string, interface{}]); ok {
 						template = utils.MergeObject(template, temp1, false)
 					}
 				}
-				mFileName, err := visitor.visitString(file.(utils.JsonObject)["fileName"].(string), "$files.fileName")
+				mFileName, err := visitor.visitString(file.Get("fileName").(string), "$files.fileName")
 				if err != nil {
-					return nil, utils.WrapErrorf(err, "Failed to evaluate $files.fileName")
+					return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to evaluate $files.fileName")
 				}
-				result[mFileName.(string)], err = visitor.visitObject(utils.DeepCopyObject(template), "$template")
+				f, err := visitor.visitObject(utils.DeepCopyObject(template), "$template")
 				if err != nil {
-					return nil, utils.PassError(err)
+					return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
 				}
-				result[mFileName.(string)] = utils.MergeObject(nil, result[mFileName.(string)].(utils.JsonObject), false)
+				result.Put(mFileName.(string), utils.MergeObject(utils.NewNavigableMap[string, interface{}](), f.(utils.NavigableMap[string, interface{}]), false))
 				visitor.popScope()
 				visitor.popScope()
-				utils.DeleteNulls(result[mFileName.(string)].(utils.JsonObject))
+				result.Put(mFileName.(string), utils.DeleteNulls(result.Get(mFileName.(string)).(utils.NavigableMap[string, interface{}])))
 			}
 		} else {
-			return nil, utils.WrappedJsonErrorf("$files.array", "The array evaluated to a non-array")
+			return utils.NewNavigableMap[string, interface{}](), utils.WrappedJsonErrorf("$files.array", "The array evaluated to a non-array")
 		}
 	} else {
 		if isCopy {
 			template, err = processCopy(c, visitor, modules, "$copy", timeout)
 			if err != nil {
-				return nil, utils.PassError(err)
+				return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
 			}
 		}
 		if isExtend {
-			template, err = extendTemplate(root["$extend"], template, visitor, modules)
+			template, err = extendTemplate(root.Get("$extend"), template, visitor, modules)
 			if err != nil {
-				return nil, utils.PassError(err)
+				return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
 			}
 		}
 		if hasTemplate {
-			template = utils.MergeObject(template, root["$template"].(utils.JsonObject), false)
+			template = utils.MergeObject(template, root.Get("$template").(utils.NavigableMap[string, interface{}]), false)
 		}
-		result[name], err = visitor.visitObject(utils.DeepCopyObject(template), "$template")
+		f, err := visitor.visitObject(utils.DeepCopyObject(template), "$template")
 		if err != nil {
-			return nil, utils.PassError(err)
+			return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
 		}
-		result[name] = utils.MergeObject(nil, result[name].(utils.JsonObject), false)
-		utils.DeleteNulls(result[name].(utils.JsonObject))
+		result.Put(name, utils.MergeObject(utils.NewNavigableMap[string, interface{}](), f.(utils.NavigableMap[string, interface{}]), false))
+		result.Put(name, utils.DeleteNulls(result.Get(name).(utils.NavigableMap[string, interface{}])))
 	}
 
-	return utils.UnwrapContainers(result).(utils.JsonObject), nil
+	return utils.UnwrapContainers(result).(utils.NavigableMap[string, interface{}]), nil
 }
 
-func processCopy(c interface{}, visitor TemplateVisitor, modules map[string]JsonModule, path string, timeout int64) (utils.JsonObject, error) {
+func processCopy(c interface{}, visitor TemplateVisitor, modules map[string]JsonModule, path string, timeout int64) (utils.NavigableMap[string, interface{}], error) {
 	c, err := visitor.visitString(c.(string), path)
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "Failed to evaluate $copy")
+		return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to evaluate $copy")
 	}
 	if copyPath, ok := c.(string); ok {
 		resolve, err := safeio.Resolver.Open(copyPath)
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to open %s", copyPath)
+			return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to open %s", copyPath)
 		}
 		all, err := ioutil.ReadAll(resolve)
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to read %s", copyPath)
+			return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to read %s", copyPath)
 		}
 		if strings.HasSuffix(copyPath, ".templ") {
 			processedMap, err := Process("copy", string(all), visitor.globalScope, modules, timeout)
 			if err != nil {
-				return nil, utils.WrapErrorf(err, "Failed to process copy template %s", copyPath)
+				return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to process copy template %s", copyPath)
 			}
-			if len(processedMap) > 1 {
-				return nil, utils.WrappedJsonErrorf(path, "The copy template must compile to a single object")
+			if processedMap.Size() > 1 {
+				return utils.NewNavigableMap[string, interface{}](), utils.WrappedJsonErrorf(path, "The copy template must compile to a single object")
 			}
-			template := processedMap["copy"].(utils.JsonObject)
+			template := processedMap.Get("copy").(utils.NavigableMap[string, interface{}])
 			return template, nil
 		} else {
 			template, err := utils.ParseJson(all)
 			if err != nil {
-				return nil, utils.WrapErrorf(err, "Failed to parse %s", copyPath)
+				return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to parse %s", copyPath)
 			}
 			return template, nil
 		}
 	} else {
-		return nil, utils.WrappedJsonErrorf(path, "The copy path evaluated to a non-string")
+		return utils.NewNavigableMap[string, interface{}](), utils.WrappedJsonErrorf(path, "The copy path evaluated to a non-string")
 	}
 }
 
 var templatePattern, _ = regexp.Compile("\\{\\{(?:\\\\.|[^{}])+}}")
 var actionPattern, _ = regexp.Compile("^\\{\\{(?:\\\\.|[^{}])+}}$")
 
-func extendTemplate(extend interface{}, template utils.JsonObject, visitor TemplateVisitor, modules map[string]JsonModule) (utils.JsonObject, error) {
+func extendTemplate(extend interface{}, template utils.NavigableMap[string, interface{}], visitor TemplateVisitor, modules map[string]JsonModule) (utils.NavigableMap[string, interface{}], error) {
 	resolvedModules := make([]string, 0)
 	toResolve := make([]string, 0)
 	isString := true
 
-	if arr, ok := extend.(utils.JsonArray); ok {
+	if arr, ok := extend.([]interface{}); ok {
 		isString = false
 		for _, mod := range arr {
 			if str, ok := mod.(string); ok {
@@ -241,9 +246,9 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 		if actionPattern.MatchString(str) {
 			eval, err := Eval(str, visitor.scope, path)
 			if err != nil {
-				return nil, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", path)
+				return utils.NewNavigableMap[string, interface{}](), utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", path)
 			}
-			if mods, ok := eval.Value.(utils.JsonArray); ok {
+			if mods, ok := eval.Value.([]interface{}); ok {
 				stringMods := make([]string, len(mods))
 				for i, mod := range mods {
 					stringMods[i] = utils.ToString(mod)
@@ -252,7 +257,7 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 			} else if strMod, ok := eval.Value.(string); ok {
 				resolvedModules = append(resolvedModules, strMod)
 			} else {
-				return nil, utils.WrappedJsonErrorf(path, "The module name evaluated to a non-string")
+				return utils.NewNavigableMap[string, interface{}](), utils.WrappedJsonErrorf(path, "The module name evaluated to a non-string")
 			}
 		} else {
 			resolvedModules = append(resolvedModules, str)
@@ -260,26 +265,26 @@ func extendTemplate(extend interface{}, template utils.JsonObject, visitor Templ
 	}
 	for _, module := range resolvedModules {
 		if _, ok := modules[module]; !ok {
-			return nil, utils.WrappedJsonErrorf("$extend", "The module '%s' does not exist", module)
+			return utils.NewNavigableMap[string, interface{}](), utils.WrappedJsonErrorf("$extend", "The module '%s' does not exist", module)
 		}
 		mod := modules[module]
-		if mod.Template == nil {
-			return nil, utils.WrappedJsonErrorf("$extend", "The module '%s' does not have a template", module)
+		if mod.Template.IsEmpty() {
+			return utils.NewNavigableMap[string, interface{}](), utils.WrappedJsonErrorf("$extend", "The module '%s' does not have a template", module)
 		}
 		visitor.scope.PushFront(mod.Scope)
 		if mod.Copy != "" {
 			object, err := processCopy(mod.Copy, visitor, modules, "$copy", -1)
 			if err != nil {
-				return nil, utils.WrapErrorf(err, "Error processing $copy for module %s", mod.Name)
+				return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Error processing $copy for module %s", mod.Name)
 			}
 			template = utils.MergeObject(object, template, true)
 		}
 		parent, err := visitor.visitObject(mod.Template, "[Module "+module+"]")
 		visitor.scope.PopFront()
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Error processing template for module %s", mod.Name)
+			return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Error processing template for module %s", mod.Name)
 		}
-		template = utils.MergeObject(template, parent.(utils.JsonObject), true)
+		template = utils.MergeObject(template, parent.(utils.NavigableMap[string, interface{}]), true)
 	}
 	return template, nil
 }
@@ -299,18 +304,19 @@ func (v *TemplateVisitor) visit(obj interface{}, path string) (interface{}, erro
 	if str, ok := obj.(string); ok {
 		return v.visitString(str, path)
 	}
-	if arr, ok := obj.(utils.JsonArray); ok {
+	if arr, ok := obj.([]interface{}); ok {
 		return v.visitArray(arr, path)
 	}
-	if objMap, ok := obj.(utils.JsonObject); ok {
+	if objMap, ok := obj.(utils.NavigableMap[string, interface{}]); ok {
 		return v.visitObject(objMap, path)
 	}
 	return obj, nil
 }
 
-func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interface{}, error) {
-	var result = make(utils.JsonObject)
-	for key, value := range obj {
+func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}], path string) (interface{}, error) {
+	var result = utils.NewNavigableMap[string, interface{}]()
+	for _, key := range obj.Keys() {
+		value := obj.Get(key)
 		if key == "$comment" {
 			continue
 		}
@@ -321,12 +327,12 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 			}
 			switch eval.Action {
 			case utils.Iteration:
-				if _, ok := value.(utils.JsonObject); !ok {
+				if _, ok := value.(utils.NavigableMap[string, interface{}]); !ok {
 					return nil, utils.WrappedJsonErrorf(path, "The value of the iteration key must be an object")
 				}
-				if arr, ok := eval.Value.(utils.JsonArray); ok {
+				if arr, ok := eval.Value.([]interface{}); ok {
 					for i := range arr {
-						v.pushScope(utils.JsonObject{
+						v.pushScope(map[string]interface{}{
 							"index":   utils.ToNumber(i),
 							eval.Name: arr[i],
 						})
@@ -337,8 +343,9 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 						if err != nil {
 							return nil, utils.PassError(err)
 						}
-						for k, v := range o.(utils.JsonObject) {
-							result[k] = v
+						u := o.(utils.NavigableMap[string, interface{}])
+						for _, k := range u.Keys() {
+							result.Put(k, u.Get(k))
 						}
 					}
 				} else {
@@ -350,9 +357,9 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 					if err != nil {
 						return nil, utils.PassError(err)
 					}
-					if obj, ok := o.(utils.JsonObject); ok {
-						for k, v := range obj {
-							result[k] = v
+					if obj, ok := o.(utils.NavigableMap[string, interface{}]); ok {
+						for _, k := range obj.Keys() {
+							result.Put(k, obj.Get(k))
 						}
 					} else {
 						return nil, utils.WrappedJsonErrorf(path, "The value of the predicate key must be an object")
@@ -364,10 +371,11 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 					return nil, utils.PassError(err)
 				}
 				key = utils.ToString(key)
-				result[key.(string)], err = v.visit(value, fmt.Sprintf("%s/%s", path, key))
+				r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
 				if err != nil {
 					return nil, utils.PassError(err)
 				}
+				result.Put(key.(string), r)
 			default:
 				return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", eval.Action.String())
 			}
@@ -377,23 +385,25 @@ func (v *TemplateVisitor) visitObject(obj utils.JsonObject, path string) (interf
 				return nil, utils.PassError(err)
 			}
 			key = utils.ToString(key)
-			result[key.(string)], err = v.visit(value, fmt.Sprintf("%s/%s", path, key))
+			r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
 				return nil, utils.PassError(err)
 			}
+			result.Put(key.(string), r)
 		} else {
 			var err error
-			result[key], err = v.visit(value, fmt.Sprintf("%s/%s", path, key))
+			r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
 				return nil, utils.PassError(err)
 			}
+			result.Put(key, r)
 		}
 	}
 	return result, nil
 }
 
-func (v *TemplateVisitor) visitArray(arr utils.JsonArray, path string) (interface{}, error) {
-	var result = make(utils.JsonArray, 0)
+func (v *TemplateVisitor) visitArray(arr []interface{}, path string) (interface{}, error) {
+	var result = make([]interface{}, 0)
 	for i, value := range arr {
 		a, err := v.visitArrayElement(result, value, fmt.Sprintf("%s[%d]", path, i))
 		if err != nil {
@@ -405,10 +415,11 @@ func (v *TemplateVisitor) visitArray(arr utils.JsonArray, path string) (interfac
 }
 
 // Special visitor for cases when the array element is an object, that generates multiple values
-func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element interface{}, path string) (utils.JsonArray, error) {
-	if obj, ok := element.(utils.JsonObject); ok {
-		if len(obj) == 1 {
-			for key, value := range obj {
+func (v *TemplateVisitor) visitArrayElement(array []interface{}, element interface{}, path string) ([]interface{}, error) {
+	if obj, ok := element.(utils.NavigableMap[string, interface{}]); ok {
+		if obj.Size() == 1 {
+			for _, key := range obj.Keys() {
+				value := obj.Get(key)
 				if actionPattern.MatchString(key) {
 					eval, err := Eval(key, v.scope, path)
 					if err != nil {
@@ -416,9 +427,9 @@ func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element inter
 					}
 					switch eval.Action {
 					case utils.Iteration:
-						if arr, ok := eval.Value.(utils.JsonArray); ok {
+						if arr, ok := eval.Value.([]interface{}); ok {
 							for i := range arr {
-								v.pushScope(utils.JsonObject{
+								v.pushScope(map[string]interface{}{
 									"index":   utils.ToNumber(i),
 									eval.Name: arr[i],
 								})
@@ -458,7 +469,7 @@ func (v *TemplateVisitor) visitArrayElement(array utils.JsonArray, element inter
 	if err != nil {
 		return nil, utils.PassError(err)
 	}
-	if arr, ok := visit.(utils.JsonArray); ok {
+	if arr, ok := visit.([]interface{}); ok {
 		array = append(array, arr...)
 	} else {
 		array = append(array, visit)

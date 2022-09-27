@@ -146,7 +146,8 @@ func main() {
 						if minify {
 							toString = utils.ToString
 						}
-						for fileName, content := range template {
+						for _, fileName := range template.Keys() {
+							content := template.Get(fileName)
 							filename := filepath.Dir(file) + "/" + fileName + ".json"
 							if outFile != "" {
 								filename, err = filepath.Rel(base, filename)
@@ -283,13 +284,16 @@ func main() {
 		}
 	})
 	if err != nil {
+		if utils.Logger == nil {
+			utils.InitLogging(zap.DebugLevel)
+		}
 		utils.Logger.Error(err)
 		os.Exit(1)
 	}
 }
 
-func getScope(scope []string) (utils.JsonObject, error) {
-	result := utils.JsonObject{}
+func getScope(scope []string) (utils.NavigableMap[string, interface{}], error) {
+	result := utils.NewNavigableMap[string, interface{}]()
 	for _, path := range scope {
 		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -313,7 +317,7 @@ func getScope(scope []string) (utils.JsonObject, error) {
 			return nil
 		})
 		if err != nil {
-			return nil, utils.WrapError(err, "An error occurred while reading the scope files")
+			return utils.NewNavigableMap[string, interface{}](), utils.WrapError(err, "An error occurred while reading the scope files")
 		}
 	}
 	return result, nil
@@ -384,7 +388,7 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 	return result, nil
 }
 
-func repl(scope utils.JsonObject) {
+func repl(scope utils.NavigableMap[string, interface{}]) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("> ")
 	for true {

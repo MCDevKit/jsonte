@@ -16,7 +16,7 @@ func assertAction(t *testing.T, eval jsonte.Result, action utils.JsonAction) {
 	}
 }
 
-func assertArray(t *testing.T, eval jsonte.Result, expected utils.JsonArray) utils.JsonArray {
+func assertArray(t *testing.T, eval jsonte.Result, expected []interface{}) []interface{} {
 	t.Helper()
 	assertAction(t, eval, utils.Value)
 	if eval.Value == nil {
@@ -25,7 +25,7 @@ func assertArray(t *testing.T, eval jsonte.Result, expected utils.JsonArray) uti
 	if !utils.IsArray(eval.Value) {
 		t.Fatalf("Result is not an array (%s)", reflect.TypeOf(eval.Value).Name())
 	}
-	array, ok := eval.Value.(utils.JsonArray)
+	array, ok := eval.Value.([]interface{})
 	if !ok {
 		t.Fatalf("Result is not a JSON array (%s)", reflect.TypeOf(eval.Value).Name())
 	}
@@ -44,7 +44,7 @@ func assertArray(t *testing.T, eval jsonte.Result, expected utils.JsonArray) uti
 			if !utils.IsObject(array[i]) {
 				t.Fatalf("Array element %d is not an object (%s)", i, reflect.TypeOf(array[i]).Name())
 			}
-			compareJsonObject(t, expected[i].(utils.JsonObject), array[i].(utils.JsonObject), fmt.Sprintf("#[%d]", i))
+			compareJsonObject(t, expected[i].(utils.NavigableMap[string, interface{}]), array[i].(utils.NavigableMap[string, interface{}]), fmt.Sprintf("#[%d]", i))
 		} else if utils.IsArray(expected[i]) {
 			if array[i] == nil {
 				t.Fatalf("Array element %d is null", i)
@@ -52,7 +52,7 @@ func assertArray(t *testing.T, eval jsonte.Result, expected utils.JsonArray) uti
 			if !utils.IsArray(array[i]) {
 				t.Fatalf("Array element %d is not an array (%s)", i, reflect.TypeOf(array[i]).Name())
 			}
-			compareJsonArray(t, expected[i].(utils.JsonArray), array[i].(utils.JsonArray), fmt.Sprintf("#[%d]", i))
+			compareJsonArray(t, expected[i].([]interface{}), array[i].([]interface{}), fmt.Sprintf("#[%d]", i))
 		} else if array[i] != expected[i] {
 			t.Errorf("Array element %d is not correct (expected %s, got %s)", i, utils.ToString(array[i]), utils.ToString(expected[i]))
 		}
@@ -123,7 +123,7 @@ func evaluate(t *testing.T, text string) jsonte.Result {
 	return eval
 }
 
-func evaluateWithScope(t *testing.T, text string, scope utils.JsonObject) jsonte.Result {
+func evaluateWithScope(t *testing.T, text string, scope utils.NavigableMap[string, interface{}]) jsonte.Result {
 	t.Helper()
 	s := deque.Deque[interface{}]{}
 	s.PushBack(scope)
@@ -136,7 +136,7 @@ func evaluateWithScope(t *testing.T, text string, scope utils.JsonObject) jsonte
 
 func TestRangeOperator(t *testing.T) {
 	eval := evaluate(t, "1..10")
-	assertArray(t, eval, utils.JsonArray{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+	assertArray(t, eval, []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 }
 
 func TestAddition(t *testing.T) {
@@ -255,7 +255,7 @@ func TestObjectAccess2(t *testing.T) {
 }
 
 func TestScope(t *testing.T) {
-	eval := evaluateWithScope(t, `b`, utils.JsonObject{"a": utils.ToNumber(1), "b": utils.ToNumber(2)})
+	eval := evaluateWithScope(t, `b`, utils.ToNavigableMap("a", utils.ToNumber(1), "b", utils.ToNumber(2)))
 	assertNumber(t, eval, 2)
 }
 

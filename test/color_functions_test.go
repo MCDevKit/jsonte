@@ -7,5 +7,5 @@ import (
 
 func TestHexToArray(t *testing.T) {
 	eval := evaluate(t, `hexToArray('#ff0000')`)
-	assertArray(t, eval, utils.JsonArray{utils.ToNumber(1), utils.ToNumber(0), utils.ToNumber(0), utils.ToNumber(1)})
+	assertArray(t, eval, []interface{}{utils.ToNumber(1), utils.ToNumber(0), utils.ToNumber(0), utils.ToNumber(1)})
 }

@@ -538,7 +538,7 @@ func replace(str, old, new string) string {
 	return strings.Replace(str, old, new, -1)
 }
 
-func join(strs utils.JsonArray, sep string) string {
+func join(strs []interface{}, sep string) string {
 	arr := make([]string, len(strs))
 	for i, s := range strs {
 		arr[i] = utils.ToString(s)
@@ -550,9 +550,9 @@ func stringContains(str, substr string) bool {
 	return strings.Contains(str, substr)
 }
 
-func split(str, sep string) utils.JsonArray {
+func split(str, sep string) []interface{} {
 	strs := strings.Split(str, sep)
-	arr := make(utils.JsonArray, len(strs))
+	arr := make([]interface{}, len(strs))
 	for i, s := range strs {
 		arr[i] = s
 	}
@@ -627,8 +627,8 @@ func regexReplace(str, pattern, repl string) (string, error) {
 	return compile.ReplaceAllString(str, repl), nil
 }
 
-func chars(str string) utils.JsonArray {
-	arr := make(utils.JsonArray, len(str))
+func chars(str string) []interface{} {
+	arr := make([]interface{}, len(str))
 	for i, c := range str {
 		arr[i] = string(c)
 	}

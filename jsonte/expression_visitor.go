@@ -97,8 +97,8 @@ func negate(value interface{}) interface{} {
 		return utils.ToNumber(-b)
 	}
 	if utils.IsArray(value) {
-		result := make(utils.JsonArray, len(value.(utils.JsonArray)))
-		for i, v := range value.(utils.JsonArray) {
+		result := make([]interface{}, len(value.([]interface{})))
+		for i, v := range value.([]interface{}) {
 			result[i] = negate(v)
 		}
 		return result
@@ -122,9 +122,9 @@ func getError(v interface{}) error {
 func (v *ExpressionVisitor) resolveScope(name string) interface{} {
 	for i := v.scope.Len() - 1; i >= 0; i-- {
 		m := v.scope.At(i)
-		if c, ok := m.(utils.JsonObject); ok {
-			if v, ok := c[name]; ok {
-				return v
+		if c, ok := m.(utils.NavigableMap[string, interface{}]); ok {
+			if c.ContainsKey(name) {
+				return c.Get(name)
 			}
 		}
 		// Seems like sometimes above cast fails, so we need to check for map[string]interface{} as well
@@ -230,12 +230,12 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					Decimal: n1.Decimal || n2.Decimal,
 				}
 			} else if utils.IsArray(f1) && utils.IsArray(f2) {
-				array := utils.MergeArray(f1.(utils.JsonArray), f2.(utils.JsonArray), false)
+				array := utils.MergeArray(f1.([]interface{}), f2.([]interface{}), false)
 				return array
 			} else if utils.IsObject(f1) && utils.IsObject(f2) {
-				var result utils.JsonArray = nil
-				result = append(result, f1.(utils.JsonArray)...)
-				return append(result, f2.(utils.JsonArray)...)
+				var result []interface{} = nil
+				result = append(result, f1.([]interface{})...)
+				return append(result, f2.([]interface{})...)
 			} else {
 				return utils.ToString(f1) + utils.ToString(f2)
 			}
@@ -383,8 +383,9 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			}
 		}
 		if utils.IsObject(object) {
-			if v, ok := object.(utils.JsonObject)[text]; ok {
-				newScope = v
+			u := object.(utils.NavigableMap[string, interface{}])
+			if u.ContainsKey(text) {
+				newScope = u.Get(text)
 			}
 		} else if functions.HasInstanceFunction(reflect.TypeOf(object), text) {
 			return utils.JsonLambda(
@@ -425,7 +426,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			// in case of an array, we need an integer index
 			if utils.IsNumber(i) {
 				value := utils.ToNumber(i).IntValue()
-				if value < 0 || value >= int32(len(object.(utils.JsonArray))) {
+				if value < 0 || value >= int32(len(object.([]interface{}))) {
 					// handle null-forgiving operator
 					if context.Question() != nil {
 						return nil
@@ -433,7 +434,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 						return utils.WrappedErrorf("Index out of bounds: %d", value)
 					}
 				}
-				return object.(utils.JsonArray)[value]
+				return object.([]interface{})[value]
 			} else {
 				// handle null-forgiving operator
 				if context.Question() != nil {
@@ -445,7 +446,8 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		} else if utils.IsObject(object) {
 			// in case of an object, we need a string index
 			value := utils.ToString(i)
-			if b, ok := object.(utils.JsonObject)[value]; !ok {
+			u := object.(utils.NavigableMap[string, interface{}])
+			if !u.ContainsKey(value) {
 				// handle null-forgiving operator
 				if context.Question() != nil {
 					return nil
@@ -453,7 +455,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					return utils.WrappedErrorf("Property '%s' not found on '%s'", value, utils.ToString(object))
 				}
 			} else {
-				return b
+				return u.Get(value)
 			}
 		} else if str, ok := object.(string); ok {
 			// in case of a string, we need an integer index
@@ -518,12 +520,12 @@ func (v *ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
 	text := context.GetText()
 	// "this" is a special case that always refers to the current full scope
 	if text == "this" {
-		scope := utils.JsonObject{}
+		scope := utils.NewNavigableMap[string, interface{}]()
 		for i := 0; i < v.scope.Len(); i++ {
 			s := v.scope.At(i)
-			if c, ok := s.(utils.JsonObject); ok {
-				for key, value := range c {
-					scope[key] = value
+			if c, ok := s.(utils.NavigableMap[string, interface{}]); ok {
+				for _, key := range c.Keys() {
+					scope.Put(key, c.Get(key))
 				}
 			}
 		}
@@ -534,9 +536,9 @@ func (v *ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
 	back := v.scope.Len() - 1
 	for newScope == nil && back >= 0 {
 		m := v.scope.At(back)
-		if c, ok := m.(utils.JsonObject); ok {
-			if v, ok := c[text]; ok {
-				newScope = v
+		if c, ok := m.(utils.NavigableMap[string, interface{}]); ok {
+			if c.ContainsKey(text) {
+				newScope = c.Get(text)
 			}
 		}
 		back--
@@ -558,7 +560,7 @@ func (v *ExpressionVisitor) VisitIndex(context *parser.IndexContext) interface{}
 }
 
 func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) interface{} {
-	result := make(utils.JsonArray, len(context.AllField()))
+	result := make([]interface{}, len(context.AllField()))
 	for i, f := range context.AllField() {
 		result[i] = v.Visit(f)
 		if isError(result[i]) {
@@ -569,14 +571,15 @@ func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) interface{}
 }
 
 func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) interface{} {
-	result := utils.JsonObject{}
+	result := utils.NewNavigableMap[string, interface{}]()
 	for _, f := range context.AllObject_field() {
 		obj := v.Visit(f)
 		if isError(obj) {
 			return obj
 		}
-		for key, value := range obj.(utils.JsonObject) {
-			result[key] = value
+		u := obj.(utils.NavigableMap[string, interface{}])
+		for _, key := range u.Keys() {
+			result.Put(key, u.Get(key))
 		}
 	}
 	return result
@@ -593,9 +596,9 @@ func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContex
 	if isError(field) {
 		return field
 	}
-	return utils.JsonObject{
-		name: field,
-	}
+	n := utils.NewNavigableMap[string, interface{}]()
+	n.Put(name, field)
+	return n
 }
 
 func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) interface{} {

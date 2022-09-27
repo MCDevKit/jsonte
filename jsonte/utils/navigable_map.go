@@ -16,6 +16,18 @@ func NewNavigableMap[K comparable, V any]() NavigableMap[K, V] {
 	}
 }
 
+// ToNavigableMap creates a new NavigableMap.
+func ToNavigableMap(entries ...interface{}) NavigableMap[string, interface{}] {
+	n := NavigableMap[string, interface{}]{
+		data: map[string]interface{}{},
+		keys: []string{},
+	}
+	for i := 0; i < len(entries); i += 2 {
+		n.Put(entries[i].(string), entries[i+1])
+	}
+	return n
+}
+
 // Get returns the value associated with the key.
 func (m *NavigableMap[K, V]) Get(key K) V {
 	return m.data[key]

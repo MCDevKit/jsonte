@@ -7,12 +7,12 @@ import (
 
 func TestMap(t *testing.T) {
 	eval := evaluate(t, `(1..10).map(x => x * 2)`)
-	assertArray(t, eval, utils.JsonArray{2, 4, 6, 8, 10, 12, 14, 16, 18, 20})
+	assertArray(t, eval, []interface{}{2, 4, 6, 8, 10, 12, 14, 16, 18, 20})
 }
 
 func TestFilter(t *testing.T) {
 	eval := evaluate(t, `(1..10).filter(x => mod(x, 2) == 0)`)
-	assertArray(t, eval, utils.JsonArray{2, 4, 6, 8, 10})
+	assertArray(t, eval, []interface{}{2, 4, 6, 8, 10})
 }
 
 func TestReduce(t *testing.T) {
@@ -102,17 +102,17 @@ func TestSumArrayWithSelector(t *testing.T) {
 
 func TestSort(t *testing.T) {
 	eval := evaluate(t, `(1..10).sort()`)
-	assertArray(t, eval, utils.JsonArray{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+	assertArray(t, eval, []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 }
 
 func TestSortWithSelector(t *testing.T) {
 	eval := evaluate(t, `(1..10).sort(x => x * -1)`)
-	assertArray(t, eval, utils.JsonArray{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+	assertArray(t, eval, []interface{}{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
 }
 
 func TestReverse(t *testing.T) {
 	eval := evaluate(t, `(1..10).reverse()`)
-	assertArray(t, eval, utils.JsonArray{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+	assertArray(t, eval, []interface{}{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
 }
 
 func TestContains(t *testing.T) {
@@ -133,13 +133,13 @@ func TestArrayIndexOf(t *testing.T) {
 func TestKeys(t *testing.T) {
 	// Needs to be sorted, because maps are unordered
 	eval := evaluate(t, `keys({'a': 1, 'b': 2}).sort()`)
-	assertArray(t, eval, utils.JsonArray{"a", "b"})
+	assertArray(t, eval, []interface{}{"a", "b"})
 }
 
 func TestValues(t *testing.T) {
 	// Needs to be sorted, because maps are unordered
 	eval := evaluate(t, `values({'a': 1, 'b': 2}).sort()`)
-	assertArray(t, eval, utils.JsonArray{utils.ToNumber(1), utils.ToNumber(2)})
+	assertArray(t, eval, []interface{}{utils.ToNumber(1), utils.ToNumber(2)})
 }
 
 func TestArrayJoin(t *testing.T) {
@@ -159,23 +159,23 @@ func TestArrayJoinWithEmptySeparator(t *testing.T) {
 
 func TestAsArray(t *testing.T) {
 	eval := evaluate(t, `asArray({'a': 1, 'b': 2}, 'key', 'value').sort(x => x.key)`)
-	assertArray(t, eval, utils.JsonArray{
-		utils.JsonObject{"key": "a", "value": utils.ToNumber(1)},
-		utils.JsonObject{"key": "b", "value": utils.ToNumber(2)},
+	assertArray(t, eval, []interface{}{
+		utils.ToNavigableMap("key", "a", "value", utils.ToNumber(1)),
+		utils.ToNavigableMap("key", "b", "value", utils.ToNumber(2)),
 	})
 }
 
 func TestFlatMap(t *testing.T) {
 	eval := evaluate(t, `flatMap([1, 2, 3], x => [x, x * 2])`)
-	assertArray(t, eval, utils.JsonArray{1, 2, 2, 4, 3, 6})
+	assertArray(t, eval, []interface{}{1, 2, 2, 4, 3, 6})
 }
 
 func TestArrayRange(t *testing.T) {
 	eval := evaluate(t, `(1..5).range()`)
-	assertArray(t, eval, utils.JsonArray{0, 1, 2, 3, 4})
+	assertArray(t, eval, []interface{}{0, 1, 2, 3, 4})
 }
 
 func TestSublist(t *testing.T) {
 	eval := evaluate(t, `(1..5).sublist(1, 3)`)
-	assertArray(t, eval, utils.JsonArray{2, 3})
+	assertArray(t, eval, []interface{}{2, 3})
 }

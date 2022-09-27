@@ -10,7 +10,7 @@ import (
 var mcFunctionPattern, _ = regexp.Compile("#\\{((?:\\\\.|[^{}])+)}")
 
 // ProcessMCFunction processes an mcfunction file replacing all the jsonte expressions with their values
-func ProcessMCFunction(input string, scope utils.JsonObject) (string, error) {
+func ProcessMCFunction(input string, scope utils.NavigableMap[string, interface{}]) (string, error) {
 	globalScope := deque.Deque[interface{}]{}
 	globalScope.PushBack(scope)
 	matches := mcFunctionPattern.FindAllString(input, -1)

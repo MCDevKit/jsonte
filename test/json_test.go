@@ -7,7 +7,6 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"math"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -18,19 +17,21 @@ func safeTypeName(v interface{}) string {
 	return reflect.TypeOf(v).Name()
 }
 
-func compareJsonObject(t *testing.T, expected utils.JsonObject, actual utils.JsonObject, path string) {
+func compareJsonObject(t *testing.T, expected utils.NavigableMap[string, interface{}], actual utils.NavigableMap[string, interface{}], path string) {
 	t.Helper()
-	for key, value1 := range expected {
-		if value2, ok := actual[key]; ok {
+	for _, key := range expected.Keys() {
+		value1 := expected.Get(key)
+		if actual.ContainsKey(key) {
+			value2 := actual.Get(key)
 			newPath := fmt.Sprintf("%s/%s", path, key)
-			if v1, ok := value1.(utils.JsonObject); ok {
-				if v2, ok := value2.(utils.JsonObject); ok {
+			if v1, ok := value1.(utils.NavigableMap[string, interface{}]); ok {
+				if v2, ok := value2.(utils.NavigableMap[string, interface{}]); ok {
 					compareJsonObject(t, v1, v2, newPath)
 				} else {
 					t.Errorf("Field %s is not an object (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
 				}
-			} else if v1, ok := value1.(utils.JsonArray); ok {
-				if v2, ok := value2.(utils.JsonArray); ok {
+			} else if v1, ok := value1.([]interface{}); ok {
+				if v2, ok := value2.([]interface{}); ok {
 					compareJsonArray(t, v1, v2, newPath)
 				} else {
 					t.Errorf("Field %s is not an array (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
@@ -56,27 +57,35 @@ func compareJsonObject(t *testing.T, expected utils.JsonObject, actual utils.Jso
 			t.Errorf("Object does not contain key %s", key)
 		}
 	}
-	for key := range actual {
-		if _, ok := expected[key]; !ok {
+	for _, key := range actual.Keys() {
+		if !expected.ContainsKey(key) {
 			t.Errorf("Object contains unexpected key %s/%s", path, key)
+		}
+	}
+	if actual.Size() == expected.Size() {
+		for i := 0; i < actual.Size(); i++ {
+			if actual.Keys()[i] != expected.Keys()[i] {
+				t.Errorf("Array keys are not in the right order at %d (expected %s, got %s)", i, utils.ToString(expected.Keys()), utils.ToString(actual.Keys()))
+				break
+			}
 		}
 	}
 }
 
-func compareJsonArray(t *testing.T, expected utils.JsonArray, actual utils.JsonArray, path string) {
+func compareJsonArray(t *testing.T, expected []interface{}, actual []interface{}, path string) {
 	t.Helper()
 	for i := 0; i < int(math.Min(float64(len(expected)), float64(len(actual)))); i++ {
 		newPath := fmt.Sprintf("%s[%d]", path, i)
 		value1 := expected[i]
 		value2 := actual[i]
-		if v1, ok := value1.(utils.JsonObject); ok {
-			if v2, ok := value2.(utils.JsonObject); ok {
+		if v1, ok := value1.(utils.NavigableMap[string, interface{}]); ok {
+			if v2, ok := value2.(utils.NavigableMap[string, interface{}]); ok {
 				compareJsonObject(t, v1, v2, newPath)
 			} else {
 				t.Errorf("Element %s is not an object (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
 			}
-		} else if v1, ok := value1.(utils.JsonArray); ok {
-			if v2, ok := value2.(utils.JsonArray); ok {
+		} else if v1, ok := value1.([]interface{}); ok {
+			if v2, ok := value2.([]interface{}); ok {
 				compareJsonArray(t, v1, v2, newPath)
 			} else {
 				t.Errorf("Element %s is not an array (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
@@ -106,45 +115,61 @@ func compareJsonArray(t *testing.T, expected utils.JsonArray, actual utils.JsonA
 	}
 }
 
-func assertTemplateWithModule(t *testing.T, template, module string, expected utils.JsonObject) {
+func assertTemplateWithModule(t *testing.T, template, module, expected string) {
 	t.Helper()
 	mod, err := jsonte.LoadModule(module)
 	if err != nil {
 		t.Fatal(err)
 	}
-	process, err := jsonte.Process("test", template, utils.JsonObject{}, map[string]jsonte.JsonModule{
+	process, err := jsonte.Process("test", template, utils.NavigableMap[string, interface{}]{}, map[string]jsonte.JsonModule{
 		mod.Name: mod,
 	}, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	compareJsonObject(t, expected, process["test"].(utils.JsonObject), "#")
-}
-
-func assertTemplate(t *testing.T, template string, expected utils.JsonObject) {
-	t.Helper()
-	process, err := jsonte.Process("test", template, utils.JsonObject{}, map[string]jsonte.JsonModule{}, -1)
+	exp, err := utils.ParseJson([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
-	compareJsonObject(t, expected, process["test"].(utils.JsonObject), "#")
+	exp = utils.UnwrapContainers(exp).(utils.NavigableMap[string, interface{}])
+	compareJsonObject(t, exp, process.Get("test").(utils.NavigableMap[string, interface{}]), "#")
 }
 
-func assertTemplateMultiple(t *testing.T, template string, expected map[string]utils.JsonObject) {
+func assertTemplate(t *testing.T, template, expected string) {
 	t.Helper()
-	process, err := jsonte.Process("test", template, utils.JsonObject{}, map[string]jsonte.JsonModule{}, -1)
+	process, err := jsonte.Process("test", template, utils.NavigableMap[string, interface{}]{}, map[string]jsonte.JsonModule{}, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for key, value := range expected {
-		if _, ok := process[key]; !ok {
+	exp, err := utils.ParseJson([]byte(expected))
+	if err != nil {
+		t.Fatal(err)
+	}
+	exp = utils.UnwrapContainers(exp).(utils.NavigableMap[string, interface{}])
+	compareJsonObject(t, exp, process.Get("test").(utils.NavigableMap[string, interface{}]), "#")
+}
+
+func assertTemplateMultiple(t *testing.T, template, expected string) {
+	t.Helper()
+	process, err := jsonte.Process("test", template, utils.NavigableMap[string, interface{}]{}, map[string]jsonte.JsonModule{}, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exp, err := utils.ParseJson([]byte(expected))
+	if err != nil {
+		t.Fatal(err)
+	}
+	exp = utils.UnwrapContainers(exp).(utils.NavigableMap[string, interface{}])
+	for _, key := range exp.Keys() {
+		value := exp.Get(key).(utils.NavigableMap[string, interface{}])
+		if !process.ContainsKey(key) {
 			t.Errorf("Missing file %s", key)
 			continue
 		}
-		compareJsonObject(t, value, process[key].(utils.JsonObject), fmt.Sprintf("%s#", key))
+		compareJsonObject(t, value, process.Get(key).(utils.NavigableMap[string, interface{}]), fmt.Sprintf("%s#", key))
 	}
-	for key := range process {
-		if _, ok := expected[key]; !ok {
+	for _, key := range process.Keys() {
+		if !exp.ContainsKey(key) {
 			t.Errorf("Unexpected file %s", key)
 		}
 	}
@@ -156,9 +181,9 @@ func TestSimpleTemplate(t *testing.T) {
 			"test": "{{=1..3}}"
 		}
 	}`
-	expected := utils.JsonObject{
-		"test": utils.JsonArray{1, 2, 3},
-	}
+	expected := `{
+		"test": [1, 2, 3]
+	}`
 	assertTemplate(t, template, expected)
 }
 
@@ -170,11 +195,11 @@ func TestSimpleIterationInObject(t *testing.T) {
 			}
 		}
 	}`
-	expected := utils.JsonObject{
+	expected := `{
 		"test0": 1,
 		"test1": 2,
-		"test2": 3,
-	}
+		"test2": 3
+	}`
 	assertTemplate(t, template, expected)
 }
 
@@ -190,19 +215,19 @@ func TestSimpleIterationInArray(t *testing.T) {
 			]
 		}
 	}`
-	expected := utils.JsonObject{
-		"test": utils.JsonArray{
-			utils.JsonObject{
-				"test0": 1,
+	expected := `{
+		"test": [
+			{
+				"test0": 1
 			},
-			utils.JsonObject{
-				"test1": 2,
+			{
+				"test1": 2
 			},
-			utils.JsonObject{
-				"test2": 3,
-			},
-		},
-	}
+			{
+				"test2": 3
+			}
+		]
+	}`
 	assertTemplate(t, template, expected)
 }
 
@@ -219,11 +244,11 @@ func TestSimplePredicateInArray(t *testing.T) {
 			]
 		}
 	}`
-	expected := utils.JsonObject{
-		"test": utils.JsonArray{
-			1,
-		},
-	}
+	expected := `{
+		"test": [
+			1
+		]
+	}`
 	assertTemplate(t, template, expected)
 }
 
@@ -241,37 +266,37 @@ func TestNestedIterationInArray(t *testing.T) {
 			]
 		}
 	}`
-	expected := utils.JsonObject{
-		"test": utils.JsonArray{
-			utils.JsonObject{
-				"test1-1": "1-1",
+	expected := `{
+		"test": [
+			{
+				"test1-1": "1-1"
 			},
-			utils.JsonObject{
-				"test1-2": "1-2",
+			{
+				"test1-2": "1-2"
 			},
-			utils.JsonObject{
-				"test1-3": "1-3",
+			{
+				"test1-3": "1-3"
 			},
-			utils.JsonObject{
-				"test2-1": "2-1",
+			{
+				"test2-1": "2-1"
 			},
-			utils.JsonObject{
-				"test2-2": "2-2",
+			{
+				"test2-2": "2-2"
 			},
-			utils.JsonObject{
-				"test2-3": "2-3",
+			{
+				"test2-3": "2-3"
 			},
-			utils.JsonObject{
-				"test3-1": "3-1",
+			{
+				"test3-1": "3-1"
 			},
-			utils.JsonObject{
-				"test3-2": "3-2",
+			{
+				"test3-2": "3-2"
 			},
-			utils.JsonObject{
-				"test3-3": "3-3",
-			},
-		},
-	}
+			{
+				"test3-3": "3-3"
+			}
+		]
+	}`
 	assertTemplate(t, template, expected)
 }
 
@@ -283,9 +308,9 @@ func TestSimplePredicateInObject(t *testing.T) {
 			}
 		}
 	}`
-	expected := utils.JsonObject{
-		"test": 1,
-	}
+	expected := `{
+		"test": 1
+	}`
 	assertTemplate(t, template, expected)
 }
 
@@ -297,7 +322,7 @@ func TestSimplePredicateInObject2(t *testing.T) {
 			}
 		}
 	}`
-	expected := utils.JsonObject{}
+	expected := "{}"
 	assertTemplate(t, template, expected)
 }
 
@@ -309,11 +334,11 @@ func TestSimpleIterationInObjectWithName(t *testing.T) {
 			}
 		}
 	}`
-	expected := utils.JsonObject{
+	expected := `{
 		"test0": 1,
 		"test1": 2,
-		"test2": 3,
-	}
+		"test2": 3
+	}`
 	assertTemplate(t, template, expected)
 }
 
@@ -334,10 +359,10 @@ func TestSimpleModule(t *testing.T) {
 			"overrideMe": 1
 		}
 	}`
-	expected := utils.JsonObject{
-		"overrideMe": 1,
-		"asd":        123,
-	}
+	expected := `{
+		"asd": 123,
+		"overrideMe": 1
+	}`
 	assertTemplateWithModule(t, template, module, expected)
 }
 
@@ -355,10 +380,10 @@ func TestSimpleCopy(t *testing.T) {
 			"overrideMe": 1
 		}
 	}`
-	expected := utils.JsonObject{
-		"overrideMe": 1,
-		"asd":        123,
-	}
+	expected := `{
+		"asd": 123,
+		"overrideMe": 1
+	}`
 	assertTemplate(t, template, expected)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
@@ -382,10 +407,10 @@ func TestTemplateCopy(t *testing.T) {
 			"overrideMe": 1
 		}
 	}`
-	expected := utils.JsonObject{
-		"overrideMe": 1,
-		"asd":        123,
-	}
+	expected := `{
+		"asd": 123,
+		"overrideMe": 1
+	}`
 	assertTemplate(t, template, expected)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
@@ -409,9 +434,9 @@ func TestDeleteNulls(t *testing.T) {
 			"overrideMe": null
 		}
 	}`
-	expected := utils.JsonObject{
-		"asd": 123,
-	}
+	expected := `{
+		"asd": 123
+	}`
 	assertTemplate(t, template, expected)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
@@ -438,10 +463,10 @@ func TestCopyAndExtend(t *testing.T) {
 			"overrideMe": 1
 		}
 	}`
-	expected := utils.JsonObject{
-		"asd":        123,
-		"overrideMe": 1,
-	}
+	expected := `{
+		"asd": 123,
+		"overrideMe": 1
+	}`
 	assertTemplateWithModule(t, template, module, expected)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
@@ -456,17 +481,17 @@ func TestMultipleFiles(t *testing.T) {
 			"test": "{{=index}}"
 		}
 	}`
-	expected := map[string]utils.JsonObject{
+	expected := `{
 		"file0": {
-			"test": 0,
+			"test": 0
 		},
 		"file1": {
-			"test": 1,
+			"test": 1
 		},
 		"file2": {
-			"test": 2,
-		},
-	}
+			"test": 2
+		}
+	}`
 	assertTemplateMultiple(t, template, expected)
 }
 
@@ -476,9 +501,9 @@ func TestEmptyArray(t *testing.T) {
 			"test": ["{{[]}}"]
 		}
 	}`
-	expected := utils.JsonObject{
-		"test": utils.JsonArray{},
-	}
+	expected := `{
+		"test": []
+	}`
 	assertTemplate(t, template, expected)
 }
 
@@ -499,52 +524,20 @@ func TestKeepTypes(t *testing.T) {
 			"templatedArray": "{{[]}}"
 		}
 	}`
-	expected := utils.JsonObject{
-		"decimal":          0.0,
-		"integer":          0,
-		"string":           "",
-		"array":            utils.JsonArray{},
-		"object":           utils.JsonObject{},
-		"true":             true,
-		"false":            false,
+	expected := `{
+		"decimal": 0.0,
+		"integer": 0,
+		"string": "",
+		"array": [],
+		"object": {},
+		"true": true,
+		"false": false,
 		"templatedDecimal": 0.0,
 		"templatedInteger": 0,
-		"templatedString":  "",
-		"templatedArray":   utils.JsonArray{},
-	}
+		"templatedString": "",
+		"templatedArray": []
+	}`
 	assertTemplate(t, template, expected)
-}
-
-func TestTrailingCommaError(t *testing.T) {
-	template := `{
-		"$template": {
-			"test": "asd",
-		},
-	}`
-	_, err := utils.ParseJson([]byte(template))
-	if err == nil {
-		t.Error("Expected error")
-	}
-	s := err.Error()
-	if !strings.HasPrefix(s, "Most likely trailing comma at line 3\n") {
-		t.Error("Expected trailing comma error")
-	}
-}
-
-func TestNoQuotesObjectKey(t *testing.T) {
-	template := `{
-		"$template": {
-			test: "asd",
-		},
-	}`
-	_, err := utils.ParseJson([]byte(template))
-	if err == nil {
-		t.Error("Expected error")
-	}
-	s := err.Error()
-	if !strings.HasPrefix(s, "Most likely missing quote at line 3, column 5\n") {
-		t.Error("Expected quote error")
-	}
 }
 
 func TestModuleOverride(t *testing.T) {
@@ -570,18 +563,77 @@ func TestModuleOverride(t *testing.T) {
 			}
 		}
 	}`
-	expected := utils.JsonObject{
-		"groups": utils.JsonObject{
-			"object_1": utils.JsonObject{
-				"value": 0,
+	expected := `{
+		"groups": {
+			"object_1": {
+				"value": 0
 			},
-			"object_2": utils.JsonObject{
-				"value": 2,
+			"object_2": {
+				"value": 2
 			},
-			"object_3": utils.JsonObject{
-				"value": 3,
-			},
-		},
-	}
+			"object_3": {
+				"value": 3
+			}
+		}
+	}`
 	assertTemplateWithModule(t, template, module, expected)
+}
+
+func TestJsonParser(t *testing.T) {
+	template := `{
+		"obj": {
+			// This is a comment!
+			"decimal": 0.0,
+			"integer": 0,
+/* block */	"string": "escape chars \n\t\r\b\f \\ \" \u1234",//
+			"array": [],
+			"object": {},
+			"null": null,
+			"true": true,
+			"false": false
+		}
+	}`
+	expected := utils.NewNavigableMap[string, interface{}]()
+	obj := utils.NewNavigableMap[string, interface{}]()
+	obj.Put("decimal", utils.ToNumber(0.0))
+	obj.Put("integer", utils.ToNumber(0))
+	obj.Put("string", "escape chars \n\t\r\b\f \\ \" \u1234")
+	obj.Put("array", []interface{}{})
+	obj.Put("object", utils.NewNavigableMap[string, interface{}]())
+	obj.Put("null", nil)
+	obj.Put("true", true)
+	obj.Put("false", false)
+	expected.Put("obj", obj)
+
+	object, err := utils.ParseJson([]byte(template))
+	if err != nil {
+		t.Error(err)
+	}
+	compareJsonObject(t, object, expected, "#")
+
+	expMini := "{\"obj\":{\"decimal\":0,\"integer\":0,\"string\":\"escape chars \\n\\t\\r\\b\\f \\\\ \\\" ሴ\",\"array\":[],\"object\":{},\"null\":null,\"true\":true,\"false\":false}}"
+	expPretty := `{
+  "obj": {
+    "decimal": 0,
+    "integer": 0,
+    "string": "escape chars \n\t\r\b\f \\ \" ሴ",
+    "array": [
+    ],
+    "object": {
+    },
+    "null": null,
+    "true": true,
+    "false": false
+  }
+}`
+	if utils.ToString(object) != expMini {
+		t.Error("Unexpected string representation of object")
+		t.Errorf("Expected: %s", expMini)
+		t.Errorf("Actual: %s", utils.ToString(object))
+	}
+	if utils.ToPrettyString(object) != expPretty {
+		t.Error("Unexpected string representation of object")
+		t.Errorf("Expected: %s", expPretty)
+		t.Errorf("Actual: %s", utils.ToPrettyString(object))
+	}
 }
