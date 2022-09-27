@@ -75,11 +75,11 @@ func UnmarshallJSONCObject(str []byte) (NavigableMap[string, interface{}], error
 	return object, nil
 }
 
-func MarshalJSONCObject(object NavigableMap[string, interface{}], pretty bool, compact bool) ([]byte, error) {
-	return writeObject(object, pretty, compact, 0)
+func MarshalJSONCObject(object NavigableMap[string, interface{}], pretty bool) ([]byte, error) {
+	return writeObject(object, pretty, 0)
 }
 
-func writeObject(object NavigableMap[string, interface{}], pretty bool, compact bool, indent int) ([]byte, error) {
+func writeObject(object NavigableMap[string, interface{}], pretty bool, indent int) ([]byte, error) {
 	var result []byte
 	result = append(result, TokenOpenObject)
 	if pretty {
@@ -100,13 +100,13 @@ func writeObject(object NavigableMap[string, interface{}], pretty bool, compact 
 		value := object.Get(key)
 		switch value.(type) {
 		case NavigableMap[string, interface{}]:
-			bytes, err := writeObject(value.(NavigableMap[string, interface{}]), pretty, compact, indent)
+			bytes, err := writeObject(value.(NavigableMap[string, interface{}]), pretty, indent)
 			if err != nil {
 				return result, err
 			}
 			result = append(result, bytes...)
 		case []interface{}:
-			bytes, err := writeArray(value.([]interface{}), pretty, compact, indent)
+			bytes, err := writeArray(value.([]interface{}), pretty, indent)
 			if err != nil {
 				return result, err
 			}
@@ -143,7 +143,7 @@ func writeObject(object NavigableMap[string, interface{}], pretty bool, compact 
 	return result, nil
 }
 
-func writeArray(arr []interface{}, pretty bool, compact bool, indent int) ([]byte, error) {
+func writeArray(arr []interface{}, pretty bool, indent int) ([]byte, error) {
 	var result []byte
 	result = append(result, TokenOpenArray)
 	if pretty {
@@ -156,13 +156,13 @@ func writeArray(arr []interface{}, pretty bool, compact bool, indent int) ([]byt
 		}
 		switch value.(type) {
 		case NavigableMap[string, interface{}]:
-			bytes, err := writeObject(value.(NavigableMap[string, interface{}]), pretty, compact, indent)
+			bytes, err := writeObject(value.(NavigableMap[string, interface{}]), pretty, indent)
 			if err != nil {
 				return result, err
 			}
 			result = append(result, bytes...)
 		case []interface{}:
-			bytes, err := writeArray(value.([]interface{}), pretty, compact, indent)
+			bytes, err := writeArray(value.([]interface{}), pretty, indent)
 			if err != nil {
 				return result, err
 			}
