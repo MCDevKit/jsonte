@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
-	"github.com/stirante/jsonc"
 	"io"
 	"io/ioutil"
 	"os"
@@ -413,22 +412,20 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 				}
 				return versions, utils.WrapErrorf(err, "Failed to read manifest.json in %s", p)
 			}
-			var manifest map[string]interface{}
-			err = jsonc.Unmarshal(f, &manifest)
+			var manifest utils.NavigableMap[string, interface{}]
+			manifest, err = utils.ParseJson(f)
 			if err != nil {
 				return versions, utils.WrapErrorf(err, "Failed to parse manifest.json in %s", p)
 			}
-			if header, ok := manifest["header"]; ok {
-				if headerMap, ok := header.(map[string]interface{}); ok {
-					if headerMap["uuid"] != uuid {
-						continue
-					}
-					if version, ok := headerMap["version"]; ok {
-						if versionArr, ok := version.([]interface{}); ok {
-							array := utils.ParseSemverArray(versionArr)
-							versions.Put(array.String(), p)
-						}
-					}
+			if manifest.ContainsKey("header") {
+				header := manifest.Get("header").(utils.NavigableMap[string, interface{}])
+				if header.Get("uuid") != uuid {
+					continue
+				}
+				if header.ContainsKey("version") {
+					version := utils.UnwrapContainers(header.Get("version")).([]interface{})
+					array := utils.ParseSemverArray(version)
+					versions.Put(array.String(), p)
 				}
 			}
 		}

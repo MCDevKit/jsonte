@@ -245,12 +245,20 @@ func isWhitespace(token byte) bool {
 }
 
 func skipWhitespace(str *StringReader) {
+	canStartComment := false
 	for {
 		token := str.Peek()
-		if !isWhitespace(token) {
-			break
+		if isWhitespace(token) {
+			str.Read()
+			continue
+		} else if token == TokenSlash {
+			canStartComment = parseComment(str, canStartComment)
+			continue
+		} else if token == TokenAsterisk {
+			canStartComment = parseComment(str, canStartComment)
+			continue
 		}
-		str.Read()
+		break
 	}
 }
 
@@ -271,11 +279,9 @@ func parseObject(str *StringReader, p string) (NavigableMap[string, interface{}]
 			return result, WrappedJsonErrorf(p, "Unexpected end of file at line %d, column %d", str.line, str.column)
 		} else if isWhitespace(token) {
 			str.Read()
-		} else if token == TokenSlash && !canStartComment {
+		} else if token == TokenSlash {
 			canStartComment = parseComment(str, canStartComment)
-		} else if token == TokenSlash && canStartComment {
-			canStartComment = parseComment(str, canStartComment)
-		} else if token == TokenAsterisk && canStartComment {
+		} else if token == TokenAsterisk {
 			canStartComment = parseComment(str, canStartComment)
 		} else if token == TokenDoubleQuote && (comma || open) {
 			comma = false
@@ -459,11 +465,9 @@ func parseArray(str *StringReader, p string) ([]interface{}, error) {
 			return result, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
 		} else if isWhitespace(token) {
 			str.Read()
-		} else if token == TokenSlash && !canStartComment {
+		} else if token == TokenSlash {
 			canStartComment = parseComment(str, canStartComment)
-		} else if token == TokenSlash && canStartComment {
-			canStartComment = parseComment(str, canStartComment)
-		} else if token == TokenAsterisk && canStartComment {
+		} else if token == TokenAsterisk {
 			canStartComment = parseComment(str, canStartComment)
 		} else if token == TokenOpenArray && (comma || open) {
 			value, err := parseArray(str, fmt.Sprintf("%s[%d]", p, len(result)))

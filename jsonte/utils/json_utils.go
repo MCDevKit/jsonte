@@ -213,7 +213,7 @@ func ToString(obj interface{}) string {
 	if b, ok := obj.(string); ok {
 		return b
 	}
-	str, err := MarshalJSONCObject(UnwrapContainers(obj).(NavigableMap[string, interface{}]), false, false)
+	str, err := MarshalJSONCObject(UnwrapContainers(obj).(NavigableMap[string, interface{}]), false)
 	if err != nil {
 		return "null"
 	}
@@ -246,7 +246,7 @@ func ToPrettyString(obj interface{}) string {
 	if b, ok := obj.(string); ok {
 		return b
 	}
-	str, err := MarshalJSONCObject(UnwrapContainers(obj).(NavigableMap[string, interface{}]), true, true)
+	str, err := MarshalJSONCObject(UnwrapContainers(obj).(NavigableMap[string, interface{}]), true)
 	if err != nil {
 		return "null"
 	}

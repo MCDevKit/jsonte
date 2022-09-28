@@ -580,7 +580,7 @@ func TestModuleOverride(t *testing.T) {
 }
 
 func TestJsonParser(t *testing.T) {
-	template := `{
+	template := `/*comment*/{
 		"obj": {
 			// This is a comment!
 			"decimal": 0.0,

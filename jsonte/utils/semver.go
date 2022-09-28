@@ -51,5 +51,5 @@ func ParseSemverString(version string) (Semver, error) {
 
 // ParseSemverArray parses an array representation of a semantic version
 func ParseSemverArray(version []interface{}) Semver {
-	return Semver{int(version[0].(float64)), int(version[1].(float64)), int(version[2].(float64))}
+	return Semver{int(version[0].(int32)), int(version[1].(int32)), int(version[2].(int32))}
 }
