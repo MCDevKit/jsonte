@@ -61,12 +61,32 @@ func (sr *StringReader) Read() byte {
 	return c
 }
 
-func UnmarshallJSONCObject(str []byte) (NavigableMap[string, interface{}], error) {
+func UnmarshallJSONC(str []byte) (interface{}, error) {
 	reader := NewStringReader(str)
 	skipWhitespace(reader)
-	object, err := parseObject(reader, "#")
-	if err != nil {
-		return object, err
+	token := reader.Peek()
+	var object interface{}
+	var err error
+	if token == TokenOpenObject {
+		object, err = parseObject(reader, "#")
+		if err != nil {
+			return nil, err
+		}
+	} else if token == TokenOpenArray {
+		object, err = parseArray(reader, "#")
+		if err != nil {
+			return nil, err
+		}
+	} else if token == TokenDoubleQuote {
+		object, err = parseString(reader, "#")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		object, err = parsePrimitive(reader, "#")
+		if err != nil {
+			return nil, err
+		}
 	}
 	skipWhitespace(reader)
 	if reader.Peek() != TokenEof {
@@ -75,8 +95,33 @@ func UnmarshallJSONCObject(str []byte) (NavigableMap[string, interface{}], error
 	return object, nil
 }
 
-func MarshalJSONCObject(object NavigableMap[string, interface{}], pretty bool) ([]byte, error) {
-	return writeObject(object, pretty, 0)
+func MarshalJSONC(object interface{}, pretty bool) ([]byte, error) {
+	switch object.(type) {
+	case NavigableMap[string, interface{}]:
+		return writeObject(object.(NavigableMap[string, interface{}]), pretty, 0)
+	case map[string]interface{}:
+		return writeObject(MapToNavigableMap(object.(map[string]interface{})), pretty, 0)
+	case []interface{}:
+		return writeArray(object.([]interface{}), pretty, 0)
+	case string:
+		return writeString(object.(string)), nil
+	case float64:
+		return []byte(strconv.FormatFloat(object.(float64), 'f', -1, 64)), nil
+	case int:
+		return []byte(strconv.FormatInt(int64(object.(int)), 10)), nil
+	case int64:
+		return []byte(strconv.FormatInt(object.(int64), 10)), nil
+	case bool:
+		if object.(bool) {
+			return []byte("true"), nil
+		} else {
+			return []byte("false"), nil
+		}
+	case nil:
+		return []byte("null"), nil
+	default:
+		return nil, WrappedErrorf("Unsupported type %T", object)
+	}
 }
 
 func writeObject(object NavigableMap[string, interface{}], pretty bool, indent int) ([]byte, error) {

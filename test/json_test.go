@@ -127,7 +127,7 @@ func assertTemplateWithModule(t *testing.T, template, module, expected string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exp, err := utils.ParseJson([]byte(expected))
+	exp, err := utils.ParseJsonObject([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func assertTemplate(t *testing.T, template, expected string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exp, err := utils.ParseJson([]byte(expected))
+	exp, err := utils.ParseJsonObject([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func assertTemplateMultiple(t *testing.T, template, expected string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exp, err := utils.ParseJson([]byte(expected))
+	exp, err := utils.ParseJsonObject([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -605,7 +605,7 @@ func TestJsonParser(t *testing.T) {
 	obj.Put("false", false)
 	expected.Put("obj", obj)
 
-	object, err := utils.ParseJson([]byte(template))
+	object, err := utils.ParseJsonObject([]byte(template))
 	if err != nil {
 		t.Error(err)
 	}

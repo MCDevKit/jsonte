@@ -308,7 +308,7 @@ func getScope(scope []string) (utils.NavigableMap[string, interface{}], error) {
 				if err != nil {
 					return utils.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
 				}
-				json, err := utils.ParseJson(file)
+				json, err := utils.ParseJsonObject(file)
 				if err != nil {
 					return utils.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
 				}

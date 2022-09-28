@@ -413,7 +413,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 				return versions, utils.WrapErrorf(err, "Failed to read manifest.json in %s", p)
 			}
 			var manifest utils.NavigableMap[string, interface{}]
-			manifest, err = utils.ParseJson(f)
+			manifest, err = utils.ParseJsonObject(f)
 			if err != nil {
 				return versions, utils.WrapErrorf(err, "Failed to parse manifest.json in %s", p)
 			}

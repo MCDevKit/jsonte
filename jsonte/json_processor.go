@@ -30,7 +30,7 @@ const MaxInt64 = int64(^uint64(0) >> 1)
 
 // LoadModule loads a module from a file and returns a JsonModule
 func LoadModule(input string) (JsonModule, error) {
-	json, err := utils.ParseJson([]byte(input))
+	json, err := utils.ParseJsonObject([]byte(input))
 	if err != nil {
 		return JsonModule{}, utils.WrapErrorf(err, "Failed to parse JSON module")
 	}
@@ -68,7 +68,7 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 
 	// Parse the input
 	result := utils.NewNavigableMap[string, interface{}]()
-	root, err := utils.ParseJson([]byte(input))
+	root, err := utils.ParseJsonObject([]byte(input))
 	if err != nil {
 		return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to parse JSON")
 	}
@@ -209,7 +209,7 @@ func processCopy(c interface{}, visitor TemplateVisitor, modules map[string]Json
 			template := processedMap.Get("copy").(utils.NavigableMap[string, interface{}])
 			return template, nil
 		} else {
-			template, err := utils.ParseJson(all)
+			template, err := utils.ParseJsonObject(all)
 			if err != nil {
 				return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to parse %s", copyPath)
 			}

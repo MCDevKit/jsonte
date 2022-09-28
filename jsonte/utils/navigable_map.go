@@ -16,7 +16,7 @@ func NewNavigableMap[K comparable, V any]() NavigableMap[K, V] {
 	}
 }
 
-// ToNavigableMap creates a new NavigableMap.
+// ToNavigableMap creates a new NavigableMap with given keys and values.
 func ToNavigableMap(entries ...interface{}) NavigableMap[string, interface{}] {
 	n := NavigableMap[string, interface{}]{
 		data: map[string]interface{}{},
@@ -24,6 +24,18 @@ func ToNavigableMap(entries ...interface{}) NavigableMap[string, interface{}] {
 	}
 	for i := 0; i < len(entries); i += 2 {
 		n.Put(entries[i].(string), entries[i+1])
+	}
+	return n
+}
+
+// MapToNavigableMap creates a new NavigableMap from a golang map.
+func MapToNavigableMap(entries map[string]interface{}) NavigableMap[string, interface{}] {
+	n := NavigableMap[string, interface{}]{
+		data: map[string]interface{}{},
+		keys: []string{},
+	}
+	for key, value := range entries {
+		n.Put(key, value)
 	}
 	return n
 }

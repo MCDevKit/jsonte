@@ -241,7 +241,7 @@ func load(s string) (utils.NavigableMap[string, interface{}], error) {
 	if err != nil {
 		return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to close file %s", s)
 	}
-	return utils.ParseJson(readAll)
+	return utils.ParseJsonObject(readAll)
 }
 
 func fileList(s string) ([]interface{}, error) {

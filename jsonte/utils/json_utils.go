@@ -213,7 +213,7 @@ func ToString(obj interface{}) string {
 	if b, ok := obj.(string); ok {
 		return b
 	}
-	str, err := MarshalJSONCObject(UnwrapContainers(obj).(NavigableMap[string, interface{}]), false)
+	str, err := MarshalJSONC(UnwrapContainers(obj), false)
 	if err != nil {
 		return "null"
 	}
@@ -246,7 +246,7 @@ func ToPrettyString(obj interface{}) string {
 	if b, ok := obj.(string); ok {
 		return b
 	}
-	str, err := MarshalJSONCObject(UnwrapContainers(obj).(NavigableMap[string, interface{}]), true)
+	str, err := MarshalJSONC(UnwrapContainers(obj), true)
 	if err != nil {
 		return "null"
 	}
@@ -626,14 +626,17 @@ func DeleteNullsFromArray(array []interface{}) []interface{} {
 	return array
 }
 
-// ParseJson parses a JSON string into a JSON object. It includes support for comments and detects common syntax errors.
-func ParseJson(str []byte) (NavigableMap[string, interface{}], error) {
-	dat, err := UnmarshallJSONCObject(str)
+// ParseJsonObject parses a JSON string into a JSON object. It includes support for comments and detects common syntax errors.
+func ParseJsonObject(str []byte) (NavigableMap[string, interface{}], error) {
+	dat, err := UnmarshallJSONC(str)
 	if err != nil {
 		return NewNavigableMap[string, interface{}](), err
 	}
 	// Convert all numbers to JsonNumber
-	return convertNumbersObject(dat), nil
+	if !IsObject(dat) {
+		return NewNavigableMap[string, interface{}](), WrappedErrorf("JSON must be an object")
+	}
+	return convertNumbersObject(AsObject(dat)), nil
 }
 
 func convertNumbersObject(object NavigableMap[string, interface{}]) NavigableMap[string, interface{}] {
