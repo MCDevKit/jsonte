@@ -29,7 +29,7 @@ func ProcessMCFunction(input string, scope utils.NavigableMap[string, interface{
 			return "", utils.WrappedErrorf("The expression '%s' evaluated to an action.", match)
 		}
 	}
-	result := templatePattern.ReplaceAllStringFunc(input, func(match string) string {
+	result := mcFunctionPattern.ReplaceAllStringFunc(input, func(match string) string {
 		return replacements[match]
 	})
 	return result, nil
