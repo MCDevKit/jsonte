@@ -379,7 +379,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if context.Question() != nil {
 				return nil
 			} else {
-				return utils.WrappedErrorf("Cannot access property '%s' of null", text)
+				return utils.WrappedErrorf("Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), utils.ToString(object))
 			}
 		}
 		if utils.IsObject(object) {
@@ -392,7 +392,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				func(o []interface{}) (interface{}, error) {
 					function, err := functions.CallInstanceFunction(text, object, o)
 					if err != nil {
-						return nil, utils.WrapErrorf(err, "Error calling function '%s' on '%s'", text, utils.ToString(object))
+						return nil, utils.WrapErrorf(err, "Error calling function '%s' on %s", text, utils.ToString(object))
 					}
 					return function, nil
 				},
@@ -404,7 +404,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if v.action == utils.Predicate || context.Question() != nil {
 				return nil
 			} else {
-				return utils.WrappedErrorf("Failed to resolve field '%s' on '%s'", text, utils.ToString(object))
+				return utils.WrappedErrorf("Failed to resolve field '%s' (%s) in %s", text, context.GetText(), utils.ToString(object))
 			}
 		}
 		return newScope
@@ -431,7 +431,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					if context.Question() != nil {
 						return nil
 					} else {
-						return utils.WrappedErrorf("Index out of bounds: %d", value)
+						return utils.WrappedErrorf("Index out of bounds: %d (%s)", value, context.GetText())
 					}
 				}
 				return object.([]interface{})[value]
@@ -440,7 +440,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				if context.Question() != nil {
 					return nil
 				} else {
-					return utils.WrappedErrorf("Index must be a number: %s", utils.ToString(i))
+					return utils.WrappedErrorf("Index must be a number: %s (%s)", utils.ToString(i), context.GetText())
 				}
 			}
 		} else if utils.IsObject(object) {
@@ -452,7 +452,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				if context.Question() != nil {
 					return nil
 				} else {
-					return utils.WrappedErrorf("Property '%s' not found on '%s'", value, utils.ToString(object))
+					return utils.WrappedErrorf("Property '%s' (%s) not found in %s", value, context.GetText(), utils.ToString(object))
 				}
 			} else {
 				return u.Get(value)
@@ -466,7 +466,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					if context.Question() != nil {
 						return nil
 					} else {
-						return utils.WrappedErrorf("Index out of bounds: %d", value)
+						return utils.WrappedErrorf("Index out of bounds: %d (%s)", value, context.GetText())
 					}
 				}
 				return string(rune(str[value]))
@@ -475,7 +475,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				if context.Question() != nil {
 					return nil
 				} else {
-					return utils.WrappedErrorf("Index must be a number: %s", utils.ToString(i))
+					return utils.WrappedErrorf("Index must be a number: %s (%s)", utils.ToString(object), context.GetText())
 				}
 			}
 		} else {
@@ -483,11 +483,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if context.Question() != nil {
 				return nil
 			} else {
-				if utils.IsNumber(i) {
-					return utils.WrappedErrorf("Cannot access index %d of '%s'", utils.ToNumber(i).IntValue(), utils.ToString(object))
-				} else {
-					return utils.WrappedErrorf("Cannot access property '%s' of '%s'", utils.ToString(i), utils.ToString(object))
-				}
+				return utils.WrappedErrorf("Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), utils.ToString(object))
 			}
 		}
 	}
@@ -513,7 +509,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		}
 		return negate(f)
 	}
-	return utils.WrappedErrorf("Failed to resolve field '%s'", context.GetText())
+	return utils.WrappedErrorf("Failed to resolve '%s'", context.GetText())
 }
 
 func (v *ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
