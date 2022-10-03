@@ -113,7 +113,10 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 		}
 		if arr, ok := array.Value.([]interface{}); ok {
 			for i, item := range arr {
-				checkDeadline(deadline)
+				err := checkDeadline(deadline)
+				if err != nil {
+					return result, err
+				}
 				extra := map[string]interface{}{
 					"index": utils.ToNumber(i),
 					"value": item,
@@ -316,6 +319,10 @@ func (v *TemplateVisitor) visit(obj interface{}, path string) (interface{}, erro
 func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}], path string) (interface{}, error) {
 	var result = utils.NewNavigableMap[string, interface{}]()
 	for _, key := range obj.Keys() {
+		err := checkDeadline(v.deadline)
+		if err != nil {
+			return result, err
+		}
 		value := obj.Get(key)
 		if key == "$comment" {
 			continue
@@ -405,6 +412,10 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 func (v *TemplateVisitor) visitArray(arr []interface{}, path string) (interface{}, error) {
 	var result = make([]interface{}, 0)
 	for i, value := range arr {
+		err := checkDeadline(v.deadline)
+		if err != nil {
+			return result, err
+		}
 		a, err := v.visitArrayElement(result, value, fmt.Sprintf("%s[%d]", path, i))
 		if err != nil {
 			return nil, utils.PassError(err)
@@ -478,6 +489,10 @@ func (v *TemplateVisitor) visitArrayElement(array []interface{}, element interfa
 }
 
 func (v *TemplateVisitor) visitString(str string, path string) (interface{}, error) {
+	err := checkDeadline(v.deadline)
+	if err != nil {
+		return nil, err
+	}
 	matches := templatePattern.FindAllString(str, -1)
 	replacements := make(map[string]string, len(matches))
 	for _, match := range matches {
@@ -505,8 +520,9 @@ func (v *TemplateVisitor) visitString(str string, path string) (interface{}, err
 	return result, nil
 }
 
-func checkDeadline(deadline int64) {
+func checkDeadline(deadline int64) error {
 	if time.Now().UnixMilli() > deadline {
-		panic("Deadline exceeded")
+		return utils.WrappedErrorf("Template evaluation timed out")
 	}
+	return nil
 }
