@@ -2,6 +2,7 @@ package functions
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"io"
@@ -277,7 +278,16 @@ func unzip(src, dest string) error {
 			return utils.WrapErrorf(err, "An error occurred while opening file %s", f.Name)
 		}
 
-		path := filepath.Join(dest, f.Name)
+		name := f.Name[strings.Index(f.Name, "/")+1:]
+		if strings.HasPrefix(name, "behavior_pack") {
+			name = strings.Replace(name, "behavior_pack", "BP", 1)
+		} else if strings.HasPrefix(name, "resource_pack") {
+			name = strings.Replace(name, "resource_pack", "RP", 1)
+		} else {
+			return nil
+		}
+
+		path := filepath.Join(dest, name)
 
 		// Check for ZipSlip (Directory traversal)
 		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) {
@@ -336,12 +346,10 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 	versions := utils.NewNavigableMap[string, string]()
 	installDir, err := getMinecraftInstallDir()
 	if err != nil {
-		url := "https://aka.ms/resourcepacktemplate"
-		outName := "resource_pack_template.zip"
+		url := "https://api.github.com/repos/Mojang/bedrock-samples/releases/latest"
+		outName := "packs.zip"
 		dirName := "RP"
 		if isBp {
-			url = "https://aka.ms/behaviorpacktemplate"
-			outName = "behavior_pack_template.zip"
 			dirName = "BP"
 		}
 
@@ -355,7 +363,27 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 			versions.Put("1.0.0", path.Join(base, dirName))
 			return versions, nil
 		}
-		utils.Logger.Infof("Downloading %s", url)
+		utils.Logger.Infof("Resolving %s", url)
+		resp, err := safeio.Resolver.HttpGet(url)
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while resolving %s", url)
+		}
+		var release map[string]interface{}
+		err = json.NewDecoder(resp).Decode(&release)
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while parsing %s", url)
+		}
+		if release["zipball_url"] == nil {
+			return versions, utils.WrapErrorf(err, "Couldn't find zipball_url in %s", url)
+		}
+		url, ok := release["zipball_url"].(string)
+		if !ok {
+			return versions, utils.WrapErrorf(err, "zipball_url is not a string in %s", url)
+		}
+		err = resp.Close()
+		if err != nil {
+			return versions, utils.WrapErrorf(err, "An error occurred while closing %s", url)
+		}
 
 		err = safeio.Resolver.MkdirAll(base)
 		if err != nil && !os.IsExist(err) {
@@ -365,7 +393,8 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while creating file %s", outName)
 		}
-		resp, err := safeio.Resolver.HttpGet(url)
+		utils.Logger.Infof("Downloading %s", url)
+		resp, err = safeio.Resolver.HttpGet(url)
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
@@ -382,7 +411,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 
-		err = unzip(path.Join(base, outName), path.Join(base, dirName))
+		err = unzip(path.Join(base, outName), base)
 		if err != nil {
 			return versions, utils.WrapErrorf(err, "An error occurred while extracting %s", outName)
 		}
@@ -442,4 +471,16 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 		return aVer.CompareTo(bVer)
 	})
 	return versions, nil
+}
+
+func FetchCache() error {
+	_, err := findPackVersions(true, VanillaBpUUID)
+	if err != nil {
+		return utils.WrapErrorf(err, "Failed to cache vanilla behavior pack")
+	}
+	_, err = findPackVersions(false, VanillaRpUUID)
+	if err != nil {
+		return utils.WrapErrorf(err, "Failed to cache vanilla resource pack")
+	}
+	return nil
 }
