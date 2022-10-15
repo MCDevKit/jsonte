@@ -3,34 +3,85 @@ package jsonte
 import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
-	"regexp"
 	"strings"
 )
-
-var mcFunctionPattern, _ = regexp.Compile("#\\{((?:\\\\.|[^{}])+)}")
 
 // ProcessMCFunction processes an mcfunction file replacing all the jsonte expressions with their values
 func ProcessMCFunction(input string, scope utils.NavigableMap[string, interface{}]) (string, error) {
 	globalScope := deque.Deque[interface{}]{}
 	globalScope.PushBack(scope)
-	matches := mcFunctionPattern.FindAllString(input, -1)
-	replacements := make(map[string]string, len(matches))
-	for _, match := range matches {
-		result, err := Eval(strings.TrimPrefix(strings.TrimSuffix(match, "}"), "#{"), globalScope, "#")
-		if err != nil {
-			return "", err
-		}
-		if result.Value == nil {
-			return "", utils.WrappedErrorf("The expression '%s' evaluated to null.", match)
-		}
-		if result.Action == utils.Value {
-			replacements[match] = utils.ToString(result.Value)
-		} else {
-			return "", utils.WrappedErrorf("The expression '%s' evaluated to an action.", match)
+
+	matches := map[string]string{}
+	started := false
+	bracketCount := 0
+	var currentMatch strings.Builder
+	var debugMatch strings.Builder
+	for i := 0; i < len(input); i++ {
+		char := rune(input[i])
+		if char == '#' && !started {
+			if input[i+1] == '{' {
+				started = true
+				bracketCount = 1
+				i++
+				currentMatch.Reset()
+				debugMatch.Reset()
+				continue
+			}
+		} else if started {
+			if char == '\n' {
+				return "", utils.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
+			}
+			if char == '{' {
+				bracketCount++
+				currentMatch.WriteRune(char)
+				debugMatch.WriteRune(char)
+			} else if char == '}' {
+				bracketCount--
+				if bracketCount == 0 {
+					started = false
+					match := currentMatch.String()
+					result, err := Eval(match, globalScope, "#")
+					if err != nil {
+						return "", utils.WrapErrorf(err, "Failed to evaluate expression '%s'", debugMatch.String())
+					}
+					if result.Value == nil {
+						return "", utils.WrappedErrorf("The expression '%s' evaluated to null.", debugMatch.String())
+					}
+					if result.Action == utils.Value {
+						matches[debugMatch.String()] = utils.ToString(result.Value)
+					} else {
+						return "", utils.WrappedErrorf("The expression '%s' evaluated to an action.", debugMatch.String())
+					}
+				} else {
+					currentMatch.WriteRune(char)
+					debugMatch.WriteRune(char)
+				}
+			} else if char == '\\' {
+				nextChar := input[i+1]
+				if nextChar == 'n' {
+					currentMatch.WriteRune('\n')
+				} else if nextChar == 't' {
+					currentMatch.WriteRune('\t')
+				} else if nextChar == 'r' {
+					currentMatch.WriteRune('\r')
+				} else if nextChar == 'b' {
+					currentMatch.WriteRune('\b')
+				} else {
+					currentMatch.WriteRune(rune(nextChar))
+				}
+				debugMatch.WriteRune(char)
+				debugMatch.WriteRune(rune(nextChar))
+				i++
+			} else {
+				currentMatch.WriteRune(char)
+				debugMatch.WriteRune(char)
+			}
 		}
 	}
-	result := mcFunctionPattern.ReplaceAllStringFunc(input, func(match string) string {
-		return replacements[match]
-	})
-	return result, nil
+
+	for s, s2 := range matches {
+		input = strings.ReplaceAll(input, "#{"+s+"}", s2)
+	}
+
+	return input, nil
 }
