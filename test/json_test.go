@@ -203,6 +203,38 @@ func TestSimpleIterationInObject(t *testing.T) {
 	assertTemplate(t, template, expected)
 }
 
+func TestNamedValue(t *testing.T) {
+	template := `{
+		"$template": {
+			"{{#1..3 as i}}": {
+				"test{{index}}": "{{=i}}"
+			}
+		}
+	}`
+	expected := `{
+		"test0": 1,
+		"test1": 2,
+		"test2": 3
+	}`
+	assertTemplate(t, template, expected)
+}
+
+func TestNamedValueAndIndex(t *testing.T) {
+	template := `{
+		"$template": {
+			"{{#1..3 as v, i}}": {
+				"test{{i}}": "{{=v}}"
+			}
+		}
+	}`
+	expected := `{
+		"test0": 1,
+		"test1": 2,
+		"test2": 3
+	}`
+	assertTemplate(t, template, expected)
+}
+
 func TestSimpleIterationInArray(t *testing.T) {
 	template := `{
 		"$template": {

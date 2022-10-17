@@ -340,8 +340,8 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 				if arr, ok := eval.Value.([]interface{}); ok {
 					for i := range arr {
 						v.pushScope(map[string]interface{}{
-							"index":   utils.ToNumber(i),
-							eval.Name: arr[i],
+							eval.IndexName: utils.ToNumber(i),
+							eval.Name:      arr[i],
 						})
 						v.pushScope(arr[i])
 						o, err := v.visit(value, fmt.Sprintf("%s/%s[%d]", path, key, i))
@@ -441,8 +441,8 @@ func (v *TemplateVisitor) visitArrayElement(array []interface{}, element interfa
 						if arr, ok := eval.Value.([]interface{}); ok {
 							for i := range arr {
 								v.pushScope(map[string]interface{}{
-									"index":   utils.ToNumber(i),
-									eval.Name: arr[i],
+									eval.IndexName: utils.ToNumber(i),
+									eval.Name:      arr[i],
 								})
 								v.pushScope(arr[i])
 								a, err := v.visitArrayElement(array, value, fmt.Sprintf("%s[%d]", path, i))

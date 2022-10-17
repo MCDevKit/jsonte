@@ -9,9 +9,10 @@ import (
 
 // Result is the result of evaluating an expression
 type Result struct {
-	Value  interface{}
-	Action utils.JsonAction
-	Name   string
+	Value     interface{}
+	Action    utils.JsonAction
+	Name      string
+	IndexName string
 }
 
 // GetError returns the error from the result or nil if the expression evaluated correctly
@@ -64,8 +65,9 @@ func Eval(text string, scope deque.Deque[interface{}], path string) (Result, err
 		err = getError(r)
 	}
 	return Result{
-		Value:  r,
-		Action: visitor.action,
-		Name:   *visitor.name,
+		Value:     r,
+		Action:    visitor.action,
+		Name:      *visitor.name,
+		IndexName: *visitor.indexName,
 	}, err
 }

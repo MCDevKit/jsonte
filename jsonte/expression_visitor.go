@@ -10,14 +10,16 @@ import (
 )
 
 const DefaultName = "value"
+const DefaultIndexName = "index"
 const NaN = "NaN"
 
 type ExpressionVisitor struct {
 	parser.BaseJsonTemplateVisitor
-	action utils.JsonAction
-	name   *string
-	scope  deque.Deque[interface{}]
-	path   *string
+	action    utils.JsonAction
+	name      *string
+	indexName *string
+	scope     deque.Deque[interface{}]
+	path      *string
 }
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) interface{} {
@@ -151,10 +153,17 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) inter
 	}
 	// check if the iteration value is named
 	name := DefaultName
+	indexName := DefaultIndexName
 	if ctx.As() != nil {
-		name = ctx.Name().GetText()
+		if len(ctx.AllName()) > 0 {
+			name = ctx.Name(0).GetText()
+		}
+		if len(ctx.AllName()) > 1 {
+			indexName = ctx.Name(1).GetText()
+		}
 	}
 	v.name = &name
+	v.indexName = &indexName
 	result := v.Visit(ctx.Field())
 	return result
 }

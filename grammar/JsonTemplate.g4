@@ -41,7 +41,7 @@ False: 'false';
 True: 'true';
 
 expression
-    : (LeftBrace LeftBrace)? Iteration field (As name)? (RightBrace RightBrace)?
+    : (LeftBrace LeftBrace)? Iteration field (As name (Comma name)?)? (RightBrace RightBrace)?
     | (LeftBrace LeftBrace)? Question field (RightBrace RightBrace)?
     | (LeftBrace LeftBrace)? Literal field (RightBrace RightBrace)?
     | (LeftBrace LeftBrace)? field (RightBrace RightBrace)?
