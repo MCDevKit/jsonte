@@ -531,7 +531,7 @@ func UnescapeString(str string) string {
 	if len(str) < 3 {
 		return ""
 	}
-	str = strings.Trim(str, "\"'")
+	str = str[1 : len(str)-1]
 	str = strings.ReplaceAll(str, "\\\\\"", "\"")
 	str = strings.ReplaceAll(str, "\\\\'", "'")
 	str = strings.ReplaceAll(str, "\\\\n", "\n")
