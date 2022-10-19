@@ -13,6 +13,8 @@ func ProcessMCFunction(input string, scope utils.NavigableMap[string, interface{
 
 	matches := map[string]string{}
 	started := false
+	startedString := false
+	stringType := '"'
 	bracketCount := 0
 	var currentMatch strings.Builder
 	var debugMatch strings.Builder
@@ -31,11 +33,20 @@ func ProcessMCFunction(input string, scope utils.NavigableMap[string, interface{
 			if char == '\n' {
 				return "", utils.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
 			}
-			if char == '{' {
+			if char == '"' || char == '\'' {
+				if !startedString {
+					startedString = true
+					stringType = char
+				} else if char == stringType {
+					startedString = false
+				}
+				currentMatch.WriteRune(char)
+				debugMatch.WriteRune(char)
+			} else if char == '{' && !startedString {
 				bracketCount++
 				currentMatch.WriteRune(char)
 				debugMatch.WriteRune(char)
-			} else if char == '}' {
+			} else if char == '}' && !startedString {
 				bracketCount--
 				if bracketCount == 0 {
 					started = false
