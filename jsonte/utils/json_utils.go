@@ -639,6 +639,19 @@ func ParseJsonObject(str []byte) (NavigableMap[string, interface{}], error) {
 	return convertNumbersObject(AsObject(dat)), nil
 }
 
+// ParseJsonArray parses a JSON string into a JSON array. It includes support for comments and detects common syntax errors.
+func ParseJsonArray(str []byte) ([]interface{}, error) {
+	dat, err := UnmarshallJSONC(str)
+	if err != nil {
+		return []interface{}{}, err
+	}
+	// Convert all numbers to JsonNumber
+	if !IsArray(dat) {
+		return []interface{}{}, WrappedErrorf("JSON must be an array")
+	}
+	return convertNumbersArray(AsArray(dat)), nil
+}
+
 func convertNumbersObject(object NavigableMap[string, interface{}]) NavigableMap[string, interface{}] {
 	result := NewNavigableMap[string, interface{}]()
 	for _, k := range object.Keys() {

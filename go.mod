@@ -9,6 +9,7 @@ require (
 	github.com/gammazero/deque v0.2.0
 	github.com/gobwas/glob v0.2.3
 	github.com/james-barrow/golang-ipc v1.0.0
+	github.com/sahilm/fuzzy v0.1.0
 	go.uber.org/zap v1.23.0
 	golang.org/x/text v0.3.7
 )
@@ -18,6 +19,7 @@ require (
 	github.com/hajimehoshi/go-mp3 v0.3.3 // indirect
 	github.com/jfreymuth/oggvorbis v1.0.4 // indirect
 	github.com/jfreymuth/vorbis v1.0.2 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

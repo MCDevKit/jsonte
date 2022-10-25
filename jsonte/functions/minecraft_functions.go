@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/sahilm/fuzzy"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 func RegisterMinecraftFunctions() {
@@ -131,6 +133,94 @@ func RegisterMinecraftFunctions() {
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "getItemInfo",
+		Body:  getItemInfo,
+		Docs: Docs{
+			Summary: "Returns info in an object based on item ID. Uses https://github.com/stirante/minecraft-item-db/blob/main/items.json",
+			Arguments: []Argument{
+				{
+					Name:    "id",
+					Summary: "The item ID.",
+				},
+				{
+					Name:     "metadata",
+					Optional: true,
+					Summary:  "The item data value.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "test": "{{getItemInfo('stone', 0)}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "getItemInfo",
+		Body:  getItemInfo1,
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "findItemInfoById",
+		Body:  findItemInfoById,
+		Docs: Docs{
+			Summary: "Returns info in an object based on fuzzy matching item ID. Uses https://github.com/stirante/minecraft-item-db/blob/main/items.json",
+			Arguments: []Argument{
+				{
+					Name:    "id",
+					Summary: "The item ID.",
+				},
+				{
+					Name:     "metadata",
+					Optional: true,
+					Summary:  "The item data value.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+// {"id":"minecraft:blue_glazed_terracotta","legacyId":231,"metadata":0,"maxDurability":0,"damage":0,"armor":0,"maxStackSize":64,"tags":[],"category":"construction","nutrition":0,"fuelDuration":0,"aliases":["minecraft:glazedTerracotta.blue"],"nameKey":"tile.glazedTerracotta.blue.name","langName":"Blue Glazed Terracotta"}
+    "test": "{{findItemInfoById('blue_terracotta', 0)}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "findItemInfoById",
+		Body:  findItemInfoById1,
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "findItemInfoByName",
+		Body:  findItemInfoByName,
+		Docs: Docs{
+			Summary: "Returns info in an object based on fuzzy matching item English name. Uses https://github.com/stirante/minecraft-item-db/blob/main/items.json",
+			Arguments: []Argument{
+				{
+					Name:    "name",
+					Summary: "The item English name.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+// {"id":"minecraft:blue_glazed_terracotta","legacyId":231,"metadata":0,"maxDurability":0,"damage":0,"armor":0,"maxStackSize":64,"tags":[],"category":"construction","nutrition":0,"fuelDuration":0,"aliases":["minecraft:glazedTerracotta.blue"],"nameKey":"tile.glazedTerracotta.blue.name","langName":"Blue Glazed Terracotta"}
+    "test": "{{findItemInfoByName('blue terracotta')}}"
+  }
+}
+</code>`,
+		},
+	})
 }
 
 var installDir = ""
@@ -139,6 +229,8 @@ var VanillaBpUUID = "fe9f8597-5454-481a-8730-8d070a8e2e58"
 
 var rpFiles = utils.NavigableMap[string, string]{}
 var bpFiles = utils.NavigableMap[string, string]{}
+var itemInfos = utils.NavigableMap[string, map[int]interface{}]{}
+var itemInfosByName = utils.NavigableMap[string, interface{}]{}
 
 func getMinecraftInstallDir() (string, error) {
 	if runtime.GOOS != "windows" {
@@ -473,6 +565,136 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 	return versions, nil
 }
 
+func getItemInfo(id string, metadata utils.JsonNumber) (interface{}, error) {
+	if id == "" {
+		return nil, nil
+	}
+	if itemInfos.IsEmpty() {
+		err := fetchItemInfos()
+		if err != nil {
+			return nil, utils.WrapErrorf(err, "Failed to fetch item infos")
+		}
+	}
+	item := itemInfos.Get(id)
+	if item == nil {
+		return nil, nil
+	}
+	return item[int(metadata.IntValue())], nil
+}
+
+func getItemInfo1(id string) (interface{}, error) {
+	return getItemInfo(id, utils.JsonNumber{Value: 0})
+}
+
+func findItemInfoById(id string, metadata utils.JsonNumber) (interface{}, error) {
+	if id == "" {
+		return nil, nil
+	}
+	if itemInfos.IsEmpty() {
+		err := fetchItemInfos()
+		if err != nil {
+			return nil, utils.WrapErrorf(err, "Failed to fetch item infos")
+		}
+	}
+	if itemInfos.ContainsKey(id) {
+		return itemInfos.Get(id), nil
+	}
+	find := fuzzy.Find(id, itemInfos.Keys())
+	if len(find) == 0 {
+		return nil, nil
+	} else {
+		return itemInfos.Get(find[0].Str)[int(metadata.IntValue())], nil
+	}
+}
+
+func findItemInfoById1(id string) (interface{}, error) {
+	return findItemInfoById(id, utils.JsonNumber{Value: 0})
+}
+
+func findItemInfoByName(name string) (interface{}, error) {
+	if name == "" {
+		return nil, nil
+	}
+	if itemInfos.IsEmpty() {
+		err := fetchItemInfos()
+		if err != nil {
+			return nil, utils.WrapErrorf(err, "Failed to fetch item infos")
+		}
+	}
+	if itemInfosByName.ContainsKey(name) {
+		return itemInfosByName.Get(name), nil
+	}
+	find := fuzzy.Find(name, itemInfosByName.Keys())
+	if len(find) == 0 {
+		return nil, nil
+	} else {
+		return itemInfosByName.Get(find[0].Str), nil
+	}
+}
+
+func fetchItemInfos() error {
+	url := "https://raw.githubusercontent.com/stirante/minecraft-item-db/main/items.json"
+	outName := "items.json"
+
+	base := "packs"
+	if utils.CacheDir != "" {
+		base = utils.CacheDir
+	}
+
+	stat, err := safeio.Resolver.Stat(path.Join(base, outName))
+	if os.IsNotExist(err) || time.Since(stat.ModTime()) > 168*time.Hour {
+		err = safeio.Resolver.MkdirAll(base)
+		if err != nil && !os.IsExist(err) {
+			return utils.WrapErrorf(err, "An error occurred while creating cache directory")
+		}
+		out, err := safeio.Resolver.Create(path.Join(base, outName))
+		if err != nil {
+			return utils.WrapErrorf(err, "An error occurred while creating file %s", outName)
+		}
+		utils.Logger.Infof("Downloading %s", url)
+		resp, err := safeio.Resolver.HttpGet(url)
+		if err != nil {
+			return utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+		}
+		_, err = io.Copy(out, resp)
+		if err != nil {
+			return utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+		}
+		err = out.Close()
+		if err != nil {
+			return utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+		}
+		err = resp.Close()
+		if err != nil {
+			return utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+		}
+	}
+	open, err := safeio.Resolver.Open(path.Join(base, outName))
+	if err != nil {
+		return utils.WrapErrorf(err, "An error occurred while opening %s", outName)
+	}
+	readAll, err := ioutil.ReadAll(open)
+	if err != nil {
+		return utils.WrapErrorf(err, "An error occurred while reading %s", outName)
+	}
+	arr, err := utils.ParseJsonArray(readAll)
+	if err != nil {
+		return utils.WrapErrorf(err, "An error occurred while parsing %s", outName)
+	}
+	itemInfos = utils.NewNavigableMap[string, map[int]interface{}]()
+	itemInfosByName = utils.NewNavigableMap[string, interface{}]()
+	for _, v := range arr {
+		item := v.(utils.NavigableMap[string, interface{}])
+		id := strings.TrimPrefix(item.Get("id").(string), "minecraft:")
+		if !itemInfos.ContainsKey(id) {
+			itemInfos.Put(id, make(map[int]interface{}))
+		}
+		itemInfos.Get(id)[int((item.Get("metadata").(utils.JsonNumber)).IntValue())] = item
+		itemInfosByName.Put(item.Get("langName").(string), item)
+	}
+	return nil
+}
+
 func FetchCache() error {
 	_, err := findPackVersions(true, VanillaBpUUID)
 	if err != nil {
@@ -481,6 +703,10 @@ func FetchCache() error {
 	_, err = findPackVersions(false, VanillaRpUUID)
 	if err != nil {
 		return utils.WrapErrorf(err, "Failed to cache vanilla resource pack")
+	}
+	err = fetchItemInfos()
+	if err != nil {
+		return utils.WrapErrorf(err, "Failed to cache item infos")
 	}
 	return nil
 }

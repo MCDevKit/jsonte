@@ -60,6 +60,23 @@ func assertArray(t *testing.T, eval jsonte.Result, expected []interface{}) []int
 	return array
 }
 
+func assertObject(t *testing.T, eval jsonte.Result, expected utils.NavigableMap[string, interface{}]) utils.NavigableMap[string, interface{}] {
+	t.Helper()
+	assertAction(t, eval, utils.Value)
+	if eval.Value == nil {
+		t.Fatalf("Result is null")
+	}
+	if !utils.IsObject(eval.Value) {
+		t.Fatalf("Result is not an object (%s)", reflect.TypeOf(eval.Value).Name())
+	}
+	obj, ok := eval.Value.(utils.NavigableMap[string, interface{}])
+	if !ok {
+		t.Fatalf("Result is not a JSON object (%s)", reflect.TypeOf(eval.Value).Name())
+	}
+	compareJsonObject(t, expected, obj, "#")
+	return obj
+}
+
 func assertNumber(t *testing.T, eval jsonte.Result, expected float64) {
 	t.Helper()
 	assertAction(t, eval, utils.Value)
