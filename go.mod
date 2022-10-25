@@ -8,11 +8,13 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/gammazero/deque v0.2.0
 	github.com/gobwas/glob v0.2.3
+	github.com/james-barrow/golang-ipc v1.0.0
 	go.uber.org/zap v1.23.0
 	golang.org/x/text v0.3.7
 )
 
 require (
+	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/hajimehoshi/go-mp3 v0.3.3 // indirect
 	github.com/jfreymuth/oggvorbis v1.0.4 // indirect
 	github.com/jfreymuth/vorbis v1.0.2 // indirect

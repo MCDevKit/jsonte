@@ -37,6 +37,7 @@ func main() {
 	out := ""
 	include := make([]string, 0)
 	exclude := make([]string, 0)
+	ipcName := "jsonte"
 	app := NewApp()
 	app.BoolFlag(Flag{
 		Name:  "debug",
@@ -74,6 +75,10 @@ func main() {
 		Name:  "cache-dir",
 		Usage: "Directory for the cache",
 	}, &utils.CacheDir)
+	app.StringFlag(Flag{
+		Name:  "ipc-name",
+		Usage: "Name for the IPC named pipe",
+	}, &ipcName)
 	app.Action(Action{
 		Name: "compile",
 		Function: func(args []string) error {
@@ -261,6 +266,17 @@ func main() {
 				fmt.Println("Built at " + date)
 			}
 			return nil
+		},
+	})
+	app.Action(Action{
+		Name:  "ipc",
+		Usage: "Start an IPC server",
+		Function: func(args []string) error {
+			object, err := getScope(scope)
+			if err != nil {
+				return utils.WrapError(err, "An error occurred while reading the scope")
+			}
+			return StartIPC(ipcName, object)
 		},
 	})
 	app.Action(Action{
