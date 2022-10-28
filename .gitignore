@@ -4,3 +4,4 @@
 *.exe
 packs
 docs/
+/wasm
