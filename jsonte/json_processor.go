@@ -128,6 +128,7 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 					if err != nil {
 						return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
 					}
+					visitor.pushScope(map[string]interface{}{"$copy": template})
 				} else {
 					template = root.Get("$template").(utils.NavigableMap[string, interface{}])
 				}
@@ -152,9 +153,12 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 				if err != nil {
 					return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
 				}
+				if isCopy {
+					visitor.popScope()
+				}
+				visitor.popScope()
+				visitor.popScope()
 				result.Put(mFileName.(string), utils.MergeObject(utils.NewNavigableMap[string, interface{}](), f.(utils.NavigableMap[string, interface{}]), false))
-				visitor.popScope()
-				visitor.popScope()
 				result.Put(mFileName.(string), utils.DeleteNulls(result.Get(mFileName.(string)).(utils.NavigableMap[string, interface{}])))
 			}
 		} else {
@@ -166,6 +170,7 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 			if err != nil {
 				return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
 			}
+			visitor.pushScope(map[string]interface{}{"$copy": template})
 		}
 		if isExtend {
 			template, err = extendTemplate(root.Get("$extend"), template, visitor, modules)
@@ -179,6 +184,9 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 		f, err := visitor.visitObject(utils.DeepCopyObject(template), "$template")
 		if err != nil {
 			return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
+		}
+		if isCopy {
+			visitor.popScope()
 		}
 		result.Put(name, utils.MergeObject(utils.NewNavigableMap[string, interface{}](), f.(utils.NavigableMap[string, interface{}]), false))
 		result.Put(name, utils.DeleteNulls(result.Get(name).(utils.NavigableMap[string, interface{}])))

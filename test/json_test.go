@@ -409,12 +409,14 @@ func TestSimpleCopy(t *testing.T) {
 	template := `{
 		"$copy": "file.json",
 		"$template": {
-			"overrideMe": 1
+			"overrideMe": 1,
+			"oldOverrideMe": "{{=$copy.overrideMe}}"
 		}
 	}`
 	expected := `{
 		"asd": 123,
-		"overrideMe": 1
+		"overrideMe": 1,
+		"oldOverrideMe": -1
 	}`
 	assertTemplate(t, template, expected)
 	safeio.Resolver = safeio.DefaultIOResolver
