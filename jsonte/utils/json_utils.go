@@ -88,6 +88,16 @@ func ToBoolean(obj interface{}) bool {
 	return obj != nil
 }
 
+func ToSemver(obj interface{}) Semver {
+	if obj == nil {
+		return Semver{}
+	}
+	if b, ok := obj.(Semver); ok {
+		return b
+	}
+	return Semver{}
+}
+
 // ToNumber converts an interface to a JSON number.
 func ToNumber(obj interface{}) JsonNumber {
 	if obj == nil {
@@ -195,6 +205,9 @@ func ToString(obj interface{}) string {
 	if b, ok := obj.(JsonNumber); ok {
 		return b.StringValue()
 	}
+	if b, ok := obj.(Semver); ok {
+		return b.String()
+	}
 	if b, ok := obj.(float64); ok {
 		return strconv.FormatFloat(b, 'f', -1, 64)
 	}
@@ -227,6 +240,9 @@ func ToPrettyString(obj interface{}) string {
 	}
 	if b, ok := obj.(JsonNumber); ok {
 		return b.StringValue()
+	}
+	if b, ok := obj.(Semver); ok {
+		return b.String()
 	}
 	if b, ok := obj.(float64); ok {
 		return strconv.FormatFloat(b, 'f', -1, 64)
@@ -274,6 +290,17 @@ func IsNumber(obj interface{}) bool {
 		return true
 	}
 	if _, ok := obj.(bool); ok {
+		return true
+	}
+	return false
+}
+
+// IsSemver returns true if the given interface is a semver object.
+func IsSemver(obj interface{}) bool {
+	if obj == nil {
+		return false
+	}
+	if _, ok := obj.(Semver); ok {
 		return true
 	}
 	return false
@@ -444,6 +471,9 @@ func IsEqual(a, b interface{}) bool {
 	if a == nil || b == nil {
 		return false
 	}
+	if IsSemver(a) && IsSemver(b) {
+		return a.(Semver).Equals(b.(Semver))
+	}
 	if (IsObject(a) != IsObject(b)) || (IsArray(a) != IsArray(b)) || (IsNumber(a) != IsNumber(b)) {
 		return false
 	}
@@ -472,6 +502,9 @@ func Less(a, b interface{}) bool {
 	}
 	if b == nil {
 		return true
+	}
+	if IsSemver(a) && IsSemver(b) {
+		return a.(Semver).CompareTo(b.(Semver)) == -1
 	}
 	if IsNumber(a) && IsNumber(b) {
 		if ToNumber(a).FloatValue() < ToNumber(b).FloatValue() {
@@ -552,7 +585,9 @@ func UnwrapContainers(obj interface{}) interface{} {
 			return b.IntValue()
 		}
 	}
-	if IsObject(obj) {
+	if IsSemver(obj) {
+		return obj.(Semver).String()
+	} else if IsObject(obj) {
 		object := AsObject(obj)
 		for _, k := range object.Keys() {
 			object.Put(k, UnwrapContainers(object.Get(k)))
@@ -650,6 +685,15 @@ func ParseJsonArray(str []byte) ([]interface{}, error) {
 		return []interface{}{}, WrappedErrorf("JSON must be an array")
 	}
 	return convertNumbersArray(AsArray(dat)), nil
+}
+
+func IndexOf[T any](object []T, value T) int {
+	for i, v := range object {
+		if IsEqual(v, value) {
+			return i
+		}
+	}
+	return -1
 }
 
 func convertNumbersObject(object NavigableMap[string, interface{}]) NavigableMap[string, interface{}] {

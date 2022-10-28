@@ -545,7 +545,10 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 				}
 				if header.ContainsKey("version") {
 					version := utils.UnwrapContainers(header.Get("version")).([]interface{})
-					array := utils.ParseSemverArray(version)
+					array, err := utils.ParseSemverArray(version)
+					if err != nil {
+						return versions, utils.WrapErrorf(err, "Failed to parse version in %s", p)
+					}
 					versions.Put(array.String(), p)
 				}
 			}

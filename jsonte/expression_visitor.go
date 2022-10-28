@@ -13,6 +13,22 @@ const DefaultName = "value"
 const DefaultIndexName = "index"
 const NaN = "NaN"
 
+var majorAliases = []string{
+	"major",
+	"a",
+	"x",
+}
+var minorAliases = []string{
+	"minor",
+	"b",
+	"y",
+}
+var patchAliases = []string{
+	"patch",
+	"c",
+	"z",
+}
+
 type ExpressionVisitor struct {
 	parser.BaseJsonTemplateVisitor
 	action    utils.JsonAction
@@ -300,6 +316,18 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					}
 				}
 			}
+		} else if utils.IsSemver(f1) && utils.IsSemver(f2) {
+			s1 := utils.ToSemver(f1)
+			s2 := utils.ToSemver(f2)
+			if context.Greater() != nil {
+				return s1.CompareTo(s2) > 0
+			} else if context.Less() != nil {
+				return s1.CompareTo(s2) < 0
+			} else if context.GreaterOrEqual() != nil {
+				return s1.CompareTo(s2) >= 0
+			} else if context.LessOrEqual() != nil {
+				return s1.CompareTo(s2) <= 0
+			}
 		} else if context.Greater() != nil || context.Less() != nil || context.GreaterOrEqual() != nil || context.LessOrEqual() != nil {
 			return false
 		} else {
@@ -391,7 +419,19 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				return utils.WrappedErrorf("Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), utils.ToString(object))
 			}
 		}
-		if utils.IsObject(object) {
+		if utils.IsSemver(object) {
+			u := utils.ToSemver(object)
+			if utils.IndexOf(majorAliases, text) != -1 {
+				return utils.ToNumber(u.Major)
+			}
+			if utils.IndexOf(minorAliases, text) != -1 {
+				return utils.ToNumber(u.Minor)
+			}
+			if utils.IndexOf(patchAliases, text) != -1 {
+				return utils.ToNumber(u.Patch)
+			}
+			return utils.WrappedErrorf("Cannot access %s because %s is not a valid semver field", context.GetText(), text)
+		} else if utils.IsObject(object) {
 			u := object.(utils.NavigableMap[string, interface{}])
 			if u.ContainsKey(text) {
 				newScope = u.Get(text)
@@ -452,6 +492,20 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					return utils.WrappedErrorf("Index must be a number: %s (%s)", utils.ToString(i), context.GetText())
 				}
 			}
+		} else if utils.IsSemver(object) {
+			// in case of an object, we need a string index
+			value := utils.ToString(i)
+			u := utils.ToSemver(object)
+			if utils.IndexOf(majorAliases, value) != -1 {
+				return utils.ToNumber(u.Major)
+			}
+			if utils.IndexOf(minorAliases, value) != -1 {
+				return utils.ToNumber(u.Minor)
+			}
+			if utils.IndexOf(patchAliases, value) != -1 {
+				return utils.ToNumber(u.Patch)
+			}
+			return utils.WrappedErrorf("Cannot access %s because %s is not a valid semver field", context.GetText(), value)
 		} else if utils.IsObject(object) {
 			// in case of an object, we need a string index
 			value := utils.ToString(i)

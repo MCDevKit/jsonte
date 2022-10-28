@@ -35,6 +35,7 @@ func Init() {
 		RegisterColorFunctions()
 		RegisterMinecraftFunctions()
 		RegisterFileFunctions()
+		RegisterSemverFunctions()
 		initialized = true
 	}
 }

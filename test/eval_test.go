@@ -95,6 +95,21 @@ func assertNumber(t *testing.T, eval jsonte.Result, expected float64) {
 	}
 }
 
+func assertSemver(t *testing.T, eval jsonte.Result, expected utils.Semver) {
+	t.Helper()
+	assertAction(t, eval, utils.Value)
+	if eval.Value == nil {
+		t.Fatalf("Result is null")
+	}
+	if !utils.IsSemver(eval.Value) {
+		t.Fatalf("Result is not a semver (%s)", reflect.TypeOf(eval.Value).Name())
+	}
+	semver := utils.ToSemver(eval.Value)
+	if semver.Major != expected.Major || semver.Minor != expected.Minor || semver.Patch != expected.Patch {
+		t.Fatalf("Result is not correct (expected %s, got %s)", expected.String(), semver.String())
+	}
+}
+
 func assertBool(t *testing.T, eval jsonte.Result, expected bool) {
 	t.Helper()
 	assertAction(t, eval, utils.Value)
