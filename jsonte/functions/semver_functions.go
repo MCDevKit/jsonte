@@ -16,7 +16,7 @@ func RegisterSemverFunctions() {
 		Name:  "semver",
 		Body:  semverString,
 		Docs: Docs{
-			Summary: "Converts a string semver to semver object.",
+			Summary: "Creates a new semver object from string, array or major, minor and patch numbers as separate arguments.",
 			Arguments: []Argument{
 				{
 					Name:    "version",
