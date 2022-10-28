@@ -20,7 +20,7 @@ func RegisterSemverFunctions() {
 			Arguments: []Argument{
 				{
 					Name:    "version",
-					Summary: "The semver string to parse.",
+					Summary: "The semver string or array to parse. Optionally the major, minor and patch can be specified as separate arguments.",
 				},
 			},
 			Example: `
@@ -28,7 +28,11 @@ func RegisterSemverFunctions() {
 {
   "$template": {
     "$comment": "The field below will be '1.8.0'",
-    "test": "{{semver('1.8.0')}}"
+    "test": "{{semver('1.8.0')}}",
+    "$comment1": "The field below will be '1.9.0'",
+    "test1": "{{semver([1, 9, 0])}}",
+    "$comment2": "The field below will be '1.10.0'",
+    "test2": "{{semver(1, 10, 0)}}"
   }
 }
 </code>`,
@@ -38,55 +42,11 @@ func RegisterSemverFunctions() {
 		Group: group,
 		Name:  "semver",
 		Body:  semverArray,
-		Docs: Docs{
-			Summary: "Converts an array semver to semver object.",
-			Arguments: []Argument{
-				{
-					Name:    "version",
-					Summary: "The semver array to parse.",
-				},
-			},
-			Example: `
-<code>
-{
-  "$template": {
-    "$comment": "The field below will be '1.8.0'",
-    "test": "{{semver([1, 8, 0])}}"
-  }
-}
-</code>`,
-		},
 	})
 	RegisterFunction(JsonFunction{
 		Group: group,
 		Name:  "semver",
 		Body:  semver,
-		Docs: Docs{
-			Summary: "Creates a new semver object.",
-			Arguments: []Argument{
-				{
-					Name:    "major",
-					Summary: "Major version.",
-				},
-				{
-					Name:    "minor",
-					Summary: "Minor version.",
-				},
-				{
-					Name:    "patch",
-					Summary: "Patch version.",
-				},
-			},
-			Example: `
-<code>
-{
-  "$template": {
-    "$comment": "The field below will be '1.8.0'",
-    "test": "{{semver(1, 8, 0)}}"
-  }
-}
-</code>`,
-		},
 	})
 }
 
