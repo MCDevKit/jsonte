@@ -335,6 +335,12 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 		if key == "$comment" {
 			continue
 		}
+		if key == "$assert" {
+			if err = v.visitAssert(value, fmt.Sprintf("%s/%s", path, "$assert")); err != nil {
+				return result, err
+			}
+			continue
+		}
 		if actionPattern.MatchString(key) {
 			eval, err := Eval(key, v.scope, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
@@ -526,6 +532,52 @@ func (v *TemplateVisitor) visitString(str string, path string) (interface{}, err
 		return replacements[match]
 	})
 	return result, nil
+}
+
+func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {
+	if arr, ok := value.([]interface{}); ok {
+		for i, i2 := range arr {
+			err := v.visitAssert(i2, fmt.Sprintf("%s[%d]", path, i))
+			if err != nil {
+				return utils.PassError(err)
+			}
+		}
+	} else if str, ok := value.(string); ok {
+		result, err := Eval(str, v.scope, path)
+		if err != nil {
+			return utils.WrapJsonErrorf(path, err, "Error evaluating '%s'", str)
+		}
+		if result.Action != utils.Value {
+			return utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())
+		}
+		if !utils.ToBoolean(result.Value) {
+			return utils.WrappedJsonErrorf(path, "Assertion failed for '%s'", str)
+		}
+	} else if obj, ok := value.(utils.NavigableMap[string, interface{}]); ok {
+		condition, ok := obj.Get("condition").(string)
+		if !ok {
+			return utils.WrappedJsonErrorf(path, "Condition must be a string")
+		}
+		result, err := Eval(condition, v.scope, path)
+		if err != nil {
+			return utils.WrapJsonErrorf(path, err, "Error evaluating '%s'", condition)
+		}
+		if result.Action != utils.Value {
+			return utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())
+		}
+		if !utils.ToBoolean(result.Value) {
+			message, ok := obj.Get("message").(string)
+			if !ok {
+				return utils.WrappedJsonErrorf(path, "Assertion failed for '%s'", str)
+			}
+			msg, err := v.visitString(message, path)
+			if err != nil {
+				return utils.WrappedJsonErrorf(path, "Error evaluating message '%s'", message)
+			}
+			return utils.WrappedJsonErrorf(path, utils.ToPrettyString(msg))
+		}
+	}
+	return nil
 }
 
 func checkDeadline(deadline int64) error {
