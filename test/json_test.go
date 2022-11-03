@@ -732,3 +732,27 @@ func TestMultipleAsserts(t *testing.T) {
 		t.Errorf("Unexpected error: %s", err.Error())
 	}
 }
+
+func TestMultiplePredicatesModifyingSameField(t *testing.T) {
+	template := `{
+		"$template": {
+			"{{?true}}": {
+				"field": {
+					"set1": "value1"
+				}
+			},
+			"{{?true == true}}": {
+				"field": {
+					"set2": "value2"
+				}
+			}
+		}
+	}`
+	expected := `{
+		"field": {
+			"set1": "value1",
+			"set2": "value2"
+		}
+	}`
+	assertTemplate(t, template, expected)
+}
