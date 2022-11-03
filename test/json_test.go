@@ -1,12 +1,14 @@
 package test
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -669,5 +671,64 @@ func TestJsonParser(t *testing.T) {
 		t.Error("Unexpected string representation of object")
 		t.Errorf("Expected: %s", expPretty)
 		t.Errorf("Actual: %s", utils.ToPrettyString(object))
+	}
+}
+
+func TestCorrectAssert(t *testing.T) {
+	template := `{
+		"$template": {
+			"$assert": "true"
+		}
+	}`
+	expected := `{}`
+	assertTemplate(t, template, expected)
+}
+
+func TestIncorrectAssert(t *testing.T) {
+	template := `{
+		"$template": {
+			"$assert": "false"
+		}
+	}`
+	_, err := jsonte.Process("test", template, utils.NavigableMap[string, interface{}]{}, map[string]jsonte.JsonModule{}, -1)
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "Assertion failed for 'false' at $template/$assert" {
+		t.Errorf("Unexpected error: %s", err.Error())
+	}
+}
+
+func TestIncorrectAssertWithMessage(t *testing.T) {
+	template := `{
+		"$template": {
+			"$assert": {
+				"condition": "false",
+				"message": "This is a test"
+			}
+		}
+	}`
+	_, err := jsonte.Process("test", template, utils.NavigableMap[string, interface{}]{}, map[string]jsonte.JsonModule{}, -1)
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "This is a test at $template/$assert" {
+		t.Errorf("Unexpected error: %s", err.Error())
+	}
+}
+
+func TestMultipleAsserts(t *testing.T) {
+	template := `{
+		"$template": {
+			"$assert": ["true", "true", "false", "true"]
+		}
+	}`
+	_, err := jsonte.Process("test", template, utils.NavigableMap[string, interface{}]{}, map[string]jsonte.JsonModule{}, -1)
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "Assertion failed for 'false' at $template/$assert[2]" {
+		t.Logf("%s", hex.EncodeToString([]byte(err.Error())))
+		t.Errorf("Unexpected error: %s", err.Error())
 	}
 }
