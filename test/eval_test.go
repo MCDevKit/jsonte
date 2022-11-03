@@ -44,7 +44,7 @@ func assertArray(t *testing.T, eval jsonte.Result, expected []interface{}) []int
 			if !utils.IsObject(array[i]) {
 				t.Fatalf("Array element %d is not an object (%s)", i, reflect.TypeOf(array[i]).Name())
 			}
-			compareJsonObject(t, expected[i].(utils.NavigableMap[string, interface{}]), array[i].(utils.NavigableMap[string, interface{}]), fmt.Sprintf("#[%d]", i))
+			compareJsonObject(t, expected[i].(utils.NavigableMap[string, interface{}]), array[i].(utils.NavigableMap[string, interface{}]), fmt.Sprintf("#[%d]", i), true)
 		} else if utils.IsArray(expected[i]) {
 			if array[i] == nil {
 				t.Fatalf("Array element %d is null", i)
@@ -73,7 +73,24 @@ func assertObject(t *testing.T, eval jsonte.Result, expected utils.NavigableMap[
 	if !ok {
 		t.Fatalf("Result is not a JSON object (%s)", reflect.TypeOf(eval.Value).Name())
 	}
-	compareJsonObject(t, expected, obj, "#")
+	compareJsonObject(t, expected, obj, "#", true)
+	return obj
+}
+
+func assertObjectContains(t *testing.T, eval jsonte.Result, expected utils.NavigableMap[string, interface{}]) utils.NavigableMap[string, interface{}] {
+	t.Helper()
+	assertAction(t, eval, utils.Value)
+	if eval.Value == nil {
+		t.Fatalf("Result is null")
+	}
+	if !utils.IsObject(eval.Value) {
+		t.Fatalf("Result is not an object (%s)", reflect.TypeOf(eval.Value).Name())
+	}
+	obj, ok := eval.Value.(utils.NavigableMap[string, interface{}])
+	if !ok {
+		t.Fatalf("Result is not a JSON object (%s)", reflect.TypeOf(eval.Value).Name())
+	}
+	compareJsonObject(t, expected, obj, "#", false)
 	return obj
 }
 

@@ -19,7 +19,7 @@ func safeTypeName(v interface{}) string {
 	return reflect.TypeOf(v).Name()
 }
 
-func compareJsonObject(t *testing.T, expected utils.NavigableMap[string, interface{}], actual utils.NavigableMap[string, interface{}], path string) {
+func compareJsonObject(t *testing.T, expected utils.NavigableMap[string, interface{}], actual utils.NavigableMap[string, interface{}], path string, checkExtra bool) {
 	t.Helper()
 	for _, key := range expected.Keys() {
 		value1 := expected.Get(key)
@@ -28,7 +28,7 @@ func compareJsonObject(t *testing.T, expected utils.NavigableMap[string, interfa
 			newPath := fmt.Sprintf("%s/%s", path, key)
 			if v1, ok := value1.(utils.NavigableMap[string, interface{}]); ok {
 				if v2, ok := value2.(utils.NavigableMap[string, interface{}]); ok {
-					compareJsonObject(t, v1, v2, newPath)
+					compareJsonObject(t, v1, v2, newPath, true)
 				} else {
 					t.Errorf("Field %s is not an object (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
 				}
@@ -59,16 +59,18 @@ func compareJsonObject(t *testing.T, expected utils.NavigableMap[string, interfa
 			t.Errorf("Object does not contain key %s", key)
 		}
 	}
-	for _, key := range actual.Keys() {
-		if !expected.ContainsKey(key) {
-			t.Errorf("Object contains unexpected key %s/%s", path, key)
+	if checkExtra {
+		for _, key := range actual.Keys() {
+			if !expected.ContainsKey(key) {
+				t.Errorf("Object contains unexpected key %s/%s", path, key)
+			}
 		}
-	}
-	if actual.Size() == expected.Size() {
-		for i := 0; i < actual.Size(); i++ {
-			if actual.Keys()[i] != expected.Keys()[i] {
-				t.Errorf("Array keys are not in the right order at %d (expected %s, got %s)", i, utils.ToString(expected.Keys()), utils.ToString(actual.Keys()))
-				break
+		if actual.Size() == expected.Size() {
+			for i := 0; i < actual.Size(); i++ {
+				if actual.Keys()[i] != expected.Keys()[i] {
+					t.Errorf("Array keys are not in the right order at %d (expected %s, got %s)", i, utils.ToString(expected.Keys()), utils.ToString(actual.Keys()))
+					break
+				}
 			}
 		}
 	}
@@ -82,7 +84,7 @@ func compareJsonArray(t *testing.T, expected []interface{}, actual []interface{}
 		value2 := actual[i]
 		if v1, ok := value1.(utils.NavigableMap[string, interface{}]); ok {
 			if v2, ok := value2.(utils.NavigableMap[string, interface{}]); ok {
-				compareJsonObject(t, v1, v2, newPath)
+				compareJsonObject(t, v1, v2, newPath, true)
 			} else {
 				t.Errorf("Element %s is not an object (expected %s, got %s)", newPath, utils.ToString(v1), utils.ToString(value2))
 			}
@@ -134,7 +136,7 @@ func assertTemplateWithModule(t *testing.T, template, module, expected string) {
 		t.Fatal(err)
 	}
 	exp = utils.UnwrapContainers(exp).(utils.NavigableMap[string, interface{}])
-	compareJsonObject(t, exp, process.Get("test").(utils.NavigableMap[string, interface{}]), "#")
+	compareJsonObject(t, exp, process.Get("test").(utils.NavigableMap[string, interface{}]), "#", true)
 }
 
 func assertTemplate(t *testing.T, template, expected string) {
@@ -148,7 +150,7 @@ func assertTemplate(t *testing.T, template, expected string) {
 		t.Fatal(err)
 	}
 	exp = utils.UnwrapContainers(exp).(utils.NavigableMap[string, interface{}])
-	compareJsonObject(t, exp, process.Get("test").(utils.NavigableMap[string, interface{}]), "#")
+	compareJsonObject(t, exp, process.Get("test").(utils.NavigableMap[string, interface{}]), "#", true)
 }
 
 func assertTemplateMultiple(t *testing.T, template, expected string) {
@@ -168,7 +170,7 @@ func assertTemplateMultiple(t *testing.T, template, expected string) {
 			t.Errorf("Missing file %s", key)
 			continue
 		}
-		compareJsonObject(t, value, process.Get(key).(utils.NavigableMap[string, interface{}]), fmt.Sprintf("%s#", key))
+		compareJsonObject(t, value, process.Get(key).(utils.NavigableMap[string, interface{}]), fmt.Sprintf("%s#", key), true)
 	}
 	for _, key := range process.Keys() {
 		if !exp.ContainsKey(key) {
@@ -645,7 +647,7 @@ func TestJsonParser(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	compareJsonObject(t, object, expected, "#")
+	compareJsonObject(t, object, expected, "#", true)
 
 	expMini := "{\"obj\":{\"decimal\":0,\"integer\":0,\"string\":\"escape chars \\n\\t\\r\\b\\f \\\\ \\\" ሴ\",\"array\":[],\"object\":{},\"null\":null,\"true\":true,\"false\":false}}"
 	expPretty := `{

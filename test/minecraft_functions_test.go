@@ -49,33 +49,33 @@ func TestGetLatestBPFile(t *testing.T) {
 
 func TestFindItemInfoByName(t *testing.T) {
 	safeio.Resolver = CacheFS
-	expected := `{"id":"minecraft:stone","legacyId":1,"metadata":5,"maxDurability":0,"damage":0,"armor":0,"maxStackSize":64,"tags":[],"category":"nature","nutrition":0,"fuelDuration":0,"aliases":[],"nameKey":"tile.stone.andesite.name","langName":"Andesite"}`
+	expected := `{"id":"minecraft:stone","legacyId":1,"metadata":5}`
 	eval := evaluate(t, `findItemInfoByName('andesite')`)
 	object, err := utils.ParseJsonObject([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertObject(t, eval, object)
+	assertObjectContains(t, eval, object)
 }
 
 func TestFindItemInfoById(t *testing.T) {
 	safeio.Resolver = CacheFS
-	expected := `{"id":"minecraft:blue_glazed_terracotta","legacyId":231,"metadata":0,"maxDurability":0,"damage":0,"armor":0,"maxStackSize":64,"tags":[],"category":"construction","nutrition":0,"fuelDuration":0,"aliases":["minecraft:glazedTerracotta.blue"],"nameKey":"tile.glazedTerracotta.blue.name","langName":"Blue Glazed Terracotta"}`
+	expected := `{"id":"minecraft:blue_glazed_terracotta","legacyId":231,"metadata":0}`
 	eval := evaluate(t, `findItemInfoById('blue_terracotta')`)
 	object, err := utils.ParseJsonObject([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertObject(t, eval, object)
+	assertObjectContains(t, eval, object)
 }
 
 func TestGetItemInfo(t *testing.T) {
 	safeio.Resolver = CacheFS
-	expected := `{"id":"minecraft:stone","legacyId":1,"metadata":0,"maxDurability":0,"damage":0,"armor":0,"maxStackSize":64,"tags":[],"category":"nature","nutrition":0,"fuelDuration":0,"aliases":[],"nameKey":"tile.stone.stone.name","langName":"Stone"}`
+	expected := `{"id":"minecraft:stone","legacyId":1,"metadata":0}`
 	eval := evaluate(t, `getItemInfo('stone', 0)`)
 	object, err := utils.ParseJsonObject([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertObject(t, eval, object)
+	assertObjectContains(t, eval, object)
 }
