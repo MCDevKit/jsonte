@@ -366,7 +366,11 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 						}
 						u := o.(utils.NavigableMap[string, interface{}])
 						for _, k := range u.Keys() {
-							result.Put(k, u.Get(k))
+							json, err := utils.MergeJSON(result.Get(k), u.Get(k), true)
+							if err != nil {
+								return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", k)
+							}
+							result.Put(k, json)
 						}
 					}
 				} else {
@@ -380,7 +384,11 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 					}
 					if obj, ok := o.(utils.NavigableMap[string, interface{}]); ok {
 						for _, k := range obj.Keys() {
-							result.Put(k, obj.Get(k))
+							json, err := utils.MergeJSON(result.Get(k), obj.Get(k), true)
+							if err != nil {
+								return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", k)
+							}
+							result.Put(k, json)
 						}
 					} else {
 						return nil, utils.WrappedJsonErrorf(path, "The value of the predicate key must be an object")
@@ -396,7 +404,11 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 				if err != nil {
 					return nil, utils.PassError(err)
 				}
-				result.Put(key.(string), r)
+				json, err := utils.MergeJSON(result.Get(key.(string)), r, true)
+				if err != nil {
+					return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", key.(string))
+				}
+				result.Put(key.(string), json)
 			default:
 				return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", eval.Action.String())
 			}
@@ -410,14 +422,22 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 			if err != nil {
 				return nil, utils.PassError(err)
 			}
-			result.Put(key.(string), r)
+			json, err := utils.MergeJSON(result.Get(key.(string)), r, true)
+			if err != nil {
+				return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", key.(string))
+			}
+			result.Put(key.(string), json)
 		} else {
 			var err error
 			r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
 				return nil, utils.PassError(err)
 			}
-			result.Put(key, r)
+			json, err := utils.MergeJSON(result.Get(key), r, true)
+			if err != nil {
+				return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", key)
+			}
+			result.Put(key, json)
 		}
 	}
 	return result, nil

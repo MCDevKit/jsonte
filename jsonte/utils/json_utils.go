@@ -374,6 +374,33 @@ func IsObject(obj interface{}) bool {
 	return false
 }
 
+func MergeJSON(template, parent interface{}, keepOverrides bool) (interface{}, error) {
+	if template == nil {
+		return parent, nil
+	}
+	if parent == nil {
+		return template, nil
+	}
+	if IsObject(template) && IsObject(parent) {
+		templateMap := AsObject(template)
+		parentMap := AsObject(parent)
+		return MergeObject(templateMap, parentMap, keepOverrides), nil
+	}
+	if IsArray(template) && IsArray(parent) {
+		templateArray := AsArray(template)
+		parentArray := AsArray(parent)
+		return MergeArray(templateArray, parentArray, keepOverrides), nil
+	}
+	if IsObject(template) != IsObject(parent) {
+		return nil, WrappedErrorf("Cannot merge %s and %s", TypeName(template), TypeName(parent))
+	}
+	if IsArray(template) != IsArray(parent) {
+		return nil, WrappedErrorf("Cannot merge %s and %s", TypeName(template), TypeName(parent))
+	}
+
+	return parent, nil
+}
+
 // MergeObject merges two JSON objects into a new JSON object.
 // If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.
 func MergeObject(template, parent NavigableMap[string, interface{}], keepOverrides bool) NavigableMap[string, interface{}] {
@@ -403,7 +430,7 @@ out:
 				continue out
 			}
 		}
-		if strings.HasPrefix(k, "$") && k != "$comment" {
+		if strings.HasPrefix(k, "$") && k != "$comment" && k != "$assert" {
 			if keepOverrides {
 				result.Put(k, v)
 			} else {
@@ -694,6 +721,31 @@ func IndexOf[T any](object []T, value T) int {
 		}
 	}
 	return -1
+}
+
+func TypeName(obj interface{}) string {
+	if obj == nil {
+		return "nil"
+	}
+	if IsArray(obj) {
+		return "array"
+	}
+	if IsObject(obj) {
+		return "object"
+	}
+	if _, ok := obj.(bool); ok {
+		return "boolean"
+	}
+	if IsNumber(obj) {
+		return "number"
+	}
+	if IsSemver(obj) {
+		return "semver"
+	}
+	if _, ok := obj.(string); ok {
+		return "string"
+	}
+	return reflect.TypeOf(obj).String()
 }
 
 func convertNumbersObject(object NavigableMap[string, interface{}]) NavigableMap[string, interface{}] {
