@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"math"
 	"reflect"
 	"strconv"
@@ -392,10 +393,10 @@ func MergeJSON(template, parent interface{}, keepOverrides bool) (interface{}, e
 		return MergeArray(templateArray, parentArray, keepOverrides), nil
 	}
 	if IsObject(template) != IsObject(parent) {
-		return nil, WrappedErrorf("Cannot merge %s and %s", TypeName(template), TypeName(parent))
+		return nil, burrito.WrappedErrorf("Cannot merge %s and %s", TypeName(template), TypeName(parent))
 	}
 	if IsArray(template) != IsArray(parent) {
-		return nil, WrappedErrorf("Cannot merge %s and %s", TypeName(template), TypeName(parent))
+		return nil, burrito.WrappedErrorf("Cannot merge %s and %s", TypeName(template), TypeName(parent))
 	}
 
 	return parent, nil
@@ -696,7 +697,7 @@ func ParseJsonObject(str []byte) (NavigableMap[string, interface{}], error) {
 	}
 	// Convert all numbers to JsonNumber
 	if !IsObject(dat) {
-		return NewNavigableMap[string, interface{}](), WrappedErrorf("JSON must be an object")
+		return NewNavigableMap[string, interface{}](), burrito.WrappedErrorf("JSON must be an object")
 	}
 	return convertNumbersObject(AsObject(dat)), nil
 }
@@ -709,7 +710,7 @@ func ParseJsonArray(str []byte) ([]interface{}, error) {
 	}
 	// Convert all numbers to JsonNumber
 	if !IsArray(dat) {
-		return []interface{}{}, WrappedErrorf("JSON must be an array")
+		return []interface{}{}, burrito.WrappedErrorf("JSON must be an array")
 	}
 	return convertNumbersArray(AsArray(dat)), nil
 }

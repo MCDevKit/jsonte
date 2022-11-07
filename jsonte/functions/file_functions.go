@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gobwas/glob"
@@ -231,15 +232,15 @@ func RegisterFileFunctions() {
 func load(s string) (utils.NavigableMap[string, interface{}], error) {
 	resolver, err := safeio.Resolver.Open(s)
 	if err != nil {
-		return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to resolve path %s", s)
+		return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
 	readAll, err := ioutil.ReadAll(resolver)
 	if err != nil {
-		return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to read file %s", s)
+		return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to read file %s", s)
 	}
 	err = resolver.Close()
 	if err != nil {
-		return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to close file %s", s)
+		return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to close file %s", s)
 	}
 	return utils.ParseJsonObject(readAll)
 }
@@ -247,7 +248,7 @@ func load(s string) (utils.NavigableMap[string, interface{}], error) {
 func fileList(s string) ([]interface{}, error) {
 	resolved, err := safeio.Resolver.OpenDir(s)
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "Failed to resolve path %s", s)
+		return nil, burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
 	result := make([]interface{}, len(resolved))
 	for i, file := range resolved {
@@ -259,11 +260,11 @@ func fileList(s string) ([]interface{}, error) {
 func fileListFilter(s string, filter string) ([]interface{}, error) {
 	compile, err := glob.Compile(filter)
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "Failed to compile glob %s", filter)
+		return nil, burrito.WrapErrorf(err, "Failed to compile glob %s", filter)
 	}
 	resolved, err := safeio.Resolver.OpenDir(s)
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "Failed to resolve path %s", s)
+		return nil, burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
 	result := make([]interface{}, 0)
 	for _, file := range resolved {
@@ -277,7 +278,7 @@ func fileListFilter(s string, filter string) ([]interface{}, error) {
 func fileListRecurse(s string) ([]interface{}, error) {
 	resolved, err := safeio.Resolver.OpenDirRecursive(s)
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "Failed to resolve path %s", s)
+		return nil, burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
 	result := make([]interface{}, len(resolved))
 	for i, file := range resolved {
@@ -289,11 +290,11 @@ func fileListRecurse(s string) ([]interface{}, error) {
 func fileListRecurseFilter(s string, filter string) ([]interface{}, error) {
 	compile, err := glob.Compile(filter)
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "Failed to compile glob %s", filter)
+		return nil, burrito.WrapErrorf(err, "Failed to compile glob %s", filter)
 	}
 	resolved, err := safeio.Resolver.OpenDirRecursive(s)
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "Failed to resolve path %s", s)
+		return nil, burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
 	result := make([]interface{}, 0)
 	for _, file := range resolved {
@@ -326,7 +327,7 @@ func isDir(s string) (bool, error) {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
-		return false, utils.WrapErrorf(err, "Failed to stat path %s", s)
+		return false, burrito.WrapErrorf(err, "Failed to stat path %s", s)
 	}
 	return stat.IsDir(), nil
 }

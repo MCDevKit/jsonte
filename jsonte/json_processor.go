@@ -2,6 +2,7 @@ package jsonte
 
 import (
 	"fmt"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
@@ -32,11 +33,11 @@ const MaxInt64 = int64(^uint64(0) >> 1)
 func LoadModule(input string) (JsonModule, error) {
 	json, err := utils.ParseJsonObject([]byte(input))
 	if err != nil {
-		return JsonModule{}, utils.WrapErrorf(err, "Failed to parse JSON module")
+		return JsonModule{}, burrito.WrapErrorf(err, "Failed to parse JSON module")
 	}
 	moduleName, ok := json.Get("$module").(string)
 	if !ok {
-		return JsonModule{}, utils.WrappedErrorf("$module", "The module does not have a name")
+		return JsonModule{}, burrito.WrappedErrorf("$module", "The module does not have a name")
 	}
 	scope, ok := json.Get("$scope").(utils.NavigableMap[string, interface{}])
 	if !ok {
@@ -70,7 +71,7 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 	result := utils.NewNavigableMap[string, interface{}]()
 	root, err := utils.ParseJsonObject([]byte(input))
 	if err != nil {
-		return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to parse JSON")
+		return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to parse JSON")
 	}
 
 	// Define scope
@@ -106,7 +107,7 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 		file := root.Get("$files").(utils.NavigableMap[string, interface{}])
 		array, err := Eval(file.Get("array").(string), visitor.scope, "$files.array")
 		if err != nil {
-			return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to evaluate $files.array")
+			return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to evaluate $files.array")
 		}
 		if array.Value == nil {
 			return utils.NewNavigableMap[string, interface{}](), utils.WrappedJsonErrorf("$files.array", "The array evaluated to null")
@@ -126,7 +127,7 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 				if isCopy {
 					template, err = processCopy(c, visitor, modules, "$files.array", timeout)
 					if err != nil {
-						return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
+						return utils.NewNavigableMap[string, interface{}](), burrito.PassError(err)
 					}
 					visitor.pushScope(map[string]interface{}{"$copy": template})
 				} else {
@@ -135,7 +136,7 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 				if isExtend {
 					template, err = extendTemplate(root.Get("$extend"), template, visitor, modules)
 					if err != nil {
-						return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
+						return utils.NewNavigableMap[string, interface{}](), burrito.PassError(err)
 					}
 				}
 				if isCopy && hasTemplate {
@@ -147,11 +148,11 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 				}
 				mFileName, err := visitor.visitString(file.Get("fileName").(string), "$files.fileName")
 				if err != nil {
-					return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to evaluate $files.fileName")
+					return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to evaluate $files.fileName")
 				}
 				f, err := visitor.visitObject(utils.DeepCopyObject(template), "$template")
 				if err != nil {
-					return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
+					return utils.NewNavigableMap[string, interface{}](), burrito.PassError(err)
 				}
 				if isCopy {
 					visitor.popScope()
@@ -168,14 +169,14 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 		if isCopy {
 			template, err = processCopy(c, visitor, modules, "$copy", timeout)
 			if err != nil {
-				return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
+				return utils.NewNavigableMap[string, interface{}](), burrito.PassError(err)
 			}
 			visitor.pushScope(map[string]interface{}{"$copy": template})
 		}
 		if isExtend {
 			template, err = extendTemplate(root.Get("$extend"), template, visitor, modules)
 			if err != nil {
-				return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
+				return utils.NewNavigableMap[string, interface{}](), burrito.PassError(err)
 			}
 		}
 		if hasTemplate {
@@ -183,7 +184,7 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 		}
 		f, err := visitor.visitObject(utils.DeepCopyObject(template), "$template")
 		if err != nil {
-			return utils.NewNavigableMap[string, interface{}](), utils.PassError(err)
+			return utils.NewNavigableMap[string, interface{}](), burrito.PassError(err)
 		}
 		if isCopy {
 			visitor.popScope()
@@ -198,21 +199,21 @@ func Process(name, input string, globalScope utils.NavigableMap[string, interfac
 func processCopy(c interface{}, visitor TemplateVisitor, modules map[string]JsonModule, path string, timeout int64) (utils.NavigableMap[string, interface{}], error) {
 	c, err := visitor.visitString(c.(string), path)
 	if err != nil {
-		return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to evaluate $copy")
+		return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to evaluate $copy")
 	}
 	if copyPath, ok := c.(string); ok {
 		resolve, err := safeio.Resolver.Open(copyPath)
 		if err != nil {
-			return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to open %s", copyPath)
+			return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to open %s", copyPath)
 		}
 		all, err := ioutil.ReadAll(resolve)
 		if err != nil {
-			return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to read %s", copyPath)
+			return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to read %s", copyPath)
 		}
 		if strings.HasSuffix(copyPath, ".templ") {
 			processedMap, err := Process("copy", string(all), visitor.globalScope, modules, timeout)
 			if err != nil {
-				return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to process copy template %s", copyPath)
+				return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to process copy template %s", copyPath)
 			}
 			if processedMap.Size() > 1 {
 				return utils.NewNavigableMap[string, interface{}](), utils.WrappedJsonErrorf(path, "The copy template must compile to a single object")
@@ -222,7 +223,7 @@ func processCopy(c interface{}, visitor TemplateVisitor, modules map[string]Json
 		} else {
 			template, err := utils.ParseJsonObject(all)
 			if err != nil {
-				return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Failed to parse %s", copyPath)
+				return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to parse %s", copyPath)
 			}
 			return template, nil
 		}
@@ -286,14 +287,14 @@ func extendTemplate(extend interface{}, template utils.NavigableMap[string, inte
 		if mod.Copy != "" {
 			object, err := processCopy(mod.Copy, visitor, modules, "$copy", -1)
 			if err != nil {
-				return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Error processing $copy for module %s", mod.Name)
+				return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Error processing $copy for module %s", mod.Name)
 			}
 			template = utils.MergeObject(object, template, true)
 		}
 		parent, err := visitor.visitObject(mod.Template, "[Module "+module+"]")
 		visitor.scope.PopFront()
 		if err != nil {
-			return utils.NewNavigableMap[string, interface{}](), utils.WrapErrorf(err, "Error processing template for module %s", mod.Name)
+			return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Error processing template for module %s", mod.Name)
 		}
 		template = utils.MergeObject(template, parent.(utils.NavigableMap[string, interface{}]), true)
 	}
@@ -362,7 +363,7 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 						v.popScope()
 						v.popScope()
 						if err != nil {
-							return nil, utils.PassError(err)
+							return nil, burrito.PassError(err)
 						}
 						u := o.(utils.NavigableMap[string, interface{}])
 						for _, k := range u.Keys() {
@@ -380,7 +381,7 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 				if utils.ToBoolean(eval.Value) {
 					o, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
 					if err != nil {
-						return nil, utils.PassError(err)
+						return nil, burrito.PassError(err)
 					}
 					if obj, ok := o.(utils.NavigableMap[string, interface{}]); ok {
 						for _, k := range obj.Keys() {
@@ -397,12 +398,12 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 			case utils.Value:
 				key, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
 				if err != nil {
-					return nil, utils.PassError(err)
+					return nil, burrito.PassError(err)
 				}
 				key = utils.ToString(key)
 				r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
 				if err != nil {
-					return nil, utils.PassError(err)
+					return nil, burrito.PassError(err)
 				}
 				json, err := utils.MergeJSON(result.Get(key.(string)), r, true)
 				if err != nil {
@@ -415,12 +416,12 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 		} else if templatePattern.MatchString(key) {
 			key, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
-				return nil, utils.PassError(err)
+				return nil, burrito.PassError(err)
 			}
 			key = utils.ToString(key)
 			r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
-				return nil, utils.PassError(err)
+				return nil, burrito.PassError(err)
 			}
 			json, err := utils.MergeJSON(result.Get(key.(string)), r, true)
 			if err != nil {
@@ -431,7 +432,7 @@ func (v *TemplateVisitor) visitObject(obj utils.NavigableMap[string, interface{}
 			var err error
 			r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
-				return nil, utils.PassError(err)
+				return nil, burrito.PassError(err)
 			}
 			json, err := utils.MergeJSON(result.Get(key), r, true)
 			if err != nil {
@@ -452,7 +453,7 @@ func (v *TemplateVisitor) visitArray(arr []interface{}, path string) (interface{
 		}
 		a, err := v.visitArrayElement(result, value, fmt.Sprintf("%s[%d]", path, i))
 		if err != nil {
-			return nil, utils.PassError(err)
+			return nil, burrito.PassError(err)
 		}
 		result = a
 	}
@@ -484,7 +485,7 @@ func (v *TemplateVisitor) visitArrayElement(array []interface{}, element interfa
 								v.popScope()
 								v.popScope()
 								if err != nil {
-									return array, utils.PassError(err)
+									return array, burrito.PassError(err)
 								}
 							}
 							return array, nil
@@ -499,7 +500,7 @@ func (v *TemplateVisitor) visitArrayElement(array []interface{}, element interfa
 					case utils.Value:
 						visit, err := v.visit(element, path)
 						if err != nil {
-							return nil, utils.PassError(err)
+							return nil, burrito.PassError(err)
 						}
 						array = append(array, visit)
 						return array, nil
@@ -512,7 +513,7 @@ func (v *TemplateVisitor) visitArrayElement(array []interface{}, element interfa
 	}
 	visit, err := v.visit(element, path)
 	if err != nil {
-		return nil, utils.PassError(err)
+		return nil, burrito.PassError(err)
 	}
 	if arr, ok := visit.([]interface{}); ok {
 		array = append(array, arr...)
@@ -559,7 +560,7 @@ func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {
 		for i, i2 := range arr {
 			err := v.visitAssert(i2, fmt.Sprintf("%s[%d]", path, i))
 			if err != nil {
-				return utils.PassError(err)
+				return burrito.PassError(err)
 			}
 		}
 	} else if str, ok := value.(string); ok {
@@ -602,7 +603,7 @@ func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {
 
 func checkDeadline(deadline int64) error {
 	if time.Now().UnixMilli() > deadline {
-		return utils.WrappedErrorf("Template evaluation timed out")
+		return burrito.WrappedErrorf("Template evaluation timed out")
 	}
 	return nil
 }

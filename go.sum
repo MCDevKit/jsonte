@@ -1,3 +1,5 @@
+github.com/Bedrock-OSS/go-burrito v0.0.0-20221107114029-9e8aa6cfcdd1 h1:bWp/p6LbzZ/TQh71y5d2pALBcxAXRXogdi/yz/KKjBk=
+github.com/Bedrock-OSS/go-burrito v0.0.0-20221107114029-9e8aa6cfcdd1/go.mod h1:K8EU2Q2ZlFoOmkyn8ZfiasoNq+9UkqiwLoTJa2at4qA=
 github.com/DATA-DOG/go-sqlmock v1.3.3/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
 github.com/Microsoft/go-winio v0.4.16 h1:FtSW/jqD+l4ba5iPBj9CODVtgfYAD8w2wS923g/cFDk=
 github.com/Microsoft/go-winio v0.4.16/go.mod h1:XB6nPKklQyQ7GC9LdcBEcBl8PF76WugXOPRXwdLnMv0=

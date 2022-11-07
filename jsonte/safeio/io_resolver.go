@@ -1,7 +1,7 @@
 package safeio
 
 import (
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"io"
 	"io/fs"
 	"net/http"
@@ -36,20 +36,20 @@ var DefaultIOResolver = IOResolver{
 		var files []string
 		err := filepath.Walk(path, func(p string, info fs.FileInfo, err error) error {
 			if err != nil {
-				return utils.WrapErrorf(err, "Failed to walk path %s", p)
+				return burrito.WrapErrorf(err, "Failed to walk path %s", p)
 			}
 			if info.IsDir() {
 				return nil
 			}
 			rel, err := filepath.Rel(path, p)
 			if err != nil {
-				return utils.WrapErrorf(err, "Failed to get relative path of %s", p)
+				return burrito.WrapErrorf(err, "Failed to get relative path of %s", p)
 			}
 			files = append(files, rel)
 			return nil
 		})
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to walk path %s", path)
+			return nil, burrito.WrapErrorf(err, "Failed to walk path %s", path)
 		}
 		return files, nil
 	},
@@ -57,7 +57,7 @@ var DefaultIOResolver = IOResolver{
 		var files []string
 		dir, err := os.ReadDir(path)
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to read dir %s", path)
+			return nil, burrito.WrapErrorf(err, "Failed to read dir %s", path)
 		}
 		for _, file := range dir {
 			files = append(files, file.Name())
@@ -73,7 +73,7 @@ var DefaultIOResolver = IOResolver{
 	HttpGet: func(url string) (io.ReadCloser, error) {
 		open, err := http.Get(url)
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to open url %s", url)
+			return nil, burrito.WrapErrorf(err, "Failed to open url %s", url)
 		}
 		return open.Body, nil
 	},
@@ -91,28 +91,28 @@ var DefaultIOResolver = IOResolver{
 // NoIOResolver Resolver that does not allow any IO
 var NoIOResolver = IOResolver{
 	Open: func(path string) (ReadAtWriteCloser, error) {
-		return nil, utils.WrappedErrorf("IO is disabled")
+		return nil, burrito.WrappedErrorf("IO is disabled")
 	},
 	OpenDir: func(path string) ([]string, error) {
-		return nil, utils.WrappedErrorf("IO is disabled")
+		return nil, burrito.WrappedErrorf("IO is disabled")
 	},
 	MkdirAll: func(path string) error {
-		return utils.WrappedErrorf("IO is disabled")
+		return burrito.WrappedErrorf("IO is disabled")
 	},
 	Remove: func(path string) error {
-		return utils.WrappedErrorf("IO is disabled")
+		return burrito.WrappedErrorf("IO is disabled")
 	},
 	HttpGet: func(url string) (io.ReadCloser, error) {
-		return nil, utils.WrappedErrorf("IO is disabled")
+		return nil, burrito.WrappedErrorf("IO is disabled")
 	},
 	Create: func(path string) (io.ReadWriteCloser, error) {
-		return nil, utils.WrappedErrorf("IO is disabled")
+		return nil, burrito.WrappedErrorf("IO is disabled")
 	},
 	Stat: func(path string) (fs.FileInfo, error) {
-		return nil, utils.WrappedErrorf("IO is disabled")
+		return nil, burrito.WrappedErrorf("IO is disabled")
 	},
 	ExecCommand: func(name string, arg ...string) ([]byte, error) {
-		return nil, utils.WrappedErrorf("IO is disabled")
+		return nil, burrito.WrappedErrorf("IO is disabled")
 	},
 }
 
@@ -176,7 +176,7 @@ func CreateFakeFS(fs map[string]interface{}, withNetwork bool) IOResolver {
 			if withNetwork {
 				return DefaultIOResolver.HttpGet(url)
 			}
-			return nil, utils.WrappedErrorf("Network is disabled")
+			return nil, burrito.WrappedErrorf("Network is disabled")
 		},
 		Create: func(path string) (io.ReadWriteCloser, error) {
 			path = filepath.Clean(path)
@@ -203,7 +203,7 @@ func CreateFakeFS(fs map[string]interface{}, withNetwork bool) IOResolver {
 			return nil, os.ErrNotExist
 		},
 		ExecCommand: func(name string, arg ...string) ([]byte, error) {
-			return nil, utils.WrappedErrorf("Command execution is disabled")
+			return nil, burrito.WrappedErrorf("Command execution is disabled")
 		},
 	}
 }

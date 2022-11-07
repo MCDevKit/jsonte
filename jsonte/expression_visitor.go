@@ -1,6 +1,7 @@
 package jsonte
 
 import (
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/MCDevKit/jsonte/parser"
@@ -376,7 +377,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				}
 				return i
 			} else {
-				return utils.WrappedErrorf("%s is not a function", lambda)
+				return burrito.WrappedErrorf("%s is not a function", lambda)
 			}
 		} else if _, ok := lambda.(utils.JsonLambda); ok {
 			i, err := lambda.(utils.JsonLambda)(params)
@@ -394,11 +395,11 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				}
 			}
 			if methodName == nil || !functions.HasFunction(*methodName) {
-				return utils.WrappedErrorf("Function '%s' not found!", context.Field(0).GetText())
+				return burrito.WrappedErrorf("Function '%s' not found!", context.Field(0).GetText())
 			}
 			function, err := functions.CallFunction(*methodName, params)
 			if err != nil {
-				return utils.WrapErrorf(err, "Error calling function '%s'", *methodName)
+				return burrito.WrapErrorf(err, "Error calling function '%s'", *methodName)
 			}
 			return function
 		}
@@ -416,7 +417,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if context.Question() != nil {
 				return nil
 			} else {
-				return utils.WrappedErrorf("Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), utils.ToString(object))
+				return burrito.WrappedErrorf("Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), utils.ToString(object))
 			}
 		}
 		if utils.IsSemver(object) {
@@ -430,7 +431,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if utils.IndexOf(patchAliases, text) != -1 {
 				return utils.ToNumber(u.Patch)
 			}
-			return utils.WrappedErrorf("Cannot access %s because %s is not a valid semver field", context.GetText(), text)
+			return burrito.WrappedErrorf("Cannot access %s because %s is not a valid semver field", context.GetText(), text)
 		} else if utils.IsObject(object) {
 			u := object.(utils.NavigableMap[string, interface{}])
 			if u.ContainsKey(text) {
@@ -441,7 +442,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				func(o []interface{}) (interface{}, error) {
 					function, err := functions.CallInstanceFunction(text, object, o)
 					if err != nil {
-						return nil, utils.WrapErrorf(err, "Error calling function '%s' on %s", text, utils.ToString(object))
+						return nil, burrito.WrapErrorf(err, "Error calling function '%s' on %s", text, utils.ToString(object))
 					}
 					return function, nil
 				},
@@ -453,7 +454,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if v.action == utils.Predicate || context.Question() != nil {
 				return nil
 			} else {
-				return utils.WrappedErrorf("Failed to resolve field '%s' (%s) in %s", text, context.GetText(), utils.ToString(object))
+				return burrito.WrappedErrorf("Failed to resolve field '%s' (%s) in %s", text, context.GetText(), utils.ToString(object))
 			}
 		}
 		return newScope
@@ -480,7 +481,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					if context.Question() != nil {
 						return nil
 					} else {
-						return utils.WrappedErrorf("Index out of bounds: %d (%s)", value, context.GetText())
+						return burrito.WrappedErrorf("Index out of bounds: %d (%s)", value, context.GetText())
 					}
 				}
 				return object.([]interface{})[value]
@@ -489,7 +490,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				if context.Question() != nil {
 					return nil
 				} else {
-					return utils.WrappedErrorf("Index must be a number: %s (%s)", utils.ToString(i), context.GetText())
+					return burrito.WrappedErrorf("Index must be a number: %s (%s)", utils.ToString(i), context.GetText())
 				}
 			}
 		} else if utils.IsSemver(object) {
@@ -505,7 +506,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if utils.IndexOf(patchAliases, value) != -1 {
 				return utils.ToNumber(u.Patch)
 			}
-			return utils.WrappedErrorf("Cannot access %s because %s is not a valid semver field", context.GetText(), value)
+			return burrito.WrappedErrorf("Cannot access %s because %s is not a valid semver field", context.GetText(), value)
 		} else if utils.IsObject(object) {
 			// in case of an object, we need a string index
 			value := utils.ToString(i)
@@ -515,7 +516,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				if context.Question() != nil {
 					return nil
 				} else {
-					return utils.WrappedErrorf("Property '%s' (%s) not found in %s", value, context.GetText(), utils.ToString(object))
+					return burrito.WrappedErrorf("Property '%s' (%s) not found in %s", value, context.GetText(), utils.ToString(object))
 				}
 			} else {
 				return u.Get(value)
@@ -529,7 +530,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 					if context.Question() != nil {
 						return nil
 					} else {
-						return utils.WrappedErrorf("Index out of bounds: %d (%s)", value, context.GetText())
+						return burrito.WrappedErrorf("Index out of bounds: %d (%s)", value, context.GetText())
 					}
 				}
 				return string(rune(str[value]))
@@ -538,7 +539,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 				if context.Question() != nil {
 					return nil
 				} else {
-					return utils.WrappedErrorf("Index must be a number: %s (%s)", utils.ToString(object), context.GetText())
+					return burrito.WrappedErrorf("Index must be a number: %s (%s)", utils.ToString(object), context.GetText())
 				}
 			}
 		} else {
@@ -546,7 +547,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 			if context.Question() != nil {
 				return nil
 			} else {
-				return utils.WrappedErrorf("Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), utils.ToString(object))
+				return burrito.WrappedErrorf("Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), utils.ToString(object))
 			}
 		}
 	}
@@ -572,7 +573,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) interface{}
 		}
 		return negate(f)
 	}
-	return utils.WrappedErrorf("Failed to resolve '%s'", context.GetText())
+	return burrito.WrappedErrorf("Failed to resolve '%s'", context.GetText())
 }
 
 func (v *ExpressionVisitor) VisitName(context *parser.NameContext) interface{} {
@@ -615,7 +616,7 @@ func (v *ExpressionVisitor) VisitIndex(context *parser.IndexContext) interface{}
 	if context.Field() != nil {
 		return v.Visit(context.Field())
 	}
-	return utils.WrappedErrorf("Invalid index: %s", context.GetText())
+	return burrito.WrappedErrorf("Invalid index: %s", context.GetText())
 }
 
 func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) interface{} {
@@ -664,7 +665,7 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) interface{} {
 	return utils.JsonLambda(
 		func(o []interface{}) (interface{}, error) {
 			if len(ctx.AllName()) > len(o) {
-				return nil, utils.WrappedErrorf("Lambda expects %d arguments, but got %d", len(ctx.AllName()), len(o))
+				return nil, burrito.WrappedErrorf("Lambda expects %d arguments, but got %d", len(ctx.AllName()), len(o))
 			}
 			for i, context := range ctx.AllName() {
 				// Ensure we get boxed type
@@ -693,5 +694,5 @@ func (v *ExpressionVisitor) VisitFunction_param(ctx *parser.Function_paramContex
 	if ctx.Lambda() != nil {
 		return v.Visit(ctx.Lambda())
 	}
-	return utils.WrappedErrorf("Invalid function parameter: %s", ctx.GetText())
+	return burrito.WrappedErrorf("Invalid function parameter: %s", ctx.GetText())
 }

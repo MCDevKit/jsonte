@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/faiface/beep"
@@ -21,7 +22,7 @@ func RegisterAudioFunctions() {
 		Title:   "Audio functions",
 		Summary: "Audio functions are related to reading various information about audio files.",
 	})
-	utils.CreateCacheBucket(audioCache, 3600)
+	utils.CreateCacheBucket(audioCache)
 	RegisterFunction(JsonFunction{
 		Group: group,
 		Name:  "audioDuration",
@@ -56,18 +57,18 @@ func audioDuration(str string) (utils.JsonNumber, error) {
 	} else {
 		file, err := safeio.Resolver.Open(str)
 		if err != nil {
-			return utils.ToNumber(0), utils.WrapErrorf(err, "Failed to open audio file %s", str)
+			return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to open audio file %s", str)
 		}
 		streamer, format, err := decodeAudio(str, file)
 		if err != nil {
-			return utils.ToNumber(0), utils.WrapErrorf(err, "Failed to decode audio file %s", str)
+			return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to decode audio file %s", str)
 		}
 		streamer.Len()
 		length = float64(streamer.Len()) / float64(format.SampleRate)
 		utils.PutCache(audioCache, str, length)
 		err = file.Close()
 		if err != nil {
-			return utils.ToNumber(0), utils.WrapErrorf(err, "Failed to close audio file %s", str)
+			return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to close audio file %s", str)
 		}
 	}
 	return utils.ToNumber(length), nil
@@ -83,5 +84,5 @@ func decodeAudio(path string, file io.ReadCloser) (beep.StreamSeekCloser, beep.F
 	if strings.HasSuffix(path, ".wav") {
 		return wav.Decode(file)
 	}
-	return nil, beep.Format{}, utils.WrappedErrorf("Unsupported audio file format %s", filepath.Ext(path))
+	return nil, beep.Format{}, burrito.WrappedErrorf("Unsupported audio file format %s", filepath.Ext(path))
 }

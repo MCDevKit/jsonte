@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"math"
 	"sort"
@@ -887,7 +888,7 @@ func sortMap(arr []interface{}, predicate utils.JsonLambda) ([]interface{}, erro
 	}
 	mapped, err := map_(arr, predicate)
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "An error occurred while mapping the values for sorting the array")
+		return nil, burrito.WrapErrorf(err, "An error occurred while mapping the values for sorting the array")
 	}
 	result := make([]interface{}, len(arr))
 	copy(result, arr)
@@ -940,7 +941,7 @@ func any_(arr []interface{}, predicate utils.JsonLambda) (bool, error) {
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return false, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `any` at index %d", i)
+			return false, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `any` at index %d", i)
 		}
 		if utils.ToBoolean(b) {
 			return true, nil
@@ -956,7 +957,7 @@ func all(arr []interface{}, predicate utils.JsonLambda) (bool, error) {
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return false, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `all` at index %d", i)
+			return false, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `all` at index %d", i)
 		}
 		if !utils.ToBoolean(b) {
 			return false, nil
@@ -972,7 +973,7 @@ func none(arr []interface{}, predicate utils.JsonLambda) (bool, error) {
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return false, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `none` at index %d", i)
+			return false, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `none` at index %d", i)
 		}
 		if utils.ToBoolean(b) {
 			return false, nil
@@ -989,7 +990,7 @@ func filter(arr []interface{}, predicate utils.JsonLambda) ([]interface{}, error
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `filter` at index %d", i)
+			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `filter` at index %d", i)
 		}
 		if utils.ToBoolean(b) {
 			result = append(result, v)
@@ -1006,7 +1007,7 @@ func map_(arr []interface{}, predicate utils.JsonLambda) ([]interface{}, error) 
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `map` at index %d", i)
+			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `map` at index %d", i)
 		}
 		result[i] = b
 	}
@@ -1021,7 +1022,7 @@ func flatMap(arr []interface{}, predicate utils.JsonLambda) ([]interface{}, erro
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `flatMap` at index %d", i)
+			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `flatMap` at index %d", i)
 		}
 		if arr, ok := b.([]interface{}); ok {
 			result = append(result, arr...)
@@ -1055,7 +1056,7 @@ func countFilter(arr []interface{}, predicate utils.JsonLambda) (utils.JsonNumbe
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return utils.ToNumber(0), utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `count` at index %d", i)
+			return utils.ToNumber(0), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `count` at index %d", i)
 		}
 		if utils.ToBoolean(b) {
 			count++
@@ -1085,14 +1086,14 @@ func findFirstFilter(arr []interface{}, predicate utils.JsonLambda) (interface{}
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `findFirst` at index %d", i)
+			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `findFirst` at index %d", i)
 		}
 		if utils.ToBoolean(b) {
 			return v, nil
 		}
 	}
 
-	return nil, utils.WrappedError("No matching items found!")
+	return nil, burrito.WrappedError("No matching items found!")
 }
 
 func findFirst(arr []interface{}) (interface{}, error) {
@@ -1100,14 +1101,14 @@ func findFirst(arr []interface{}) (interface{}, error) {
 		return nil, nil
 	}
 	if len(arr) == 0 {
-		return nil, utils.WrappedError("No matching items found!")
+		return nil, burrito.WrappedError("No matching items found!")
 	}
 	return arr[0], nil
 }
 
 func encode(arr []interface{}, space utils.JsonNumber, predicate utils.JsonLambda) (utils.JsonNumber, error) {
 	if space.IntValue() <= 0 || (space.IntValue()&(space.IntValue()-1)) != 0 {
-		return utils.ToNumber(0), utils.WrappedError("Space must be a power of 2 and greater than 0!")
+		return utils.ToNumber(0), burrito.WrappedError("Space must be a power of 2 and greater than 0!")
 	}
 	if arr == nil {
 		return utils.ToNumber(0), nil
@@ -1117,14 +1118,14 @@ func encode(arr []interface{}, space utils.JsonNumber, predicate utils.JsonLambd
 	for i := 0; i < int(math.Min(float64(len(arr)), float64(32/bitsPerElement))); i++ {
 		i2, err := predicate([]interface{}{arr[i], i})
 		if err != nil {
-			return utils.ToNumber(0), utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `encode` at index %d", i)
+			return utils.ToNumber(0), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `encode` at index %d", i)
 		}
 		if !utils.IsNumber(i2) {
-			return utils.ToNumber(0), utils.WrappedError("Predicate must return a number!")
+			return utils.ToNumber(0), burrito.WrappedError("Predicate must return a number!")
 		}
 		number := utils.ToNumber(i2)
 		if number.IntValue() < 0 || number.IntValue() >= space.IntValue() {
-			return utils.ToNumber(0), utils.WrappedErrorf("Number %d is out of range 0..%d", number.IntValue(), space.IntValue()-1)
+			return utils.ToNumber(0), burrito.WrappedErrorf("Number %d is out of range 0..%d", number.IntValue(), space.IntValue()-1)
 		}
 		result += number.IntValue() << (i * bitsPerElement)
 	}
@@ -1169,12 +1170,12 @@ func maxArray(arr []interface{}, predicate utils.JsonLambda) (interface{}, error
 	}
 	max, err := predicate([]interface{}{arr[0], 0})
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `max` at index %d", 0)
+		return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `max` at index %d", 0)
 	}
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `max` at index %d", i)
+			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `max` at index %d", i)
 		}
 		if utils.ToNumber(b).FloatValue() > utils.ToNumber(max).FloatValue() {
 			max = b
@@ -1202,7 +1203,7 @@ func minArray(arr []interface{}, predicate utils.JsonLambda) (interface{}, error
 	}
 	min, err := predicate([]interface{}{arr[0], 0})
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `min` at index %d", 0)
+		return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `min` at index %d", 0)
 	}
 	for i, v := range arr {
 		if i == 0 {
@@ -1210,7 +1211,7 @@ func minArray(arr []interface{}, predicate utils.JsonLambda) (interface{}, error
 		}
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `min` at index %d", i)
+			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `min` at index %d", i)
 		}
 		if utils.ToNumber(b).FloatValue() < utils.ToNumber(min).FloatValue() {
 			min = b
@@ -1240,7 +1241,7 @@ func sumMap(arr []interface{}, predicate utils.JsonLambda) (utils.JsonNumber, er
 	for i, v := range arr {
 		b, err := predicate([]interface{}{v, i})
 		if err != nil {
-			return utils.ToNumber(0), utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `sum` at index %d", i)
+			return utils.ToNumber(0), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `sum` at index %d", i)
 		}
 		s = s + utils.ToNumber(b).FloatValue()
 	}
@@ -1270,7 +1271,7 @@ func reduceInit(arr []interface{}, predicate utils.JsonLambda, initialValue inte
 	for i, v := range arr {
 		b, err := predicate([]interface{}{prev, v, i})
 		if err != nil {
-			return utils.ToNumber(0), utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `reduce` at index %d", i)
+			return utils.ToNumber(0), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `reduce` at index %d", i)
 		}
 		prev = b
 	}
@@ -1284,13 +1285,13 @@ func findLastFilter(arr []interface{}, predicate utils.JsonLambda) (interface{},
 	for i := len(arr) - 1; i >= 0; i-- {
 		b, err := predicate([]interface{}{arr[i], i})
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while evaluating the predicate for `findLast` at index %d", i)
+			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `findLast` at index %d", i)
 		}
 		if utils.ToBoolean(b) {
 			return arr[i], nil
 		}
 	}
-	return nil, utils.WrappedError("No matching items found!")
+	return nil, burrito.WrappedError("No matching items found!")
 }
 
 func findLast(arr []interface{}) (interface{}, error) {
@@ -1298,7 +1299,7 @@ func findLast(arr []interface{}) (interface{}, error) {
 		return nil, nil
 	}
 	if len(arr) == 0 {
-		return nil, utils.WrappedError("No matching items found!")
+		return nil, burrito.WrappedError("No matching items found!")
 	}
 	return arr[len(arr)-1], nil
 }

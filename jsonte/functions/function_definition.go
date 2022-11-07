@@ -2,6 +2,7 @@ package functions
 
 import (
 	"fmt"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"reflect"
 	"strings"
@@ -90,7 +91,7 @@ func HasFunction(name string) bool {
 func CallInstanceFunction(name string, instance interface{}, args []interface{}) (interface{}, error) {
 	fns, ok := instanceFunctions[reflect.TypeOf(instance).String()][name]
 	if !ok {
-		return nil, utils.WrappedErrorf("Instance function \"%s\" not found", name)
+		return nil, burrito.WrappedErrorf("Instance function \"%s\" not found", name)
 	}
 	a := make([]interface{}, 0)
 	a = append(a, instance)
@@ -101,7 +102,7 @@ func CallInstanceFunction(name string, instance interface{}, args []interface{})
 func CallFunction(name string, args []interface{}) (interface{}, error) {
 	fns, ok := functions[name]
 	if !ok {
-		return nil, utils.WrappedErrorf("Function \"%s\" not found", name)
+		return nil, burrito.WrappedErrorf("Function \"%s\" not found", name)
 	}
 	return callFunctionImpl(name, fns, args)
 }
@@ -114,7 +115,7 @@ func callFunctionImpl(name string, fns []JsonFunction, args []interface{}) (inte
 		}
 	}
 	if len(sizeMatching) == 0 {
-		return nil, utils.WrappedErrorf("Incorrect number of arguments for function \"%s\"", name)
+		return nil, burrito.WrappedErrorf("Incorrect number of arguments for function \"%s\"", name)
 	}
 	matching := make([]JsonFunction, 0)
 	for _, fn := range sizeMatching {
@@ -132,13 +133,13 @@ func callFunctionImpl(name string, fns []JsonFunction, args []interface{}) (inte
 		for _, arg := range args {
 			argTypes = append(argTypes, reflect.TypeOf(arg))
 		}
-		return nil, utils.WrappedErrorf("Incorrect argument types for function \"%s\". Expected: %s, got: %s", name, strings.Join(expected, ", "), paramsToString(args, argTypes))
+		return nil, burrito.WrappedErrorf("Incorrect argument types for function \"%s\". Expected: %s, got: %s", name, strings.Join(expected, ", "), paramsToString(args, argTypes))
 	} else if len(matching) > 1 {
 		matched := make([]string, 0)
 		for _, fn := range matching {
 			matched = append(matched, paramsToString(args, fn.Args))
 		}
-		return nil, utils.WrapErrorf(nil, "Ambiguous function call for \"%s\". Matched: %s", name, strings.Join(matched, ", "))
+		return nil, burrito.WrapErrorf(nil, "Ambiguous function call for \"%s\". Matched: %s", name, strings.Join(matched, ", "))
 	} else {
 		fn := matching[0]
 		vArgs := make([]reflect.Value, len(args))

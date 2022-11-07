@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"strings"
 )
 
@@ -47,25 +48,25 @@ func ParseSemverString(version string) (Semver, error) {
 	var major, minor, patch int
 	split := strings.Split(version, ".")
 	if len(split) == 0 {
-		return Semver{}, WrapErrorf(nil, "Invalid semver string: %s", version)
+		return Semver{}, burrito.WrapErrorf(nil, "Invalid semver string: %s", version)
 	}
 	_, err := fmt.Sscanf(split[0], "%d", &major)
 	if err != nil {
-		return Semver{}, WrapErrorf(err, "Invalid semver string: %s", version)
+		return Semver{}, burrito.WrapErrorf(err, "Invalid semver string: %s", version)
 	}
 	if len(split) == 1 {
 		return Semver{major, 0, 0}, nil
 	}
 	_, err = fmt.Sscanf(split[1], "%d", &minor)
 	if err != nil {
-		return Semver{}, WrapErrorf(err, "Invalid semver string: %s", version)
+		return Semver{}, burrito.WrapErrorf(err, "Invalid semver string: %s", version)
 	}
 	if len(split) == 2 {
 		return Semver{major, minor, 0}, nil
 	}
 	_, err = fmt.Sscanf(split[2], "%d", &patch)
 	if err != nil {
-		return Semver{}, WrapErrorf(err, "Invalid semver string: %s", version)
+		return Semver{}, burrito.WrapErrorf(err, "Invalid semver string: %s", version)
 	}
 	return Semver{major, minor, patch}, nil
 }
@@ -75,25 +76,25 @@ func ParseSemverArray(version []interface{}) (Semver, error) {
 	version = UnwrapContainers(version).([]interface{})
 	size := len(version)
 	if size == 0 {
-		return Semver{}, WrapErrorf(nil, "Invalid semver array: %v", version)
+		return Semver{}, burrito.WrapErrorf(nil, "Invalid semver array: %v", version)
 	}
 	major, ok := version[0].(int32)
 	if !ok {
-		return Semver{}, WrapErrorf(nil, "Invalid semver array: %v", version)
+		return Semver{}, burrito.WrapErrorf(nil, "Invalid semver array: %v", version)
 	}
 	if size == 1 {
 		return Semver{int(major), 0, 0}, nil
 	}
 	minor, ok := version[1].(int32)
 	if !ok {
-		return Semver{}, WrapErrorf(nil, "Invalid semver array: %v", version)
+		return Semver{}, burrito.WrapErrorf(nil, "Invalid semver array: %v", version)
 	}
 	if size == 2 {
 		return Semver{int(major), int(minor), 0}, nil
 	}
 	patch, ok := version[2].(int32)
 	if !ok {
-		return Semver{}, WrapErrorf(nil, "Invalid semver array: %v", version)
+		return Semver{}, burrito.WrapErrorf(nil, "Invalid semver array: %v", version)
 	}
 	return Semver{int(major), int(minor), int(patch)}, nil
 }

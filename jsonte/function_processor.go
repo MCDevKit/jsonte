@@ -1,6 +1,7 @@
 package jsonte
 
 import (
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
 	"strings"
@@ -31,7 +32,7 @@ func ProcessMCFunction(input string, scope utils.NavigableMap[string, interface{
 			}
 		} else if started {
 			if char == '\n' {
-				return "", utils.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
+				return "", burrito.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
 			}
 			if char == '"' || char == '\'' {
 				if !startedString {
@@ -53,15 +54,15 @@ func ProcessMCFunction(input string, scope utils.NavigableMap[string, interface{
 					match := currentMatch.String()
 					result, err := Eval(match, globalScope, "#")
 					if err != nil {
-						return "", utils.WrapErrorf(err, "Failed to evaluate expression '%s'", debugMatch.String())
+						return "", burrito.WrapErrorf(err, "Failed to evaluate expression '%s'", debugMatch.String())
 					}
 					if result.Value == nil {
-						return "", utils.WrappedErrorf("The expression '%s' evaluated to null.", debugMatch.String())
+						return "", burrito.WrappedErrorf("The expression '%s' evaluated to null.", debugMatch.String())
 					}
 					if result.Action == utils.Value {
 						matches[debugMatch.String()] = utils.ToString(result.Value)
 					} else {
-						return "", utils.WrappedErrorf("The expression '%s' evaluated to an action.", debugMatch.String())
+						return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", debugMatch.String())
 					}
 				} else {
 					currentMatch.WriteRune(char)

@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"strconv"
 )
 
@@ -120,7 +121,7 @@ func MarshalJSONC(object interface{}, pretty bool) ([]byte, error) {
 	case nil:
 		return []byte("null"), nil
 	default:
-		return nil, WrappedErrorf("Unsupported type %T", object)
+		return nil, burrito.WrappedErrorf("Unsupported type %T", object)
 	}
 }
 
@@ -171,7 +172,7 @@ func writeObject(object NavigableMap[string, interface{}], pretty bool, indent i
 		case nil:
 			result = append(result, []byte("null")...)
 		default:
-			return result, WrappedErrorf("Unsupported type %T", value)
+			return result, burrito.WrappedErrorf("Unsupported type %T", value)
 		}
 		if i < len(object.Keys())-1 {
 			result = append(result, TokenComma)
@@ -227,7 +228,7 @@ func writeArray(arr []interface{}, pretty bool, indent int) ([]byte, error) {
 		case nil:
 			result = append(result, []byte("null")...)
 		default:
-			return result, WrappedErrorf("Unsupported type %T", value)
+			return result, burrito.WrappedErrorf("Unsupported type %T", value)
 		}
 		if i < len(arr)-1 {
 			result = append(result, TokenComma)

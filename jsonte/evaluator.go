@@ -1,6 +1,7 @@
 package jsonte
 
 import (
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/MCDevKit/jsonte/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -36,7 +37,7 @@ type CollectingErrorListener struct {
 }
 
 func (l *CollectingErrorListener) SyntaxError(recognizer antlr.Recognizer, offendingSymbol interface{}, line, column int, msg string, e antlr.RecognitionException) {
-	l.Error = utils.WrapErrorf(l.Error, "column: %d %s", column, msg)
+	l.Error = burrito.WrapErrorf(l.Error, "column: %d %s", column, msg)
 }
 
 // Eval evaluates the given expression and returns the result
@@ -53,7 +54,7 @@ func Eval(text string, scope deque.Deque[interface{}], path string) (Result, err
 	p.BuildParseTrees = true
 	tree := p.Expression()
 	if listener.Error != nil {
-		return Result{}, utils.WrapErrorf(listener.Error, "Failed to parse expression %s", text)
+		return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse expression %s", text)
 	}
 	visitor := ExpressionVisitor{
 		scope: scope,

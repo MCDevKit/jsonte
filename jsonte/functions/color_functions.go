@@ -2,6 +2,7 @@ package functions
 
 import (
 	"errors"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"image/color"
 )
@@ -41,7 +42,7 @@ func RegisterColorFunctions() {
 func hexToArray(str string) ([]interface{}, error) {
 	fast, err := parseHexColorFast(str)
 	if err != nil {
-		return nil, utils.WrapErrorf(err, "Failed to parse hex color %s", str)
+		return nil, burrito.WrapErrorf(err, "Failed to parse hex color %s", str)
 	}
 	return []interface{}{
 		utils.ToNumber(float64(fast.R) / 255),

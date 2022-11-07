@@ -3,6 +3,7 @@ package functions
 import (
 	"archive/zip"
 	"encoding/json"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/sahilm/fuzzy"
@@ -234,12 +235,12 @@ var itemInfosByName = utils.NavigableMap[string, interface{}]{}
 
 func getMinecraftInstallDir() (string, error) {
 	if runtime.GOOS != "windows" {
-		return "", utils.WrappedErrorf("This function works only on Windows")
+		return "", burrito.WrappedErrorf("This function works only on Windows")
 	}
 	if installDir == "" {
 		output, err := safeio.Resolver.ExecCommand("powershell", "(Get-AppxPackage -Name Microsoft.MinecraftUWP).InstallLocation")
 		if err != nil {
-			return "", utils.WrapErrorf(err, "An error occurred while getting Minecraft install directory")
+			return "", burrito.WrapErrorf(err, "An error occurred while getting Minecraft install directory")
 		}
 		installDir = strings.Trim(string(output), "\r\n \t")
 	}
@@ -250,7 +251,7 @@ func getLatestBPFile(p string) (string, error) {
 	if bpFiles.IsEmpty() {
 		bp, err := findPackVersions(true, VanillaBpUUID)
 		if err != nil {
-			return "", utils.WrapErrorf(err, "An error occurred while reading behavior packs")
+			return "", burrito.WrapErrorf(err, "An error occurred while reading behavior packs")
 		}
 		bpFiles = bp
 	}
@@ -261,7 +262,7 @@ func getLatestRPFile(p string) (string, error) {
 	if rpFiles.IsEmpty() {
 		rp, err := findPackVersions(false, VanillaRpUUID)
 		if err != nil {
-			return "", utils.WrapErrorf(err, "An error occurred while reading resource packs")
+			return "", burrito.WrapErrorf(err, "An error occurred while reading resource packs")
 		}
 		rpFiles = rp
 	}
@@ -272,7 +273,7 @@ func listLatestRPFiles(p string) ([]interface{}, error) {
 	if rpFiles.IsEmpty() {
 		rp, err := findPackVersions(false, VanillaRpUUID)
 		if err != nil {
-			return []interface{}{}, utils.WrapErrorf(err, "An error occurred while reading resource packs")
+			return []interface{}{}, burrito.WrapErrorf(err, "An error occurred while reading resource packs")
 		}
 		rpFiles = rp
 	}
@@ -283,7 +284,7 @@ func listLatestBPFiles(p string) ([]interface{}, error) {
 	if bpFiles.IsEmpty() {
 		bp, err := findPackVersions(true, VanillaBpUUID)
 		if err != nil {
-			return []interface{}{}, utils.WrapErrorf(err, "An error occurred while reading behavior packs")
+			return []interface{}{}, burrito.WrapErrorf(err, "An error occurred while reading behavior packs")
 		}
 		bpFiles = bp
 	}
@@ -300,12 +301,12 @@ func listLatestFiles(p string, m utils.NavigableMap[string, string]) ([]interfac
 			if os.IsNotExist(err) {
 				continue
 			} else {
-				return nil, utils.WrapErrorf(err, "An error occurred while reading file %s", p)
+				return nil, burrito.WrapErrorf(err, "An error occurred while reading file %s", p)
 			}
 		}
 		recursive, err := safeio.Resolver.OpenDirRecursive(s)
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while reading file %s", p)
+			return nil, burrito.WrapErrorf(err, "An error occurred while reading file %s", p)
 		}
 		for _, f := range recursive {
 			rel, err := filepath.Rel(s, f)
@@ -335,39 +336,39 @@ func getLatestFile(p string, m utils.NavigableMap[string, string]) (string, erro
 			if os.IsNotExist(err) {
 				continue
 			} else {
-				return "", utils.WrapErrorf(err, "An error occurred while reading file %s", p)
+				return "", burrito.WrapErrorf(err, "An error occurred while reading file %s", p)
 			}
 		}
 		return s, nil
 	}
-	return "", utils.WrapErrorf(os.ErrNotExist, "File '%s' does not exist", p)
+	return "", burrito.WrapErrorf(os.ErrNotExist, "File '%s' does not exist", p)
 }
 
 // From https://stackoverflow.com/a/24792688/6459649
 func unzip(src, dest string) error {
 	stat, err := safeio.Resolver.Stat(src)
 	if err != nil {
-		return utils.WrapErrorf(err, "An error occurred while reading file %s", src)
+		return burrito.WrapErrorf(err, "An error occurred while reading file %s", src)
 	}
 	open, err := safeio.Resolver.Open(src)
 	if err != nil {
-		return utils.WrapErrorf(err, "An error occurred while opening file %s", src)
+		return burrito.WrapErrorf(err, "An error occurred while opening file %s", src)
 	}
 	r, err := zip.NewReader(open, stat.Size())
 	if err != nil {
-		return utils.WrapErrorf(err, "An error occurred while reading zip file %s", src)
+		return burrito.WrapErrorf(err, "An error occurred while reading zip file %s", src)
 	}
 
 	err = safeio.Resolver.MkdirAll(dest)
 	if err != nil {
-		return utils.WrapErrorf(err, "An error occurred while creating directory %s", dest)
+		return burrito.WrapErrorf(err, "An error occurred while creating directory %s", dest)
 	}
 
 	// Closure to address file descriptors issue with all the deferred .Close() methods
 	extractAndWriteFile := func(f *zip.File) error {
 		rc, err := f.Open()
 		if err != nil {
-			return utils.WrapErrorf(err, "An error occurred while opening file %s", f.Name)
+			return burrito.WrapErrorf(err, "An error occurred while opening file %s", f.Name)
 		}
 
 		name := f.Name[strings.Index(f.Name, "/")+1:]
@@ -383,37 +384,37 @@ func unzip(src, dest string) error {
 
 		// Check for ZipSlip (Directory traversal)
 		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return utils.WrappedErrorf("Illegal file path: %s", path)
+			return burrito.WrappedErrorf("Illegal file path: %s", path)
 		}
 
 		if f.FileInfo().IsDir() {
 			err := safeio.Resolver.MkdirAll(path)
 			if err != nil {
-				return utils.WrapErrorf(err, "An error occurred while creating directory %s", path)
+				return burrito.WrapErrorf(err, "An error occurred while creating directory %s", path)
 			}
 		} else {
 			err := safeio.Resolver.MkdirAll(filepath.Dir(path))
 			if err != nil {
-				return utils.WrapErrorf(err, "An error occurred while creating directory %s", filepath.Dir(path))
+				return burrito.WrapErrorf(err, "An error occurred while creating directory %s", filepath.Dir(path))
 			}
 			f, err := safeio.Resolver.Create(path)
 			if err != nil {
-				return utils.WrapErrorf(err, "An error occurred while creating file %s", path)
+				return burrito.WrapErrorf(err, "An error occurred while creating file %s", path)
 			}
 
 			_, err = io.Copy(f, rc)
 			if err != nil {
-				return utils.WrapErrorf(err, "An error occurred while writing file %s", path)
+				return burrito.WrapErrorf(err, "An error occurred while writing file %s", path)
 			}
 
 			err = f.Close()
 			if err != nil {
-				return utils.WrapErrorf(err, "An error occurred while closing file %s", path)
+				return burrito.WrapErrorf(err, "An error occurred while closing file %s", path)
 			}
 
 			err = rc.Close()
 			if err != nil {
-				return utils.WrapErrorf(err, "An error occurred while closing file %s", path)
+				return burrito.WrapErrorf(err, "An error occurred while closing file %s", path)
 			}
 		}
 		return nil
@@ -422,13 +423,13 @@ func unzip(src, dest string) error {
 	for _, f := range r.File {
 		err := extractAndWriteFile(f)
 		if err != nil {
-			return utils.WrapErrorf(err, "An error occurred while extracting file %s", f.Name)
+			return burrito.WrapErrorf(err, "An error occurred while extracting file %s", f.Name)
 		}
 	}
 
 	err = open.Close()
 	if err != nil {
-		return utils.WrapErrorf(err, "An error occurred while closing zip file %s", src)
+		return burrito.WrapErrorf(err, "An error occurred while closing zip file %s", src)
 	}
 
 	return nil
@@ -458,58 +459,58 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 		utils.Logger.Infof("Resolving %s", url)
 		resp, err := safeio.Resolver.HttpGet(url)
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while resolving %s", url)
+			return versions, burrito.WrapErrorf(err, "An error occurred while resolving %s", url)
 		}
 		var release map[string]interface{}
 		err = json.NewDecoder(resp).Decode(&release)
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while parsing %s", url)
+			return versions, burrito.WrapErrorf(err, "An error occurred while parsing %s", url)
 		}
 		if release["zipball_url"] == nil {
-			return versions, utils.WrapErrorf(err, "Couldn't find zipball_url in %s", url)
+			return versions, burrito.WrapErrorf(err, "Couldn't find zipball_url in %s", url)
 		}
 		url, ok := release["zipball_url"].(string)
 		if !ok {
-			return versions, utils.WrapErrorf(err, "zipball_url is not a string in %s", url)
+			return versions, burrito.WrapErrorf(err, "zipball_url is not a string in %s", url)
 		}
 		err = resp.Close()
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while closing %s", url)
+			return versions, burrito.WrapErrorf(err, "An error occurred while closing %s", url)
 		}
 
 		err = safeio.Resolver.MkdirAll(base)
 		if err != nil && !os.IsExist(err) {
-			return versions, utils.WrapErrorf(err, "An error occurred while creating cache directory")
+			return versions, burrito.WrapErrorf(err, "An error occurred while creating cache directory")
 		}
 		out, err := safeio.Resolver.Create(path.Join(base, outName))
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while creating file %s", outName)
+			return versions, burrito.WrapErrorf(err, "An error occurred while creating file %s", outName)
 		}
 		utils.Logger.Infof("Downloading %s", url)
 		resp, err = safeio.Resolver.HttpGet(url)
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+			return versions, burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 		_, err = io.Copy(out, resp)
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+			return versions, burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 		err = out.Close()
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+			return versions, burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 		err = resp.Close()
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+			return versions, burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 
 		err = unzip(path.Join(base, outName), base)
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while extracting %s", outName)
+			return versions, burrito.WrapErrorf(err, "An error occurred while extracting %s", outName)
 		}
 		err = safeio.Resolver.Remove(path.Join(base, outName))
 		if err != nil {
-			return versions, utils.WrapErrorf(err, "An error occurred while removing %s", outName)
+			return versions, burrito.WrapErrorf(err, "An error occurred while removing %s", outName)
 		}
 
 		versions.Put("0.0.0", path.Join(base, dirName))
@@ -521,7 +522,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 	}
 	dir, err := os.ReadDir(packDir)
 	if err != nil {
-		return versions, utils.WrapErrorf(err, "Failed to read pack directory")
+		return versions, burrito.WrapErrorf(err, "Failed to read pack directory")
 	}
 	for _, d := range dir {
 		p := path.Join(packDir, d.Name())
@@ -531,12 +532,12 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 				if os.IsNotExist(err) {
 					continue
 				}
-				return versions, utils.WrapErrorf(err, "Failed to read manifest.json in %s", p)
+				return versions, burrito.WrapErrorf(err, "Failed to read manifest.json in %s", p)
 			}
 			var manifest utils.NavigableMap[string, interface{}]
 			manifest, err = utils.ParseJsonObject(f)
 			if err != nil {
-				return versions, utils.WrapErrorf(err, "Failed to parse manifest.json in %s", p)
+				return versions, burrito.WrapErrorf(err, "Failed to parse manifest.json in %s", p)
 			}
 			if manifest.ContainsKey("header") {
 				header := manifest.Get("header").(utils.NavigableMap[string, interface{}])
@@ -547,7 +548,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 					version := utils.UnwrapContainers(header.Get("version")).([]interface{})
 					array, err := utils.ParseSemverArray(version)
 					if err != nil {
-						return versions, utils.WrapErrorf(err, "Failed to parse version in %s", p)
+						return versions, burrito.WrapErrorf(err, "Failed to parse version in %s", p)
 					}
 					versions.Put(array.String(), p)
 				}
@@ -575,7 +576,7 @@ func getItemInfo(id string, metadata utils.JsonNumber) (interface{}, error) {
 	if itemInfos.IsEmpty() {
 		err := fetchItemInfos()
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to fetch item infos")
+			return nil, burrito.WrapErrorf(err, "Failed to fetch item infos")
 		}
 	}
 	item := itemInfos.Get(id)
@@ -596,7 +597,7 @@ func findItemInfoById(id string, metadata utils.JsonNumber) (interface{}, error)
 	if itemInfos.IsEmpty() {
 		err := fetchItemInfos()
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to fetch item infos")
+			return nil, burrito.WrapErrorf(err, "Failed to fetch item infos")
 		}
 	}
 	if itemInfos.ContainsKey(id) {
@@ -621,7 +622,7 @@ func findItemInfoByName(name string) (interface{}, error) {
 	if itemInfos.IsEmpty() {
 		err := fetchItemInfos()
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to fetch item infos")
+			return nil, burrito.WrapErrorf(err, "Failed to fetch item infos")
 		}
 	}
 	if itemInfosByName.ContainsKey(name) {
@@ -648,41 +649,41 @@ func fetchItemInfos() error {
 	if os.IsNotExist(err) || time.Since(stat.ModTime()) > 168*time.Hour {
 		err = safeio.Resolver.MkdirAll(base)
 		if err != nil && !os.IsExist(err) {
-			return utils.WrapErrorf(err, "An error occurred while creating cache directory")
+			return burrito.WrapErrorf(err, "An error occurred while creating cache directory")
 		}
 		out, err := safeio.Resolver.Create(path.Join(base, outName))
 		if err != nil {
-			return utils.WrapErrorf(err, "An error occurred while creating file %s", outName)
+			return burrito.WrapErrorf(err, "An error occurred while creating file %s", outName)
 		}
 		utils.Logger.Infof("Downloading %s", url)
 		resp, err := safeio.Resolver.HttpGet(url)
 		if err != nil {
-			return utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+			return burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 		_, err = io.Copy(out, resp)
 		if err != nil {
-			return utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+			return burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 		err = out.Close()
 		if err != nil {
-			return utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+			return burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 		err = resp.Close()
 		if err != nil {
-			return utils.WrapErrorf(err, "An error occurred while downloading %s", url)
+			return burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 	}
 	open, err := safeio.Resolver.Open(path.Join(base, outName))
 	if err != nil {
-		return utils.WrapErrorf(err, "An error occurred while opening %s", outName)
+		return burrito.WrapErrorf(err, "An error occurred while opening %s", outName)
 	}
 	readAll, err := ioutil.ReadAll(open)
 	if err != nil {
-		return utils.WrapErrorf(err, "An error occurred while reading %s", outName)
+		return burrito.WrapErrorf(err, "An error occurred while reading %s", outName)
 	}
 	arr, err := utils.ParseJsonArray(readAll)
 	if err != nil {
-		return utils.WrapErrorf(err, "An error occurred while parsing %s", outName)
+		return burrito.WrapErrorf(err, "An error occurred while parsing %s", outName)
 	}
 	itemInfos = utils.NewNavigableMap[string, map[int]interface{}]()
 	itemInfosByName = utils.NewNavigableMap[string, interface{}]()
@@ -701,15 +702,15 @@ func fetchItemInfos() error {
 func FetchCache() error {
 	_, err := findPackVersions(true, VanillaBpUUID)
 	if err != nil {
-		return utils.WrapErrorf(err, "Failed to cache vanilla behavior pack")
+		return burrito.WrapErrorf(err, "Failed to cache vanilla behavior pack")
 	}
 	_, err = findPackVersions(false, VanillaRpUUID)
 	if err != nil {
-		return utils.WrapErrorf(err, "Failed to cache vanilla resource pack")
+		return burrito.WrapErrorf(err, "Failed to cache vanilla resource pack")
 	}
 	err = fetchItemInfos()
 	if err != nil {
-		return utils.WrapErrorf(err, "Failed to cache item infos")
+		return burrito.WrapErrorf(err, "Failed to cache item infos")
 	}
 	return nil
 }

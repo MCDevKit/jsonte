@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"image"
@@ -19,7 +20,7 @@ func RegisterImageFunctions() {
 		Title:   "Image functions",
 		Summary: "Image functions are related to reading various information about images.",
 	})
-	utils.CreateCacheBucket(imageCache, 3600)
+	utils.CreateCacheBucket(imageCache)
 	RegisterFunction(JsonFunction{
 		Group: group,
 		Name:  "imageWidth",
@@ -76,19 +77,19 @@ func imageBounds(str string) (*image.Config, error) {
 		file, err := safeio.Resolver.Open(str)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return nil, utils.WrappedErrorf("File '%s' does not exist", str)
+				return nil, burrito.WrappedErrorf("File '%s' does not exist", str)
 			}
-			return nil, utils.WrapErrorf(err, "Failed to open image file %s", str)
+			return nil, burrito.WrapErrorf(err, "Failed to open image file %s", str)
 		}
 
 		config, _, err := image.DecodeConfig(file)
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to decode image file %s", str)
+			return nil, burrito.WrapErrorf(err, "Failed to decode image file %s", str)
 		}
 		utils.PutCache(imageCache, str, config)
 		err = file.Close()
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "Failed to close image file %s", str)
+			return nil, burrito.WrapErrorf(err, "Failed to close image file %s", str)
 		}
 		img = &config
 	}
@@ -98,7 +99,7 @@ func imageBounds(str string) (*image.Config, error) {
 func imageWidth(str string) (utils.JsonNumber, error) {
 	bounds, err := imageBounds(str)
 	if err != nil {
-		return utils.ToNumber(0), utils.WrapErrorf(err, "Failed to get image bounds for %s", str)
+		return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str)
 	}
 	return utils.ToNumber(bounds.Width), nil
 }
@@ -106,7 +107,7 @@ func imageWidth(str string) (utils.JsonNumber, error) {
 func imageHeight(str string) (utils.JsonNumber, error) {
 	bounds, err := imageBounds(str)
 	if err != nil {
-		return utils.ToNumber(0), utils.WrapErrorf(err, "Failed to get image bounds for %s", str)
+		return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str)
 	}
 	return utils.ToNumber(bounds.Height), nil
 }

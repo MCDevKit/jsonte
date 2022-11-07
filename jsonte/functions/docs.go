@@ -2,7 +2,7 @@ package functions
 
 import (
 	"fmt"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -30,20 +30,20 @@ func GenerateDocs() error {
 	Init()
 	dir, err := os.ReadDir(".")
 	if err != nil {
-		return utils.WrapErrorf(err, "Failed to read current directory")
+		return burrito.WrapErrorf(err, "Failed to read current directory")
 	}
 	for _, file := range dir {
 		if file.IsDir() && strings.HasSuffix(file.Name(), "-functions") {
 			err := os.RemoveAll(file.Name())
 			if err != nil {
-				return utils.WrapErrorf(err, "Failed to remove directory %s", file.Name())
+				return burrito.WrapErrorf(err, "Failed to remove directory %s", file.Name())
 			}
 		}
 	}
 	for _, group := range groups {
 		err = os.Mkdir(fmt.Sprintf("%s-functions", group.Name), 0755)
 		if err != nil {
-			return utils.WrapErrorf(err, "Failed to create %s directory", group.Name)
+			return burrito.WrapErrorf(err, "Failed to create %s directory", group.Name)
 		}
 		err = ioutil.WriteFile(fmt.Sprintf("%s-functions/index.md", group.Name), []byte(fmt.Sprintf(`---
 layout: page
@@ -57,7 +57,7 @@ has_children: true
 %[2]s
 `, group.Title, group.Summary)), 0644)
 		if err != nil {
-			return utils.WrapErrorf(err, "Failed to write %s/index.md", group.Name)
+			return burrito.WrapErrorf(err, "Failed to write %s/index.md", group.Name)
 		}
 		for _, fns := range functions {
 			for _, fn := range fns {
@@ -82,7 +82,7 @@ title: %[1]s
 %[5]s
 `, fn.Name, group.Title, summary, generateArgumentDocs(fn.Docs.Arguments), prepareExample(fn.Docs.Example))), 0644)
 				if err != nil {
-					return utils.WrapErrorf(err, "Failed to write %s/%s.md", group.Name, fn.Name)
+					return burrito.WrapErrorf(err, "Failed to write %s/%s.md", group.Name, fn.Name)
 				}
 			}
 		}

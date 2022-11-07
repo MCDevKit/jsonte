@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -571,7 +572,7 @@ func hash(str string) (utils.JsonNumber, error) {
 	a := fnv.New32a()
 	_, err := a.Write([]byte(str))
 	if err != nil {
-		return utils.ToNumber(0), utils.WrapErrorf(err, "Failed to hash string")
+		return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to hash string")
 	}
 	return utils.ToNumber(a.Sum32()), nil
 }
@@ -622,7 +623,7 @@ func endsWith(str, substr string) bool {
 func regexReplace(str, pattern, repl string) (string, error) {
 	compile, err := regexp.Compile(pattern)
 	if err != nil {
-		return "", utils.WrapErrorf(err, "Failed to compile regex pattern")
+		return "", burrito.WrapErrorf(err, "Failed to compile regex pattern")
 	}
 	return compile.ReplaceAllString(str, repl), nil
 }
