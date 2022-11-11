@@ -1,6 +1,7 @@
 package test
 
 import (
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestStringContains(t *testing.T) {
 
 func TestStringSplit(t *testing.T) {
 	eval := evaluate(t, `'Hello World'.split(' ')`)
-	assertArray(t, eval, []interface{}{"Hello", "World"})
+	assertArray(t, eval, types.Box([]interface{}{"Hello", "World"}).(types.JsonArray))
 }
 
 func TestStringIndexOf(t *testing.T) {
@@ -101,7 +102,7 @@ func TestRegexReplace(t *testing.T) {
 
 func TestChars(t *testing.T) {
 	eval := evaluate(t, `'hello'.chars()`)
-	assertArray(t, eval, []interface{}{"h", "e", "l", "l", "o"})
+	assertArray(t, eval, types.Box([]interface{}{"h", "e", "l", "l", "o"}).(types.JsonArray))
 }
 
 func TestLength(t *testing.T) {

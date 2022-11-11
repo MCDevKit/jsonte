@@ -1,7 +1,7 @@
 package functions
 
 import (
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 )
 
 func RegisterSemverFunctions() {
@@ -50,14 +50,14 @@ func RegisterSemverFunctions() {
 	})
 }
 
-func semverString(str string) (utils.Semver, error) {
-	return utils.ParseSemverString(str)
+func semverString(str types.JsonString) (types.Semver, error) {
+	return types.ParseSemverString(str.StringValue())
 }
 
-func semverArray(arr []interface{}) (utils.Semver, error) {
-	return utils.ParseSemverArray(arr)
+func semverArray(arr types.JsonArray) (types.Semver, error) {
+	return types.ParseSemverArray(arr.Unwrap().([]interface{}))
 }
 
-func semver(major, minor, patch utils.JsonNumber) (utils.Semver, error) {
-	return utils.Semver{Major: int(major.IntValue()), Minor: int(minor.IntValue()), Patch: int(patch.IntValue())}, nil
+func semver(major, minor, patch types.JsonNumber) (types.Semver, error) {
+	return types.Semver{Major: int(major.IntValue()), Minor: int(minor.IntValue()), Patch: int(patch.IntValue())}, nil
 }

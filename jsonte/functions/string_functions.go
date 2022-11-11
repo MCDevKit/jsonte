@@ -2,7 +2,7 @@ package functions
 
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"hash/fnv"
@@ -535,73 +535,74 @@ func RegisterStringFunctions() {
 	})
 }
 
-func replace(str, old, new string) string {
-	return strings.Replace(str, old, new, -1)
+func replace(str, old, new types.JsonString) types.JsonString {
+	return types.NewString(strings.Replace(str.StringValue(), old.StringValue(), new.StringValue(), -1))
 }
 
-func join(strs []interface{}, sep string) string {
-	arr := make([]string, len(strs))
-	for i, s := range strs {
-		arr[i] = utils.ToString(s)
+func join(strs types.JsonArray, sep types.JsonString) types.JsonString {
+	arr := make([]string, len(strs.Value))
+	for i, s := range strs.Value {
+		arr[i] = types.ToString(s)
 	}
-	return strings.Join(arr, sep)
+	return types.NewString(strings.Join(arr, sep.StringValue()))
 }
 
-func stringContains(str, substr string) bool {
-	return strings.Contains(str, substr)
+func stringContains(str, substr types.JsonString) types.JsonBool {
+	return types.AsBool(strings.Contains(str.StringValue(), substr.StringValue()))
 }
 
-func split(str, sep string) []interface{} {
-	strs := strings.Split(str, sep)
-	arr := make([]interface{}, len(strs))
+func split(str, sep types.JsonString) types.JsonArray {
+	strs := strings.Split(str.StringValue(), sep.StringValue())
+	arr := make([]types.JsonType, len(strs))
 	for i, s := range strs {
-		arr[i] = s
+		arr[i] = types.NewString(s)
 	}
-	return arr
+	return types.JsonArray{Value: arr}
 }
 
-func stringIndexOf(str, substr string) utils.JsonNumber {
-	return utils.ToNumber(strings.Index(str, substr))
+func stringIndexOf(str, substr types.JsonString) types.JsonNumber {
+	return types.AsNumber(strings.Index(str.StringValue(), substr.StringValue()))
 }
 
-func stringLastIndexOf(str, substr string) utils.JsonNumber {
-	return utils.ToNumber(strings.LastIndex(str, substr))
+func stringLastIndexOf(str, substr types.JsonString) types.JsonNumber {
+	return types.AsNumber(strings.LastIndex(str.StringValue(), substr.StringValue()))
 }
 
-func hash(str string) (utils.JsonNumber, error) {
+func hash(str types.JsonString) (types.JsonNumber, error) {
 	a := fnv.New32a()
-	_, err := a.Write([]byte(str))
+	_, err := a.Write([]byte(str.StringValue()))
 	if err != nil {
-		return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to hash string")
+		return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to hash string")
 	}
-	return utils.ToNumber(a.Sum32()), nil
+	return types.AsNumber(a.Sum32()), nil
 }
 
-func toUpperCase(str string) string {
-	return cases.Upper(language.Und).String(str)
+func toUpperCase(str types.JsonString) types.JsonString {
+	return types.NewString(cases.Upper(language.Und).String(str.StringValue()))
 }
 
-func toLowerCase(str string) string {
-	return cases.Lower(language.Und).String(str)
+func toLowerCase(str types.JsonString) types.JsonString {
+	return types.NewString(cases.Lower(language.Und).String(str.StringValue()))
 }
 
-func substring(str string, start, end utils.JsonNumber) string {
-	return str[start.IntValue():end.IntValue()]
+func substring(str types.JsonString, start, end types.JsonNumber) types.JsonString {
+	return types.NewString(str.StringValue()[start.IntValue():end.IntValue()])
 }
 
-func substringFrom(str string, start utils.JsonNumber) string {
-	return str[start.IntValue():]
+func substringFrom(str types.JsonString, start types.JsonNumber) types.JsonString {
+	return types.NewString(str.StringValue()[start.IntValue():])
 }
 
-func captialize(str string) string {
-	return cases.Upper(language.Und).String(str[:1]) + cases.Lower(language.Und).String(str[1:])
+func captialize(str types.JsonString) types.JsonString {
+	return types.NewString(cases.Upper(language.Und).String(str.StringValue()[:1]) + cases.Lower(language.Und).String(str.StringValue()[1:]))
 }
 
-func title(str string) string {
-	return cases.Title(language.Und).String(str)
+func title(str types.JsonString) types.JsonString {
+	return types.NewString(cases.Title(language.Und).String(str.StringValue()))
 }
 
-func swapCase(str string) string {
+func swapCase(s types.JsonString) types.JsonString {
+	str := s.StringValue()
 	for i, c := range str {
 		if unicode.IsUpper(c) {
 			str = str[:i] + strings.ToLower(string(c)) + str[i+1:]
@@ -609,37 +610,37 @@ func swapCase(str string) string {
 			str = str[:i] + strings.ToUpper(string(c)) + str[i+1:]
 		}
 	}
-	return str
+	return types.NewString(str)
 }
 
-func startsWith(str, substr string) bool {
-	return strings.HasPrefix(str, substr)
+func startsWith(str, substr types.JsonString) types.JsonBool {
+	return types.AsBool(strings.HasPrefix(str.StringValue(), substr.StringValue()))
 }
 
-func endsWith(str, substr string) bool {
-	return strings.HasSuffix(str, substr)
+func endsWith(str, substr types.JsonString) types.JsonBool {
+	return types.AsBool(strings.HasSuffix(str.StringValue(), substr.StringValue()))
 }
 
-func regexReplace(str, pattern, repl string) (string, error) {
-	compile, err := regexp.Compile(pattern)
+func regexReplace(str, pattern, repl types.JsonString) (types.JsonString, error) {
+	compile, err := regexp.Compile(pattern.StringValue())
 	if err != nil {
-		return "", burrito.WrapErrorf(err, "Failed to compile regex pattern")
+		return types.EmptyString, burrito.WrapErrorf(err, "Failed to compile regex pattern")
 	}
-	return compile.ReplaceAllString(str, repl), nil
+	return types.NewString(compile.ReplaceAllString(str.StringValue(), repl.StringValue())), nil
 }
 
-func chars(str string) []interface{} {
-	arr := make([]interface{}, len(str))
-	for i, c := range str {
-		arr[i] = string(c)
+func chars(str types.JsonString) types.JsonArray {
+	arr := make([]types.JsonType, len(str.StringValue()))
+	for i, c := range str.StringValue() {
+		arr[i] = types.NewString(string(c))
 	}
-	return arr
+	return types.JsonArray{Value: arr}
 }
 
-func length(str string) utils.JsonNumber {
-	return utils.ToNumber(len(str))
+func length(str types.JsonString) types.JsonNumber {
+	return types.AsNumber(len(str.StringValue()))
 }
 
-func trim(str string) string {
-	return strings.Trim(str, " \t\n\r")
+func trim(str types.JsonString) types.JsonString {
+	return types.NewString(strings.Trim(str.StringValue(), " \t\n\r"))
 }

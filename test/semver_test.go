@@ -1,23 +1,23 @@
 package test
 
 import (
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"testing"
 )
 
 func TestSemverParsing(t *testing.T) {
 	eval := evaluate(t, `semver('1.8.0')`)
-	assertSemver(t, eval, utils.Semver{Major: 1, Minor: 8, Patch: 0})
+	assertSemver(t, eval, types.Semver{Major: 1, Minor: 8, Patch: 0})
 }
 
 func TestSemverParsing1(t *testing.T) {
 	eval := evaluate(t, `semver([1, 8, 0])`)
-	assertSemver(t, eval, utils.Semver{Major: 1, Minor: 8, Patch: 0})
+	assertSemver(t, eval, types.Semver{Major: 1, Minor: 8, Patch: 0})
 }
 
 func TestSemverParsing2(t *testing.T) {
 	eval := evaluate(t, `semver(1, 8, 0)`)
-	assertSemver(t, eval, utils.Semver{Major: 1, Minor: 8, Patch: 0})
+	assertSemver(t, eval, types.Semver{Major: 1, Minor: 8, Patch: 0})
 }
 
 func TestSemverComparison(t *testing.T) {

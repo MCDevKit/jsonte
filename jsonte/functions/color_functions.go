@@ -3,7 +3,7 @@ package functions
 import (
 	"errors"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"image/color"
 )
 
@@ -39,17 +39,17 @@ func RegisterColorFunctions() {
 	})
 }
 
-func hexToArray(str string) ([]interface{}, error) {
-	fast, err := parseHexColorFast(str)
+func hexToArray(str types.JsonString) (types.JsonArray, error) {
+	fast, err := parseHexColorFast(str.StringValue())
 	if err != nil {
-		return nil, burrito.WrapErrorf(err, "Failed to parse hex color %s", str)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to parse hex color %s", str)
 	}
-	return []interface{}{
-		utils.ToNumber(float64(fast.R) / 255),
-		utils.ToNumber(float64(fast.G) / 255),
-		utils.ToNumber(float64(fast.B) / 255),
-		utils.ToNumber(float64(fast.A) / 255),
-	}, nil
+	return types.JsonArray{Value: []types.JsonType{
+		types.AsNumber(float64(fast.R) / 255),
+		types.AsNumber(float64(fast.G) / 255),
+		types.AsNumber(float64(fast.B) / 255),
+		types.AsNumber(float64(fast.A) / 255),
+	}}, nil
 }
 
 // from https://stackoverflow.com/a/54200713

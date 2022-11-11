@@ -3,7 +3,7 @@ package functions
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/gobwas/glob"
 	"io/ioutil"
 	"os"
@@ -229,105 +229,105 @@ func RegisterFileFunctions() {
 	})
 }
 
-func load(s string) (utils.NavigableMap[string, interface{}], error) {
-	resolver, err := safeio.Resolver.Open(s)
+func load(s types.JsonString) (types.JsonObject, error) {
+	resolver, err := safeio.Resolver.Open(s.StringValue())
 	if err != nil {
-		return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
 	readAll, err := ioutil.ReadAll(resolver)
 	if err != nil {
-		return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to read file %s", s)
+		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read file %s", s)
 	}
 	err = resolver.Close()
 	if err != nil {
-		return utils.NewNavigableMap[string, interface{}](), burrito.WrapErrorf(err, "Failed to close file %s", s)
+		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to close file %s", s)
 	}
-	return utils.ParseJsonObject(readAll)
+	return types.ParseJsonObject(readAll)
 }
 
-func fileList(s string) ([]interface{}, error) {
-	resolved, err := safeio.Resolver.OpenDir(s)
+func fileList(s types.JsonString) (types.JsonArray, error) {
+	resolved, err := safeio.Resolver.OpenDir(s.StringValue())
 	if err != nil {
-		return nil, burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
-	result := make([]interface{}, len(resolved))
+	result := make([]types.JsonType, len(resolved))
 	for i, file := range resolved {
-		result[i] = file
+		result[i] = types.NewString(file)
 	}
-	return result, nil
+	return types.JsonArray{Value: result}, nil
 }
 
-func fileListFilter(s string, filter string) ([]interface{}, error) {
-	compile, err := glob.Compile(filter)
+func fileListFilter(s types.JsonString, filter types.JsonString) (types.JsonArray, error) {
+	compile, err := glob.Compile(filter.StringValue())
 	if err != nil {
-		return nil, burrito.WrapErrorf(err, "Failed to compile glob %s", filter)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile glob %s", filter)
 	}
-	resolved, err := safeio.Resolver.OpenDir(s)
+	resolved, err := safeio.Resolver.OpenDir(s.StringValue())
 	if err != nil {
-		return nil, burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
-	result := make([]interface{}, 0)
+	result := make([]types.JsonType, 0)
 	for _, file := range resolved {
 		if compile.Match(file) {
-			result = append(result, file)
+			result = append(result, types.NewString(file))
 		}
 	}
-	return result, nil
+	return types.JsonArray{Value: result}, nil
 }
 
-func fileListRecurse(s string) ([]interface{}, error) {
-	resolved, err := safeio.Resolver.OpenDirRecursive(s)
+func fileListRecurse(s types.JsonString) (types.JsonArray, error) {
+	resolved, err := safeio.Resolver.OpenDirRecursive(s.StringValue())
 	if err != nil {
-		return nil, burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
-	result := make([]interface{}, len(resolved))
+	result := make([]types.JsonType, len(resolved))
 	for i, file := range resolved {
-		result[i] = file
+		result[i] = types.NewString(file)
 	}
-	return result, nil
+	return types.JsonArray{Value: result}, nil
 }
 
-func fileListRecurseFilter(s string, filter string) ([]interface{}, error) {
-	compile, err := glob.Compile(filter)
+func fileListRecurseFilter(s types.JsonString, filter types.JsonString) (types.JsonArray, error) {
+	compile, err := glob.Compile(filter.StringValue())
 	if err != nil {
-		return nil, burrito.WrapErrorf(err, "Failed to compile glob %s", filter)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile glob %s", filter)
 	}
-	resolved, err := safeio.Resolver.OpenDirRecursive(s)
+	resolved, err := safeio.Resolver.OpenDirRecursive(s.StringValue())
 	if err != nil {
-		return nil, burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
 	}
-	result := make([]interface{}, 0)
+	result := make([]types.JsonType, 0)
 	for _, file := range resolved {
 		if compile.Match(file) {
-			result = append(result, file)
+			result = append(result, types.NewString(file))
 		}
 	}
-	return result, nil
+	return types.JsonArray{Value: result}, nil
 }
 
-func fileExtension(s string) string {
-	return filepath.Ext(s)
+func fileExtension(s types.JsonString) types.JsonString {
+	return types.NewString(filepath.Ext(s.StringValue()))
 }
 
-func fileName(s string) string {
-	return filepath.Base(s)
+func fileName(s types.JsonString) types.JsonString {
+	return types.NewString(filepath.Base(s.StringValue()))
 }
 
-func fileBaseName(s string) string {
-	return strings.TrimSuffix(filepath.Base(s), filepath.Ext(s))
+func fileBaseName(s types.JsonString) types.JsonString {
+	return types.NewString(strings.TrimSuffix(filepath.Base(s.StringValue()), filepath.Ext(s.StringValue())))
 }
 
-func filePath(s string) string {
-	return filepath.Dir(s)
+func filePath(s types.JsonString) types.JsonString {
+	return types.NewString(filepath.Dir(s.StringValue()))
 }
 
-func isDir(s string) (bool, error) {
-	stat, err := safeio.Resolver.Stat(s)
+func isDir(s types.JsonString) (types.JsonBool, error) {
+	stat, err := safeio.Resolver.Stat(s.StringValue())
 	if err != nil {
 		if os.IsNotExist(err) {
-			return false, nil
+			return types.False, nil
 		}
-		return false, burrito.WrapErrorf(err, "Failed to stat path %s", s)
+		return types.False, burrito.WrapErrorf(err, "Failed to stat path %s", s)
 	}
-	return stat.IsDir(), nil
+	return types.AsBool(stat.IsDir()), nil
 }

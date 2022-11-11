@@ -4,7 +4,9 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/fatih/color"
 	"github.com/gammazero/deque"
@@ -34,11 +36,11 @@ const (
 	Error              int = 3
 )
 
-func StartIPC(ipcName string, scope utils.NavigableMap[string, interface{}]) error {
+func StartIPC(ipcName string, scope types.JsonObject) error {
 	color.NoColor = true
 	sc, err := ipc.StartServer(ipcName, nil)
 	if err != nil {
-		return utils.WrapError(err, "An error occurred while starting the server")
+		return burrito.WrapError(err, "An error occurred while starting the server")
 	}
 	utils.Logger.Infof("Started IPC server %s", ipcName)
 	for {
@@ -56,20 +58,20 @@ func StartIPC(ipcName string, scope utils.NavigableMap[string, interface{}]) err
 				var request EvaluateExpressionRequest
 				err := json.Unmarshal(message.Data, &request)
 				if err != nil {
-					sendError(sc, utils.WrapErrorf(err, "An error occurred while unmarshalling the request"))
+					sendError(sc, burrito.WrapErrorf(err, "An error occurred while unmarshalling the request"))
 					continue
 				}
-				s := deque.Deque[interface{}]{}
+				s := deque.Deque[types.JsonObject]{}
 				s.PushBack(scope)
-				s.PushBack(request.ExtraScope)
+				s.PushBack(types.AsObject(request.ExtraScope))
 				utils.Logger.Infof("Evaluating expression %s", request.Expression)
 				result, err := jsonte.Eval(request.Expression, s, request.Path)
 				if err != nil {
-					sendError(sc, utils.WrapErrorf(err, "An error occurred while evaluating the expression %s", request.Expression))
+					sendError(sc, burrito.WrapErrorf(err, "An error occurred while evaluating the expression %s", request.Expression))
 					continue
 				}
 				response := EvaluateExpressionResponse{
-					Result:    utils.UnwrapContainers(result.Value),
+					Result:    result.Value.Unwrap(),
 					Action:    result.Action.String(),
 					ValueName: result.Name,
 					IndexName: result.IndexName,
@@ -82,7 +84,7 @@ func StartIPC(ipcName string, scope utils.NavigableMap[string, interface{}]) err
 				}
 			}
 		} else {
-			return utils.WrapErrorf(err, "An error occurred while reading from the client")
+			return burrito.WrapErrorf(err, "An error occurred while reading from the client")
 		}
 	}
 	return nil

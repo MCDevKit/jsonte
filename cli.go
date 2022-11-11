@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"strings"
 )
 
@@ -79,13 +79,13 @@ func (a *App) Run(args []string, onParse func()) error {
 					switch flag.Type {
 					case "bool":
 						if flag.Found {
-							return utils.WrappedErrorf("flag --%s is already set", flag.Name)
+							return burrito.WrappedErrorf("flag --%s is already set", flag.Name)
 						}
 						*flag.BoolDestination = true
 						flag.Found = true
 					case "string":
 						if flag.Found {
-							return utils.WrappedErrorf("flag --%s is already set", flag.Name)
+							return burrito.WrappedErrorf("flag --%s is already set", flag.Name)
 						}
 						*flag.StringDestination = args[i+1]
 						flag.Found = true
@@ -97,13 +97,13 @@ func (a *App) Run(args []string, onParse func()) error {
 						flag.Found = true
 						break
 					default:
-						return utils.WrappedErrorf("unknown flag type: %s", flag.Type)
+						return burrito.WrappedErrorf("unknown flag type: %s", flag.Type)
 					}
 				}
 			}
 			if !found {
 				a.PrintHelp()
-				return utils.WrappedErrorf("unknown flag: %s", arg)
+				return burrito.WrappedErrorf("unknown flag: %s", arg)
 			}
 		} else {
 			cleanArgs = append(cleanArgs, arg)
@@ -128,7 +128,7 @@ func (a *App) Run(args []string, onParse func()) error {
 	action, ok := a.actions[cleanArgs[0]]
 	if !ok {
 		a.PrintHelp()
-		return utils.WrappedErrorf("unknown command: %s", cleanArgs[0])
+		return burrito.WrappedErrorf("unknown command: %s", cleanArgs[0])
 	}
 
 	return action.Function(cleanArgs[1:])

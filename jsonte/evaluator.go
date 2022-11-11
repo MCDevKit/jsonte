@@ -2,7 +2,7 @@ package jsonte
 
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/gammazero/deque"
@@ -10,8 +10,8 @@ import (
 
 // Result is the result of evaluating an expression
 type Result struct {
-	Value     interface{}
-	Action    utils.JsonAction
+	Value     types.JsonType
+	Action    types.JsonAction
 	Name      string
 	IndexName string
 }
@@ -27,7 +27,7 @@ func (r *Result) GetError() error {
 
 // QuickEval is a convenience function for evaluating a single expression
 func QuickEval(text string, path string) (Result, error) {
-	return Eval(text, deque.Deque[interface{}]{}, path)
+	return Eval(text, deque.Deque[types.JsonObject]{}, path)
 }
 
 // CollectingErrorListener is an error listener that collects all errors by appending them to the Error field
@@ -41,7 +41,7 @@ func (l *CollectingErrorListener) SyntaxError(recognizer antlr.Recognizer, offen
 }
 
 // Eval evaluates the given expression and returns the result
-func Eval(text string, scope deque.Deque[interface{}], path string) (Result, error) {
+func Eval(text string, scope deque.Deque[types.JsonObject], path string) (Result, error) {
 	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
 	is := antlr.NewInputStream(text)
 	lexer := parser.NewJsonTemplateLexer(is)
@@ -60,11 +60,7 @@ func Eval(text string, scope deque.Deque[interface{}], path string) (Result, err
 		scope: scope,
 		path:  &path,
 	}
-	r := visitor.Visit(tree)
-	var err error
-	if isError(r) {
-		err = getError(r)
-	}
+	r, err := visitor.Visit(tree)
 	return Result{
 		Value:     r,
 		Action:    visitor.action,

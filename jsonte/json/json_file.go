@@ -1,11 +1,16 @@
-package utils
+package json
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"strconv"
 )
+
+const UnexpectedTokenError = "Unexpected token at line %d, column %d"
+const UnexpectedEofError = "Unexpected end of file at line %d, column %d"
+const ExpectedTokenError = "Expected '%c' at line %d, column %d"
 
 const (
 	TokenOpenObject     = '{'
@@ -91,17 +96,17 @@ func UnmarshallJSONC(str []byte) (interface{}, error) {
 	}
 	skipWhitespace(reader)
 	if reader.Peek() != TokenEof {
-		return object, WrappedJsonErrorf("#", "Unexpected token at line %d, column %d", reader.line, reader.column)
+		return object, utils.WrappedJsonErrorf("#", UnexpectedTokenError, reader.line, reader.column)
 	}
 	return object, nil
 }
 
 func MarshalJSONC(object interface{}, pretty bool) ([]byte, error) {
 	switch object.(type) {
-	case NavigableMap[string, interface{}]:
-		return writeObject(object.(NavigableMap[string, interface{}]), pretty, 0)
+	case utils.NavigableMap[string, interface{}]:
+		return writeObject(object.(utils.NavigableMap[string, interface{}]), pretty, 0)
 	case map[string]interface{}:
-		return writeObject(MapToNavigableMap(object.(map[string]interface{})), pretty, 0)
+		return writeObject(utils.MapToNavigableMap(object.(map[string]interface{})), pretty, 0)
 	case []interface{}:
 		return writeArray(object.([]interface{}), pretty, 0)
 	case string:
@@ -125,7 +130,7 @@ func MarshalJSONC(object interface{}, pretty bool) ([]byte, error) {
 	}
 }
 
-func writeObject(object NavigableMap[string, interface{}], pretty bool, indent int) ([]byte, error) {
+func writeObject(object utils.NavigableMap[string, interface{}], pretty bool, indent int) ([]byte, error) {
 	var result []byte
 	result = append(result, TokenOpenObject)
 	if pretty {
@@ -145,8 +150,8 @@ func writeObject(object NavigableMap[string, interface{}], pretty bool, indent i
 		}
 		value := object.Get(key)
 		switch value.(type) {
-		case NavigableMap[string, interface{}]:
-			bytes, err := writeObject(value.(NavigableMap[string, interface{}]), pretty, indent)
+		case utils.NavigableMap[string, interface{}]:
+			bytes, err := writeObject(value.(utils.NavigableMap[string, interface{}]), pretty, indent)
 			if err != nil {
 				return result, err
 			}
@@ -201,8 +206,8 @@ func writeArray(arr []interface{}, pretty bool, indent int) ([]byte, error) {
 			result = append(result, indentBytes(indent)...)
 		}
 		switch value.(type) {
-		case NavigableMap[string, interface{}]:
-			bytes, err := writeObject(value.(NavigableMap[string, interface{}]), pretty, indent)
+		case utils.NavigableMap[string, interface{}]:
+			bytes, err := writeObject(value.(utils.NavigableMap[string, interface{}]), pretty, indent)
 			if err != nil {
 				return result, err
 			}
@@ -308,11 +313,11 @@ func skipWhitespace(str *StringReader) {
 	}
 }
 
-func parseObject(str *StringReader, p string) (NavigableMap[string, interface{}], error) {
-	result := NewNavigableMap[string, interface{}]()
+func parseObject(str *StringReader, p string) (utils.NavigableMap[string, interface{}], error) {
+	result := utils.NewNavigableMap[string, interface{}]()
 
 	if str.Read() != TokenOpenObject {
-		return result, WrappedJsonErrorf(p, "Expected '{' at line %d, column %d", str.line, str.column)
+		return result, utils.WrappedJsonErrorf(p, ExpectedTokenError, TokenOpenObject, str.line, str.column)
 	}
 
 	canStartComment := false
@@ -322,7 +327,7 @@ func parseObject(str *StringReader, p string) (NavigableMap[string, interface{}]
 	for {
 		token := str.Peek()
 		if token == TokenEof {
-			return result, WrappedJsonErrorf(p, "Unexpected end of file at line %d, column %d", str.line, str.column)
+			return result, utils.WrappedJsonErrorf(p, UnexpectedEofError, str.line, str.column)
 		} else if isWhitespace(token) {
 			str.Read()
 		} else if token == TokenSlash {
@@ -338,7 +343,7 @@ func parseObject(str *StringReader, p string) (NavigableMap[string, interface{}]
 			}
 			skipWhitespace(str)
 			if str.Read() != TokenColon {
-				return result, WrappedJsonErrorf(p, "Expected ':' at line %d, column %d", str.line, str.column)
+				return result, utils.WrappedJsonErrorf(p, ExpectedTokenError, TokenColon, str.line, str.column)
 			}
 			skipWhitespace(str)
 			peekToken := str.Peek()
@@ -374,7 +379,7 @@ func parseObject(str *StringReader, p string) (NavigableMap[string, interface{}]
 			str.Read()
 			return result, nil
 		} else {
-			return result, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 		}
 	}
 }
@@ -426,57 +431,57 @@ func parsePrimitive(str *StringReader, p string) (interface{}, error) {
 	} else if token == 'n' {
 		return parseNull(str, p)
 	} else {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 }
 
 func parseTrue(str *StringReader, p string) (interface{}, error) {
 	if str.Read() != 't' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 'r' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 'u' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 'e' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	return true, nil
 }
 
 func parseFalse(str *StringReader, p string) (interface{}, error) {
 	if str.Read() != 'f' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 'a' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 'l' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 's' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 'e' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	return false, nil
 }
 
 func parseNull(str *StringReader, p string) (interface{}, error) {
 	if str.Read() != 'n' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 'u' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 'l' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	if str.Read() != 'l' {
-		return nil, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 	}
 	return nil, nil
 }
@@ -498,7 +503,7 @@ func parseArray(str *StringReader, p string) ([]interface{}, error) {
 	result := make([]interface{}, 0)
 
 	if str.Read() != TokenOpenArray {
-		return result, WrappedJsonErrorf(p, "Expected '[' at at line %d, column %d", str.line, str.column)
+		return result, utils.WrappedJsonErrorf(p, ExpectedTokenError, TokenOpenArray, str.line, str.column)
 	}
 
 	comma := false
@@ -508,7 +513,7 @@ func parseArray(str *StringReader, p string) ([]interface{}, error) {
 	for {
 		token := str.Peek()
 		if token == TokenEof {
-			return result, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 		} else if isWhitespace(token) {
 			str.Read()
 		} else if token == TokenSlash {
@@ -554,7 +559,7 @@ func parseArray(str *StringReader, p string) ([]interface{}, error) {
 			comma = false
 			open = false
 		} else {
-			return result, WrappedJsonErrorf(p, "Unexpected token at line %d, column %d", str.line, str.column)
+			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenError, str.line, str.column)
 		}
 	}
 }
@@ -565,7 +570,7 @@ func parseString(str *StringReader, p string) (string, error) {
 	for {
 		token := str.Read()
 		if token == TokenEof {
-			return "", WrappedJsonErrorf(p, "Unexpected end of file at line %d, column %d", str.line, str.column)
+			return "", utils.WrappedJsonErrorf(p, UnexpectedEofError, str.line, str.column)
 		}
 		if token == TokenDoubleQuote {
 			break
@@ -573,7 +578,7 @@ func parseString(str *StringReader, p string) (string, error) {
 		if token == TokenBackslash {
 			token = str.Read()
 			if token == TokenEof {
-				return "", WrappedJsonErrorf(p, "Unexpected end of file at line %d, column %d", str.line, str.column)
+				return "", utils.WrappedJsonErrorf(p, UnexpectedEofError, str.line, str.column)
 			}
 			switch token {
 			case TokenDoubleQuote:
@@ -601,11 +606,11 @@ func parseString(str *StringReader, p string) (string, error) {
 				}
 				unicode, err := strconv.ParseInt(string(hex), 16, 32)
 				if err != nil {
-					return "", WrappedJsonErrorf(p, "Invalid unicode escape sequence at line %d, column %d", str.line, str.column)
+					return "", utils.WrappedJsonErrorf(p, "Invalid unicode escape sequence at line %d, column %d", str.line, str.column)
 				}
 				result = append(result, []byte(string(rune(unicode)))...)
 			default:
-				return "", WrappedJsonErrorf(p, "Invalid escape sequence at line %d, column %d", str.line, str.column)
+				return "", utils.WrappedJsonErrorf(p, "Invalid escape sequence at line %d, column %d", str.line, str.column)
 			}
 		} else {
 			result = append(result, token)

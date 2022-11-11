@@ -2,6 +2,7 @@ package jsonte
 
 import (
 	"github.com/MCDevKit/jsonte/jsonte/functions"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/fatih/color"
 	"go.uber.org/zap/zapcore"
@@ -11,6 +12,7 @@ import (
 func LibraryInit(level zapcore.Level) {
 	utils.InitLogging(level)
 	color.NoColor = true
+	types.Init()
 	functions.Init()
 }
 

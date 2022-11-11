@@ -4,7 +4,7 @@ package test
 
 import (
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -30,7 +30,7 @@ func TestGetLatestBPFile(t *testing.T) {
 }`
 	eval := evaluate(t, `getLatestBPFile('items/apple.json')`)
 	assertString(t, eval, "packs/BP/items/apple.json")
-	open, err := safeio.Resolver.Open(eval.Value.(string))
+	open, err := safeio.Resolver.Open(eval.Value.StringValue())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestFindItemInfoByName(t *testing.T) {
 	safeio.Resolver = CacheFS
 	expected := `{"id":"minecraft:stone","legacyId":1,"metadata":5}`
 	eval := evaluate(t, `findItemInfoByName('andesite')`)
-	object, err := utils.ParseJsonObject([]byte(expected))
+	object, err := types.ParseJsonObject([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestFindItemInfoById(t *testing.T) {
 	safeio.Resolver = CacheFS
 	expected := `{"id":"minecraft:blue_glazed_terracotta","legacyId":231,"metadata":0}`
 	eval := evaluate(t, `findItemInfoById('blue_terracotta')`)
-	object, err := utils.ParseJsonObject([]byte(expected))
+	object, err := types.ParseJsonObject([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestGetItemInfo(t *testing.T) {
 	safeio.Resolver = CacheFS
 	expected := `{"id":"minecraft:stone","legacyId":1,"metadata":0}`
 	eval := evaluate(t, `getItemInfo('stone', 0)`)
-	object, err := utils.ParseJsonObject([]byte(expected))
+	object, err := types.ParseJsonObject([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,7 +1,7 @@
 package test
 
 import (
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"math"
 	"testing"
 )
@@ -189,7 +189,7 @@ func TestClamp3(t *testing.T) {
 func TestPi(t *testing.T) {
 	eval := evaluate(t, `pi()`)
 	// Special case prepared for automatic decimal truncation
-	assertNumber(t, eval, utils.ToNumber(math.Pi).FloatValue())
+	assertNumber(t, eval, types.AsNumber(math.Pi).FloatValue())
 }
 
 func TestBitwiseAnd(t *testing.T) {

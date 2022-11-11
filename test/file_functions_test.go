@@ -3,6 +3,7 @@ package test
 import (
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"path/filepath"
 	"testing"
 )
@@ -26,7 +27,7 @@ func assertFileList(t *testing.T, eval jsonte.Result, expected []interface{}) {
 	for i, i2 := range expected {
 		expected[i] = filepath.Clean(i2.(string))
 	}
-	assertArray(t, eval, expected)
+	assertArray(t, eval, types.Box(expected).(types.JsonArray))
 }
 
 func TestFileList(t *testing.T) {

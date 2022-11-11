@@ -3,6 +3,7 @@ package functions
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
@@ -47,31 +48,29 @@ func RegisterAudioFunctions() {
 	})
 }
 
-func audioDuration(str string) (utils.JsonNumber, error) {
-	// audioDuration('C:\Users\brzoz\Downloads\COMCell_Message 1 (ID 1111)_BSB.ogg')
-	// audioDuration('C:\MCLauncher\imported_versions\Minecraft.Windows_1.19.2022.0_x64.appx\data\resource_packs\vanilla\sounds\dig\ancient_debris2.fsb')
+func audioDuration(str types.JsonString) (types.JsonNumber, error) {
 	var length float64 = 0
-	cache := utils.GetCache(audioCache, str)
+	cache := utils.GetCache(audioCache, str.StringValue())
 	if cache != nil {
 		length = (*cache).(float64)
 	} else {
-		file, err := safeio.Resolver.Open(str)
+		file, err := safeio.Resolver.Open(str.StringValue())
 		if err != nil {
-			return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to open audio file %s", str)
+			return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to open audio file %s", str)
 		}
-		streamer, format, err := decodeAudio(str, file)
+		streamer, format, err := decodeAudio(str.StringValue(), file)
 		if err != nil {
-			return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to decode audio file %s", str)
+			return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to decode audio file %s", str)
 		}
 		streamer.Len()
 		length = float64(streamer.Len()) / float64(format.SampleRate)
-		utils.PutCache(audioCache, str, length)
+		utils.PutCache(audioCache, str.StringValue(), length)
 		err = file.Close()
 		if err != nil {
-			return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to close audio file %s", str)
+			return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to close audio file %s", str)
 		}
 	}
-	return utils.ToNumber(length), nil
+	return types.AsNumber(length), nil
 }
 
 func decodeAudio(path string, file io.ReadCloser) (beep.StreamSeekCloser, beep.Format, error) {

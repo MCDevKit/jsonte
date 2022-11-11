@@ -2,13 +2,13 @@ package test
 
 import (
 	"github.com/MCDevKit/jsonte/jsonte"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"testing"
 )
 
 func assertMCFunction(t *testing.T, template, expected string) {
 	t.Helper()
-	process, err := jsonte.ProcessMCFunction(template, utils.NavigableMap[string, interface{}]{})
+	process, err := jsonte.ProcessMCFunction(template, types.NewJsonObject())
 	if err != nil {
 		t.Fatal(err)
 	}

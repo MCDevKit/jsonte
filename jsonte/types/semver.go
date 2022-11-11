@@ -1,4 +1,4 @@
-package utils
+package types
 
 import (
 	"fmt"
@@ -11,6 +11,22 @@ type Semver struct {
 	Major int
 	Minor int
 	Patch int
+}
+
+var majorAliases = []string{
+	"major",
+	"a",
+	"x",
+}
+var minorAliases = []string{
+	"minor",
+	"b",
+	"y",
+}
+var patchAliases = []string{
+	"patch",
+	"c",
+	"z",
 }
 
 // CompareTo compares two semantic versions. Returns 0 if they are equal, -1 if
@@ -33,14 +49,61 @@ func (s Semver) CompareTo(other Semver) int {
 	return 0
 }
 
-// String returns a string representation of the semantic version
-func (s Semver) String() string {
+func (s Semver) LessThan(other JsonType) (bool, error) {
+	if IsSemver(other) {
+		return s.CompareTo(AsSemver(other)) == -1, nil
+	}
+	return false, burrito.WrapErrorf(nil, "Cannot compare semver to %v", other)
+}
+
+func (s Semver) IsNull() bool {
+	return false
+}
+
+// StringValue returns a string representation of the semantic version
+func (s Semver) StringValue() string {
 	return fmt.Sprintf("%d.%d.%d", s.Major, s.Minor, s.Patch)
 }
 
+// BoolValue returns a string representation of the semantic version
+func (s Semver) BoolValue() bool {
+	return true
+}
+
 // Equals returns true if the two semantic versions are equal
-func (s Semver) Equals(other Semver) bool {
-	return s.CompareTo(other) == 0
+func (s Semver) Equals(value JsonType) bool {
+	if IsSemver(value) {
+		return s.CompareTo(AsSemver(value)) == 0
+	}
+	return false
+}
+
+func (s Semver) Unwrap() interface{} {
+	return s.StringValue()
+}
+
+func (s Semver) Negate() JsonType {
+	return NaN
+}
+
+func (s Semver) Index(i JsonType) (JsonType, error) {
+	if value, ok := i.(JsonString); ok {
+		if IndexOf(majorAliases, value.StringValue()) != -1 {
+			return AsNumber(s.Major), nil
+		}
+		if IndexOf(minorAliases, value.StringValue()) != -1 {
+			return AsNumber(s.Minor), nil
+		}
+		if IndexOf(patchAliases, value.StringValue()) != -1 {
+			return AsNumber(s.Patch), nil
+		}
+		return Null, burrito.WrappedErrorf("Cannot access %s because it is not a valid semver field", i.StringValue())
+	}
+	return Null, burrito.WrappedErrorf("Index must be a string: %s", i.StringValue())
+}
+
+func (s Semver) Add(i JsonType) JsonType {
+	return NewString(s.StringValue() + i.StringValue())
 }
 
 // ParseSemverString parses a string representation of a semantic version
@@ -73,7 +136,6 @@ func ParseSemverString(version string) (Semver, error) {
 
 // ParseSemverArray parses an array representation of a semantic version
 func ParseSemverArray(version []interface{}) (Semver, error) {
-	version = UnwrapContainers(version).([]interface{})
 	size := len(version)
 	if size == 0 {
 		return Semver{}, burrito.WrapErrorf(nil, "Invalid semver array: %v", version)
@@ -97,4 +159,25 @@ func ParseSemverArray(version []interface{}) (Semver, error) {
 		return Semver{}, burrito.WrapErrorf(nil, "Invalid semver array: %v", version)
 	}
 	return Semver{int(major), int(minor), int(patch)}, nil
+}
+
+// IsSemver returns true if the given interface is a semver object.
+func IsSemver(obj interface{}) bool {
+	if obj == nil {
+		return false
+	}
+	if _, ok := obj.(Semver); ok {
+		return true
+	}
+	return false
+}
+
+func AsSemver(obj interface{}) Semver {
+	if obj == nil {
+		return Semver{}
+	}
+	if b, ok := obj.(Semver); ok {
+		return b
+	}
+	return Semver{}
 }

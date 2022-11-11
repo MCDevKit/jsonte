@@ -2,14 +2,14 @@ package jsonte
 
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/gammazero/deque"
 	"strings"
 )
 
 // ProcessMCFunction processes an mcfunction file replacing all the jsonte expressions with their values
-func ProcessMCFunction(input string, scope utils.NavigableMap[string, interface{}]) (string, error) {
-	globalScope := deque.Deque[interface{}]{}
+func ProcessMCFunction(input string, scope types.JsonObject) (string, error) {
+	globalScope := deque.Deque[types.JsonObject]{}
 	globalScope.PushBack(scope)
 
 	matches := map[string]string{}
@@ -59,8 +59,8 @@ func ProcessMCFunction(input string, scope utils.NavigableMap[string, interface{
 					if result.Value == nil {
 						return "", burrito.WrappedErrorf("The expression '%s' evaluated to null.", debugMatch.String())
 					}
-					if result.Action == utils.Value {
-						matches[debugMatch.String()] = utils.ToString(result.Value)
+					if result.Action == types.Value {
+						matches[debugMatch.String()] = types.ToString(result.Value)
 					} else {
 						return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", debugMatch.String())
 					}

@@ -3,6 +3,7 @@ package functions
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"image"
 	_ "image/gif"
@@ -96,18 +97,18 @@ func imageBounds(str string) (*image.Config, error) {
 	return img, nil
 }
 
-func imageWidth(str string) (utils.JsonNumber, error) {
-	bounds, err := imageBounds(str)
+func imageWidth(str types.JsonString) (types.JsonNumber, error) {
+	bounds, err := imageBounds(str.StringValue())
 	if err != nil {
-		return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str)
+		return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str)
 	}
-	return utils.ToNumber(bounds.Width), nil
+	return types.AsNumber(bounds.Width), nil
 }
 
-func imageHeight(str string) (utils.JsonNumber, error) {
-	bounds, err := imageBounds(str)
+func imageHeight(str types.JsonString) (types.JsonNumber, error) {
+	bounds, err := imageBounds(str.StringValue())
 	if err != nil {
-		return utils.ToNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str)
+		return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str)
 	}
-	return utils.ToNumber(bounds.Height), nil
+	return types.AsNumber(bounds.Height), nil
 }

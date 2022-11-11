@@ -5,8 +5,11 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
+	"github.com/MCDevKit/jsonte/jsonte/json"
+	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
 	"github.com/gobwas/glob"
@@ -26,6 +29,7 @@ var (
 )
 
 func main() {
+	types.Init()
 	functions.Init()
 	env, b := os.LookupEnv("DEBUG")
 	debug := false
@@ -76,7 +80,7 @@ func main() {
 	app.StringFlag(Flag{
 		Name:  "cache-dir",
 		Usage: "Directory for the cache",
-	}, &utils.CacheDir)
+	}, &json.CacheDir)
 	app.StringFlag(Flag{
 		Name:  "ipc-name",
 		Usage: "Name for the IPC named pipe",
@@ -91,19 +95,19 @@ func main() {
 					if os.IsNotExist(err) {
 						err := os.MkdirAll(out, 0755)
 						if err != nil {
-							return utils.WrapError(err, "An error occurred while creating the output directory")
+							return burrito.WrapError(err, "An error occurred while creating the output directory")
 						}
 					} else {
-						return utils.WrapError(err, "An error occurred while reading the output file")
+						return burrito.WrapError(err, "An error occurred while reading the output file")
 					}
 				} else if !stat.IsDir() {
-					return utils.WrappedErrorf("The output file '%s' is not a directory", out)
+					return burrito.WrappedErrorf("The output file '%s' is not a directory", out)
 				}
 				outFile, err = filepath.Abs(out)
 			}
 			object, err := getScope(scope)
 			if err != nil {
-				return utils.WrapError(err, "An error occurred while reading the scope")
+				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
 			fileSets, err := getFileList(args, include, exclude)
 			if err != nil {
@@ -116,22 +120,22 @@ func main() {
 					if strings.HasSuffix(file, ".modl") {
 						bytes, err := ioutil.ReadFile(file)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while reading the module file %s", file)
+							return burrito.WrapErrorf(err, "An error occurred while reading the module file %s", file)
 						}
 						module, err := jsonte.LoadModule(string(bytes))
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while loading the module file %s", file)
+							return burrito.WrapErrorf(err, "An error occurred while loading the module file %s", file)
 						}
-						modules[module.Name] = module
+						modules[module.Name.StringValue()] = module
 						rel, err := filepath.Rel(base, file)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
+							return burrito.WrapErrorf(err, "An error occurred while relativizing the output file name")
 						}
 						utils.Logger.Infof("Loaded module %s", rel)
 						if removeSrc {
 							err = os.Remove(file)
 							if err != nil {
-								return utils.WrapErrorf(err, "An error occurred while removing the module file %s", file)
+								return burrito.WrapErrorf(err, "An error occurred while removing the module file %s", file)
 							}
 						}
 					}
@@ -143,15 +147,15 @@ func main() {
 					if strings.HasSuffix(file, ".templ") {
 						bytes, err := ioutil.ReadFile(file)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while reading the template file %s", file)
+							return burrito.WrapErrorf(err, "An error occurred while reading the template file %s", file)
 						}
 						template, err := jsonte.Process(strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)), string(bytes), object, modules, -1)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while processing the template file %s", file)
+							return burrito.WrapErrorf(err, "An error occurred while processing the template file %s", file)
 						}
-						toString := utils.ToPrettyString
+						toString := types.ToPrettyString
 						if minify {
-							toString = utils.ToString
+							toString = types.ToString
 						}
 						for _, fileName := range template.Keys() {
 							content := template.Get(fileName)
@@ -159,12 +163,12 @@ func main() {
 							if outFile != "" {
 								filename, err = filepath.Rel(base, filename)
 								if err != nil {
-									return utils.WrapErrorf(err, "An error occurred while creating the output file name")
+									return burrito.WrapErrorf(err, "An error occurred while creating the output file name")
 								}
 								filename = filepath.Join(outFile, base, filename)
 								rel, err := filepath.Rel(outFile, filename)
 								if err != nil {
-									return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
+									return burrito.WrapErrorf(err, "An error occurred while relativizing the output file name")
 								}
 								utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
 							} else {
@@ -172,17 +176,17 @@ func main() {
 							}
 							err = os.MkdirAll(filepath.Dir(filename), 0755)
 							if err != nil {
-								return utils.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
+								return burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
 							}
 							err = ioutil.WriteFile(filename, []byte(toString(content)), 0644)
 							if err != nil {
-								return utils.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
+								return burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
 							}
 						}
 						if removeSrc {
 							err = os.Remove(file)
 							if err != nil {
-								return utils.WrapErrorf(err, "An error occurred while removing the template file %s", file)
+								return burrito.WrapErrorf(err, "An error occurred while removing the template file %s", file)
 							}
 						}
 					}
@@ -194,23 +198,23 @@ func main() {
 					if strings.HasSuffix(file, ".mcfunction") {
 						bytes, err := ioutil.ReadFile(file)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file)
+							return burrito.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file)
 						}
 						fileName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
 						output, err := jsonte.ProcessMCFunction(string(bytes), object)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while processing the mcfunction file %s", file)
+							return burrito.WrapErrorf(err, "An error occurred while processing the mcfunction file %s", file)
 						}
 						filename := filepath.Dir(file) + "/" + fileName + ".mcfunction"
 						if outFile != "" {
 							filename, err = filepath.Rel(base, filename)
 							if err != nil {
-								return utils.WrapErrorf(err, "An error occurred while creating the output file name")
+								return burrito.WrapErrorf(err, "An error occurred while creating the output file name")
 							}
 							filename = filepath.Join(outFile, base, filename)
 							rel, err := filepath.Rel(outFile, filename)
 							if err != nil {
-								return utils.WrapErrorf(err, "An error occurred while relativizing the output file name")
+								return burrito.WrapErrorf(err, "An error occurred while relativizing the output file name")
 							}
 							utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
 						} else {
@@ -218,11 +222,11 @@ func main() {
 						}
 						err = os.MkdirAll(filepath.Dir(filename), 0755)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
+							return burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
 						}
 						err = ioutil.WriteFile(filename, []byte(output), 0644)
 						if err != nil {
-							return utils.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
+							return burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
 						}
 					}
 				}
@@ -236,19 +240,19 @@ func main() {
 		Function: func(args []string) error {
 			object, err := getScope(scope)
 			if err != nil {
-				return utils.WrapError(err, "An error occurred while reading the scope")
+				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
 			if len(args) == 0 {
 				repl(object)
 			} else {
 				expression := strings.Join(args, " ")
-				s := deque.Deque[interface{}]{}
+				s := deque.Deque[types.JsonObject]{}
 				s.PushBack(object)
 				value, err := jsonte.Eval(expression, s, "#")
 				if err != nil {
-					return utils.WrapErrorf(err, "An error occurred while evaluating the expression")
+					return burrito.WrapErrorf(err, "An error occurred while evaluating the expression")
 				}
-				fmt.Println(utils.ToPrettyString(value.Value))
+				fmt.Println(types.ToPrettyString(value.Value))
 			}
 			return nil
 		},
@@ -276,7 +280,7 @@ func main() {
 		Function: func(args []string) error {
 			object, err := getScope(scope)
 			if err != nil {
-				return utils.WrapError(err, "An error occurred while reading the scope")
+				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
 			return StartIPC(ipcName, object)
 		},
@@ -310,8 +314,8 @@ func main() {
 	}
 }
 
-func getScope(scope []string) (utils.NavigableMap[string, interface{}], error) {
-	result := utils.NewNavigableMap[string, interface{}]()
+func getScope(scope []string) (types.JsonObject, error) {
+	result := types.NewJsonObject()
 	for _, path := range scope {
 		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -319,23 +323,23 @@ func getScope(scope []string) (utils.NavigableMap[string, interface{}], error) {
 					utils.Logger.Warnf("Skipping non-existent scope file '%s'", path)
 					return nil
 				}
-				return utils.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
+				return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
 			}
 			if !info.IsDir() && strings.HasSuffix(path, ".json") {
 				file, err := ioutil.ReadFile(path)
 				if err != nil {
-					return utils.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
+					return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
 				}
-				json, err := utils.ParseJsonObject(file)
+				json, err := types.ParseJsonObject(file)
 				if err != nil {
-					return utils.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
+					return burrito.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
 				}
-				result = utils.MergeObject(result, json, false)
+				result = types.MergeObject(result, json, false)
 			}
 			return nil
 		})
 		if err != nil {
-			return utils.NewNavigableMap[string, interface{}](), utils.WrapError(err, "An error occurred while reading the scope files")
+			return types.NewJsonObject(), burrito.WrapError(err, "An error occurred while reading the scope files")
 		}
 	}
 	return result, nil
@@ -348,19 +352,19 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 	pathRegex, err := regexp.Compile("[/\\\\]")
 	if err != nil {
 		// Should never happen as it's constant
-		return nil, utils.WrapError(err, "An error occurred while compiling the path separator regex")
+		return nil, burrito.WrapError(err, "An error occurred while compiling the path separator regex")
 	}
 	for _, i := range include {
 		g, err := glob.Compile(pathRegex.ReplaceAllString(i, "/"))
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while compiling the include pattern %s", i)
+			return nil, burrito.WrapErrorf(err, "An error occurred while compiling the include pattern %s", i)
 		}
 		includes = append(includes, g)
 	}
 	for _, e := range exclude {
 		g, err := glob.Compile(pathRegex.ReplaceAllString(e, "/"))
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while compiling the exclude pattern %s", e)
+			return nil, burrito.WrapErrorf(err, "An error occurred while compiling the exclude pattern %s", e)
 		}
 		excludes = append(excludes, g)
 	}
@@ -369,13 +373,13 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 		_, err := os.Stat(p)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return nil, utils.WrappedErrorf("The path '%s' does not exist", p)
+				return nil, burrito.WrappedErrorf("The path '%s' does not exist", p)
 			}
-			return nil, utils.WrapErrorf(err, "An error occurred while reading the path %s", p)
+			return nil, burrito.WrapErrorf(err, "An error occurred while reading the path %s", p)
 		}
 		err = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				return utils.WrapErrorf(err, "An error occurred while reading the path %s", p)
+				return burrito.WrapErrorf(err, "An error occurred while reading the path %s", p)
 			}
 			if !info.IsDir() {
 				if !strings.HasSuffix(path, ".templ") && !strings.HasSuffix(path, ".modl") && !strings.HasSuffix(path, ".mcfunction") {
@@ -399,14 +403,14 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 			return nil
 		})
 		if err != nil {
-			return nil, utils.WrapErrorf(err, "An error occurred while reading input files from %s", p)
+			return nil, burrito.WrapErrorf(err, "An error occurred while reading input files from %s", p)
 		}
 		result[p] = files
 	}
 	return result, nil
 }
 
-func repl(scope utils.NavigableMap[string, interface{}]) {
+func repl(scope types.JsonObject) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("> ")
 	for true {
@@ -415,13 +419,13 @@ func repl(scope utils.NavigableMap[string, interface{}]) {
 		if text == "exit" {
 			break
 		}
-		s := deque.Deque[interface{}]{}
+		s := deque.Deque[types.JsonObject]{}
 		s.PushBack(scope)
 		eval, err := jsonte.Eval(text, s, "#/")
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			fmt.Println(utils.ToString(eval.Value))
+			fmt.Println(types.ToString(eval.Value))
 		}
 		fmt.Print("> ")
 	}
