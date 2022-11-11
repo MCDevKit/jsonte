@@ -46,10 +46,15 @@ func (o JsonArray) Negate() JsonType {
 
 func (o JsonArray) Index(i JsonType) (JsonType, error) {
 	if b, ok := i.(JsonNumber); ok {
-		if b.IntValue() < 0 || b.IntValue() >= int32(len(o.Value)) {
-			return Null, burrito.WrappedErrorf("Index out of bounds: %d", b.IntValue())
+		index := int(b.IntValue())
+		if index < 0 {
+			index = len(o.Value) + index
 		}
-		return o.Value[b.IntValue()], nil
+		if index >= 0 && index < len(o.Value) {
+			return o.Value[index], nil
+		} else {
+			return Null, burrito.WrappedErrorf("Index out of bounds: %d", i)
+		}
 	}
 	return Null, burrito.WrappedErrorf("Index must be a number: %s", i.StringValue())
 }

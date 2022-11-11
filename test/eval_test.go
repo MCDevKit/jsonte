@@ -443,3 +443,13 @@ func TestNullForgivingArrayOperator2(t *testing.T) {
 	eval := evaluate(t, `[1]?[0]`)
 	assertNumber(t, eval, 1)
 }
+
+func TestNegativeArrayIndex(t *testing.T) {
+	eval := evaluate(t, `(1..10)[-1]`)
+	assertNumber(t, eval, 10)
+}
+
+func TestNegativeStringIndex(t *testing.T) {
+	eval := evaluate(t, `'hello'[-1]`)
+	assertString(t, eval, "o")
+}
