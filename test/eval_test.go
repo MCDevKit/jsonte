@@ -461,3 +461,12 @@ func TestFunctionNotFound(t *testing.T) {
 	}
 	assertError(t, expression, expectedError)
 }
+
+func TestOutOfBoundsAccess(t *testing.T) {
+	expression := `'abc'[3]`
+	expectedError := []string{
+		"Cannot access 'abc'[3]",
+		"[+]: Index out of bounds: 3",
+	}
+	assertError(t, expression, expectedError)
+}

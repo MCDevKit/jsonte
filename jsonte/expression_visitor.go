@@ -352,7 +352,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				if context.Question() != nil || v.action == types.Predicate {
 					return types.Null, nil
 				} else {
-					return types.Null, burrito.WrapErrorf(err, "Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), object.StringValue())
+					return types.Null, burrito.WrapErrorf(err, "Cannot access %s", context.GetText())
 				}
 			}
 			return index, nil
@@ -376,7 +376,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			if context.Question() != nil {
 				return types.Null, nil
 			} else {
-				return types.Null, burrito.WrapErrorf(err, "Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), object.StringValue())
+				return types.Null, burrito.WrapErrorf(err, "Cannot access %s", context.GetText())
 			}
 		}
 		return index, nil
