@@ -823,7 +823,7 @@ func asArray(obj types.JsonObject, key, value types.JsonString) types.JsonArray 
 	i := 0
 	for _, k := range obj.Keys() {
 		u := types.NewJsonObject()
-		u.Put(key.StringValue(), types.Box(k))
+		u.Put(key.StringValue(), types.AsString(k))
 		u.Put(value.StringValue(), obj.Get(k))
 		arr[i] = u
 		i++
@@ -838,7 +838,7 @@ func keys(obj types.JsonObject) types.JsonArray {
 	arr := make([]types.JsonType, obj.Size())
 	i := 0
 	for _, k := range obj.Keys() {
-		arr[i] = types.Box(k)
+		arr[i] = types.AsString(k)
 		i++
 	}
 	return types.JsonArray{Value: arr}

@@ -126,18 +126,6 @@ func TypeName(obj interface{}) string {
 	return fmt.Sprintf("native<%s>", reflect.TypeOf(obj).String())
 }
 
-//// Unbox removes all containers from the given interface.
-//func Unbox(obj interface{}) interface{} {
-//	if obj == nil {
-//		return nil
-//	}
-//	if v, ok := obj.(JsonType); ok {
-//		return v.Unbox()
-//	}
-//	panic("Unknown type: " + TypeName(obj))
-//	return obj
-//}
-
 func Box(obj interface{}) JsonType {
 	for _, descriptor := range TypeDescriptors {
 		if descriptor.IsType(obj) {
@@ -146,46 +134,6 @@ func Box(obj interface{}) JsonType {
 	}
 	panic("Unknown type: " + TypeName(obj))
 }
-
-//// Equals returns true if the given interfaces are equal.
-//func Equals(a, b JsonType) bool {
-//	if a == nil && b == nil {
-//		return true
-//	}
-//	if a == nil || b == nil {
-//		return false
-//	}
-//	return Box(a).Equals(b)
-//}
-
-//// LessThan returns true if the first interface is less than the second interface.
-//func LessThan(a, b interface{}) (bool, error) {
-//	if a == nil && b == nil {
-//		return false, nil
-//	}
-//	if a != nil {
-//		if t, ok := a.(JsonType); ok {
-//			than, err := t.LessThan(b)
-//			if err != nil {
-//				return false, err
-//			}
-//			return !than && !t.Equals(b), err
-//		}
-//		return false, incompatibleTypesError(a, b)
-//	}
-//	if b != nil {
-//		if t, ok := b.(JsonType); ok {
-//			than, err := t.LessThan(a)
-//			if err != nil {
-//				return false, err
-//			}
-//			return !than && !t.Equals(a), err
-//		}
-//		return false, incompatibleTypesError(a, b)
-//	}
-//	// Seems like this will never be reached, but just in case...
-//	return false, incompatibleTypesError(a, b)
-//}
 
 func MergeJSON(template, parent JsonType, keepOverrides bool) (JsonType, error) {
 	if template == nil || template == Null {
@@ -350,7 +298,7 @@ func ParseJsonObject(str []byte) (JsonObject, error) {
 	if !IsObject(dat) {
 		return NewJsonObject(), burrito.WrappedErrorf("JSON must be an object")
 	}
-	return Box(AsObject(dat)).(JsonObject), nil
+	return AsObject(dat), nil
 }
 
 // ParseJsonArray parses a JSON string into a JSON array. It includes support for comments and detects common syntax errors.
@@ -362,7 +310,7 @@ func ParseJsonArray(str []byte) (JsonArray, error) {
 	if !IsArray(dat) {
 		return NewJsonArray(), burrito.WrappedErrorf("JSON must be an array")
 	}
-	return Box(AsArray(dat)).(JsonArray), nil
+	return AsArray(dat), nil
 }
 
 // JsonAction is an enum for the different actions that can be performed via jsonte.

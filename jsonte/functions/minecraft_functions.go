@@ -585,7 +585,7 @@ func getItemInfo(id types.JsonString, metadata types.JsonNumber) (types.JsonObje
 	if item == nil {
 		return types.NewJsonObject(), nil
 	}
-	return types.Box(item[int(metadata.IntValue())]).(types.JsonObject), nil
+	return types.AsObject(item[int(metadata.IntValue())]), nil
 }
 
 func getItemInfo1(id types.JsonString) (types.JsonObject, error) {
@@ -603,13 +603,13 @@ func findItemInfoById(id types.JsonString, metadata types.JsonNumber) (types.Jso
 		}
 	}
 	if itemInfos.ContainsKey(id.StringValue()) {
-		return types.Box(itemInfos.Get(id.StringValue())).(types.JsonObject), nil
+		return types.AsObject(itemInfos.Get(id.StringValue())), nil
 	}
 	find := fuzzy.Find(id.StringValue(), itemInfos.Keys())
 	if len(find) == 0 {
 		return types.NewJsonObject(), nil
 	} else {
-		return types.Box(itemInfos.Get(find[0].Str)[int(metadata.IntValue())]).(types.JsonObject), nil
+		return types.AsObject(itemInfos.Get(find[0].Str)[int(metadata.IntValue())]), nil
 	}
 }
 
@@ -628,13 +628,13 @@ func findItemInfoByName(name types.JsonString) (types.JsonObject, error) {
 		}
 	}
 	if itemInfosByName.ContainsKey(name.StringValue()) {
-		return types.Box(itemInfosByName.Get(name.StringValue())).(types.JsonObject), nil
+		return types.AsObject(itemInfosByName.Get(name.StringValue())), nil
 	}
 	find := fuzzy.Find(name.StringValue(), itemInfosByName.Keys())
 	if len(find) == 0 {
 		return types.NewJsonObject(), nil
 	} else {
-		return types.Box(itemInfosByName.Get(find[0].Str)).(types.JsonObject), nil
+		return types.AsObject(itemInfosByName.Get(find[0].Str)), nil
 	}
 }
 
