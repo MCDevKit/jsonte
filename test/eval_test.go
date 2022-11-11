@@ -457,7 +457,7 @@ func TestNegativeStringIndex(t *testing.T) {
 func TestFunctionNotFound(t *testing.T) {
 	expression := `spilt('hello world', ' ')`
 	expectedError := []string{
-		"Function 'spilt' not found!",
+		"Function 'spilt' not found, did you mean 'split'?",
 	}
 	assertError(t, expression, expectedError)
 }

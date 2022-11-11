@@ -8,7 +8,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
-	"github.com/sahilm/fuzzy"
+	"github.com/paul-mannino/go-fuzzywuzzy"
 	"io"
 	"io/ioutil"
 	"os"
@@ -605,11 +605,14 @@ func findItemInfoById(id types.JsonString, metadata types.JsonNumber) (types.Jso
 	if itemInfos.ContainsKey(id.StringValue()) {
 		return types.AsObject(itemInfos.Get(id.StringValue())), nil
 	}
-	find := fuzzy.Find(id.StringValue(), itemInfos.Keys())
-	if len(find) == 0 {
+	find, err := fuzzy.ExtractOne(id.StringValue(), itemInfos.Keys())
+	if err != nil {
+		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to find item info")
+	}
+	if find == nil {
 		return types.NewJsonObject(), nil
 	} else {
-		return types.AsObject(itemInfos.Get(find[0].Str)[int(metadata.IntValue())]), nil
+		return types.AsObject(itemInfos.Get(find.Match)[int(metadata.IntValue())]), nil
 	}
 }
 
@@ -630,11 +633,14 @@ func findItemInfoByName(name types.JsonString) (types.JsonObject, error) {
 	if itemInfosByName.ContainsKey(name.StringValue()) {
 		return types.AsObject(itemInfosByName.Get(name.StringValue())), nil
 	}
-	find := fuzzy.Find(name.StringValue(), itemInfosByName.Keys())
-	if len(find) == 0 {
+	find, err := fuzzy.ExtractOne(name.StringValue(), itemInfosByName.Keys())
+	if err != nil {
+		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to find item info")
+	}
+	if find == nil {
 		return types.NewJsonObject(), nil
 	} else {
-		return types.AsObject(itemInfosByName.Get(find[0].Str)), nil
+		return types.AsObject(itemInfosByName.Get(find.Match)), nil
 	}
 }
 

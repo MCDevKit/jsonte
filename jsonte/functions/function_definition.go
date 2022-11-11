@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/types"
+	"github.com/paul-mannino/go-fuzzywuzzy"
 	"reflect"
 	"strings"
 )
@@ -22,6 +23,7 @@ type JsonFunction struct {
 
 var groups = map[string]Group{}
 var functions = make(map[string][]JsonFunction)
+var functionNames = make([]string, 0)
 var instanceFunctions = make(map[string]map[string][]JsonFunction)
 
 var initialized = false
@@ -67,6 +69,7 @@ func RegisterFunction(fn JsonFunction) {
 		fn.WithError = true
 	}
 	functions[fn.Name] = append(functions[fn.Name], fn)
+	functionNames = append(functionNames, fn.Name)
 	if fn.IsInstance {
 		if _, ok := instanceFunctions[fn.Args[0].String()]; !ok {
 			instanceFunctions[fn.Args[0].String()] = make(map[string][]JsonFunction)
@@ -105,10 +108,30 @@ func HasFunction(name string) bool {
 	return true
 }
 
+func FindMisspelling(name string) *string {
+	find, err := fuzzy.Extract(name, functionNames, 5)
+	if err != nil {
+		return nil
+	}
+	if find != nil {
+		for i := 0; i < find.Len(); i++ {
+			if len(name)-len(find[i].Match) > 2 {
+				continue
+			}
+			return &find[i].Match
+		}
+	}
+	return nil
+}
+
 func CallInstanceFunction(name string, instance types.JsonType, args []types.JsonType) (types.JsonType, error) {
 	fns, ok := instanceFunctions[reflect.TypeOf(instance).String()][name]
 	if !ok {
-		return nil, burrito.WrappedErrorf("Instance function \"%s\" not found", name)
+		find := FindMisspelling(name)
+		if find != nil {
+			return nil, burrito.WrappedErrorf("Instance function '%s' not found, did you mean '%s'?", name, *find)
+		}
+		return nil, burrito.WrappedErrorf("Instance function '%s' not found", name)
 	}
 	a := make([]types.JsonType, 0)
 	a = append(a, instance)
@@ -119,7 +142,11 @@ func CallInstanceFunction(name string, instance types.JsonType, args []types.Jso
 func CallFunction(name string, args []types.JsonType) (types.JsonType, error) {
 	fns, ok := functions[name]
 	if !ok {
-		return nil, burrito.WrappedErrorf("Function \"%s\" not found", name)
+		find := FindMisspelling(name)
+		if find != nil {
+			return nil, burrito.WrappedErrorf("Function '%s' not found, did you mean '%s'?", name, *find)
+		}
+		return nil, burrito.WrappedErrorf("Function '%s' not found", name)
 	}
 	return callFunctionImpl(name, fns, args)
 }
