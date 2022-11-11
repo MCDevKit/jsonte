@@ -56,18 +56,18 @@ func audioDuration(str types.JsonString) (types.JsonNumber, error) {
 	} else {
 		file, err := safeio.Resolver.Open(str.StringValue())
 		if err != nil {
-			return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to open audio file %s", str)
+			return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to open audio file %s", str.StringValue())
 		}
 		streamer, format, err := decodeAudio(str.StringValue(), file)
 		if err != nil {
-			return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to decode audio file %s", str)
+			return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to decode audio file %s", str.StringValue())
 		}
 		streamer.Len()
 		length = float64(streamer.Len()) / float64(format.SampleRate)
 		utils.PutCache(audioCache, str.StringValue(), length)
 		err = file.Close()
 		if err != nil {
-			return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to close audio file %s", str)
+			return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to close audio file %s", str.StringValue())
 		}
 	}
 	return types.AsNumber(length), nil

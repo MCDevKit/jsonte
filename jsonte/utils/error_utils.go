@@ -15,5 +15,5 @@ func WrappedJsonErrorf(path string, text string, args ...interface{}) error {
 // text information.
 func WrapJsonErrorf(path string, err error, text string, args ...interface{}) error {
 	text = fmt.Sprintf(text, args...)
-	return burrito.WrapErrorf(err, "%s at %s", fmt.Sprintf(text, args...), path)
+	return burrito.WrapErrorf(err, "%s at %s", text, path)
 }

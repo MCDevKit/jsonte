@@ -100,7 +100,7 @@ func imageBounds(str string) (*image.Config, error) {
 func imageWidth(str types.JsonString) (types.JsonNumber, error) {
 	bounds, err := imageBounds(str.StringValue())
 	if err != nil {
-		return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str)
+		return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str.StringValue())
 	}
 	return types.AsNumber(bounds.Width), nil
 }
@@ -108,7 +108,7 @@ func imageWidth(str types.JsonString) (types.JsonNumber, error) {
 func imageHeight(str types.JsonString) (types.JsonNumber, error) {
 	bounds, err := imageBounds(str.StringValue())
 	if err != nil {
-		return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str)
+		return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to get image bounds for %s", str.StringValue())
 	}
 	return types.AsNumber(bounds.Height), nil
 }

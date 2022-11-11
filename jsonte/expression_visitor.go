@@ -302,7 +302,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				}
 				return i, nil
 			} else {
-				return types.Null, burrito.WrappedErrorf("%s is not a function", lambda)
+				return types.Null, burrito.WrappedErrorf("%s is not a function", lambda.StringValue())
 			}
 		} else if _, ok := lambda.(types.JsonLambda); ok {
 			i, err := lambda.(types.JsonLambda).Value(params)
@@ -336,20 +336,12 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if err != nil {
 			return types.Null, err
 		}
-		if object.IsNull() {
-			// handle null-forgiving operator
-			if context.Question() != nil {
-				return types.Null, nil
-			} else {
-				return types.Null, burrito.WrappedErrorf("Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), types.ToString(object))
-			}
-		}
 		if functions.HasInstanceFunction(reflect.TypeOf(object), text) {
 			return types.JsonLambda{
 				Value: func(o []types.JsonType) (types.JsonType, error) {
 					function, err := functions.CallInstanceFunction(text, object.(types.JsonType), o)
 					if err != nil {
-						return types.Null, burrito.WrapErrorf(err, "Error calling function '%s' on %s", text, types.ToString(object))
+						return types.Null, burrito.WrapErrorf(err, "Error calling function '%s' on %s", text, object.StringValue())
 					}
 					return function, nil
 				},
@@ -360,7 +352,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				if context.Question() != nil || v.action == types.Predicate {
 					return types.Null, nil
 				} else {
-					return types.Null, burrito.WrapErrorf(err, "Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), types.ToString(object))
+					return types.Null, burrito.WrapErrorf(err, "Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), object.StringValue())
 				}
 			}
 			return index, nil
@@ -384,7 +376,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			if context.Question() != nil {
 				return types.Null, nil
 			} else {
-				return types.Null, burrito.WrapErrorf(err, "Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), types.ToString(object))
+				return types.Null, burrito.WrapErrorf(err, "Cannot access %s because %s is %s", context.GetText(), context.Field(0).GetText(), object.StringValue())
 			}
 		}
 		return index, nil

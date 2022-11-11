@@ -38,7 +38,7 @@ func LoadModule(input string) (JsonModule, error) {
 	}
 	moduleName, ok := json.Get("$module").(types.JsonString)
 	if !ok {
-		return JsonModule{}, burrito.WrappedErrorf("$module", "The module does not have a name")
+		return JsonModule{}, utils.WrappedJsonErrorf("$template", "The module does not have a name")
 	}
 	scope, ok := json.Get("$scope").(types.JsonObject)
 	if !ok {
@@ -209,16 +209,16 @@ func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]J
 	if copyPath, ok := c.(types.JsonString); ok {
 		resolve, err := safeio.Resolver.Open(copyPath.StringValue())
 		if err != nil {
-			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to open %s", copyPath)
+			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to open %s", copyPath.StringValue())
 		}
 		all, err := ioutil.ReadAll(resolve)
 		if err != nil {
-			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read %s", copyPath)
+			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read %s", copyPath.StringValue())
 		}
 		if strings.HasSuffix(copyPath.StringValue(), ".templ") {
 			processedMap, err := Process("copy", string(all), visitor.globalScope, modules, timeout)
 			if err != nil {
-				return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to process copy template %s", copyPath)
+				return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to process copy template %s", copyPath.StringValue())
 			}
 			if processedMap.Size() > 1 {
 				return types.NewJsonObject(), utils.WrappedJsonErrorf(path, "The copy template must compile to a single object")
@@ -228,7 +228,7 @@ func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]J
 		} else {
 			template, err := types.ParseJsonObject(all)
 			if err != nil {
-				return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to parse %s", copyPath)
+				return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to parse %s", copyPath.StringValue())
 			}
 			return template, nil
 		}
@@ -292,14 +292,14 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 		if mod.Copy.StringValue() != "" {
 			object, err := processCopy(mod.Copy, visitor, modules, "$copy", -1)
 			if err != nil {
-				return types.NewJsonObject(), burrito.WrapErrorf(err, "Error processing $copy for module %s", mod.Name)
+				return types.NewJsonObject(), burrito.WrapErrorf(err, "Error processing $copy for module %s", mod.Name.StringValue())
 			}
 			template = types.MergeObject(object, template, true)
 		}
 		parent, err := visitor.visitObject(mod.Template, "[Module "+module+"]")
 		visitor.scope.PopFront()
 		if err != nil {
-			return types.NewJsonObject(), burrito.WrapErrorf(err, "Error processing template for module %s", mod.Name)
+			return types.NewJsonObject(), burrito.WrapErrorf(err, "Error processing template for module %s", mod.Name.StringValue())
 		}
 		template = types.MergeObject(template, parent.(types.JsonObject), true)
 	}
@@ -577,7 +577,7 @@ func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {
 	} else if str, ok := value.(types.JsonString); ok {
 		result, err := Eval(str.StringValue(), v.scope, path)
 		if err != nil {
-			return utils.WrapJsonErrorf(path, err, "Error evaluating '%s'", str)
+			return utils.WrapJsonErrorf(path, err, "Error evaluating '%s'", str.StringValue())
 		}
 		if result.Action != types.Value {
 			return utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())

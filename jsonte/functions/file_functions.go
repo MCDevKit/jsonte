@@ -232,15 +232,15 @@ func RegisterFileFunctions() {
 func load(s types.JsonString) (types.JsonObject, error) {
 	resolver, err := safeio.Resolver.Open(s.StringValue())
 	if err != nil {
-		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
 	}
 	readAll, err := ioutil.ReadAll(resolver)
 	if err != nil {
-		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read file %s", s)
+		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read file %s", s.StringValue())
 	}
 	err = resolver.Close()
 	if err != nil {
-		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to close file %s", s)
+		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to close file %s", s.StringValue())
 	}
 	return types.ParseJsonObject(readAll)
 }
@@ -248,7 +248,7 @@ func load(s types.JsonString) (types.JsonObject, error) {
 func fileList(s types.JsonString) (types.JsonArray, error) {
 	resolved, err := safeio.Resolver.OpenDir(s.StringValue())
 	if err != nil {
-		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
 	}
 	result := make([]types.JsonType, len(resolved))
 	for i, file := range resolved {
@@ -260,11 +260,11 @@ func fileList(s types.JsonString) (types.JsonArray, error) {
 func fileListFilter(s types.JsonString, filter types.JsonString) (types.JsonArray, error) {
 	compile, err := glob.Compile(filter.StringValue())
 	if err != nil {
-		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile glob %s", filter)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile glob %s", filter.StringValue())
 	}
 	resolved, err := safeio.Resolver.OpenDir(s.StringValue())
 	if err != nil {
-		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
 	}
 	result := make([]types.JsonType, 0)
 	for _, file := range resolved {
@@ -278,7 +278,7 @@ func fileListFilter(s types.JsonString, filter types.JsonString) (types.JsonArra
 func fileListRecurse(s types.JsonString) (types.JsonArray, error) {
 	resolved, err := safeio.Resolver.OpenDirRecursive(s.StringValue())
 	if err != nil {
-		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
 	}
 	result := make([]types.JsonType, len(resolved))
 	for i, file := range resolved {
@@ -290,11 +290,11 @@ func fileListRecurse(s types.JsonString) (types.JsonArray, error) {
 func fileListRecurseFilter(s types.JsonString, filter types.JsonString) (types.JsonArray, error) {
 	compile, err := glob.Compile(filter.StringValue())
 	if err != nil {
-		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile glob %s", filter)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile glob %s", filter.StringValue())
 	}
 	resolved, err := safeio.Resolver.OpenDirRecursive(s.StringValue())
 	if err != nil {
-		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
 	}
 	result := make([]types.JsonType, 0)
 	for _, file := range resolved {
@@ -327,7 +327,7 @@ func isDir(s types.JsonString) (types.JsonBool, error) {
 		if os.IsNotExist(err) {
 			return types.False, nil
 		}
-		return types.False, burrito.WrapErrorf(err, "Failed to stat path %s", s)
+		return types.False, burrito.WrapErrorf(err, "Failed to stat path %s", s.StringValue())
 	}
 	return types.AsBool(stat.IsDir()), nil
 }

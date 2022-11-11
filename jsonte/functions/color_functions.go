@@ -42,7 +42,7 @@ func RegisterColorFunctions() {
 func hexToArray(str types.JsonString) (types.JsonArray, error) {
 	fast, err := parseHexColorFast(str.StringValue())
 	if err != nil {
-		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to parse hex color %s", str)
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to parse hex color %s", str.StringValue())
 	}
 	return types.JsonArray{Value: []types.JsonType{
 		types.AsNumber(float64(fast.R) / 255),

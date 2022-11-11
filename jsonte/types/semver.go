@@ -53,7 +53,7 @@ func (s Semver) LessThan(other JsonType) (bool, error) {
 	if IsSemver(other) {
 		return s.CompareTo(AsSemver(other)) == -1, nil
 	}
-	return false, burrito.WrapErrorf(nil, "Cannot compare semver to %v", other)
+	return false, burrito.WrapErrorf(nil, "Cannot compare semver to %s", other.StringValue())
 }
 
 func (s Semver) IsNull() bool {

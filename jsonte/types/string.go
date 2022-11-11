@@ -71,7 +71,7 @@ func (n JsonString) Index(index JsonType) (JsonType, error) {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", i)
 		}
 	}
-	return Null, burrito.WrappedErrorf("Invalid index: %s", ToString(index))
+	return Null, burrito.WrappedErrorf("Invalid index: %s", index.StringValue())
 }
 
 // AsString converts an interface to a string.
