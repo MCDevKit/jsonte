@@ -533,6 +533,30 @@ func RegisterStringFunctions() {
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "number",
+		Body:       number,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Converts a string to a number.",
+			Arguments: []Argument{
+				{
+					Name:    "string",
+					Summary: "The string to convert.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 1.0",
+    "test": "{{=number('1.0')}}"
+  }
+}
+</code>`,
+		},
+	})
 }
 
 func replace(str, old, new types.JsonString) types.JsonString {
@@ -643,4 +667,16 @@ func length(str types.JsonString) types.JsonNumber {
 
 func trim(str types.JsonString) types.JsonString {
 	return types.NewString(strings.Trim(str.StringValue(), " \t\n\r"))
+}
+
+var floatPattern = regexp.MustCompile(`^[+-]?([0-9]+([.][0-9]+)?)$`)
+
+func number(str types.JsonString) (types.JsonNumber, error) {
+	if str.StringValue() == "" {
+		return types.AsNumber(0), nil
+	}
+	if !floatPattern.MatchString(str.StringValue()) {
+		return types.AsNumber(0), burrito.WrappedErrorf("String '%s' is not a valid number", str.StringValue())
+	}
+	return types.AsNumber(str.StringValue()), nil
 }

@@ -109,3 +109,17 @@ func TestLength(t *testing.T) {
 	eval := evaluate(t, `'hello'.length()`)
 	assertNumber(t, eval, 5)
 }
+
+func TestNumber(t *testing.T) {
+	eval := evaluate(t, `'1.5'.number()`)
+	assertNumber(t, eval, 1.5)
+}
+
+func TestWrongNumber(t *testing.T) {
+	expression := `'hello'.number()`
+	expectedError := []string{
+		"Error calling function 'number' on hello",
+		"[+]: String 'hello' is not a valid number",
+	}
+	assertError(t, expression, expectedError)
+}

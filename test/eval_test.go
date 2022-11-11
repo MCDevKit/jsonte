@@ -7,6 +7,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -158,6 +159,33 @@ func assertNull(t *testing.T, eval jsonte.Result) {
 	assertAction(t, eval, types.Value)
 	if eval.Value != types.Null {
 		t.Fatalf("Result is not null (%s)", types.ToString(eval.Value))
+	}
+}
+
+func assertError(t *testing.T, text string, error []string) {
+	t.Helper()
+	eval, err := jsonte.QuickEval(text, "#")
+	assertAction(t, eval, types.Value)
+	if err == nil {
+		t.Fatalf("Expected error, got none")
+	}
+	split := strings.Split(err.Error(), "\n")
+	for i := 0; i < len(split); i++ {
+		split[i] = strings.TrimSpace(split[i])
+	}
+	if len(split) != len(error) {
+		for i := 0; i < len(split); i++ {
+			t.Logf("Line %d: %s", i, split[i])
+		}
+		t.Fatalf("Error is not correct (expected %d lines, got %d)", len(error), len(split))
+	}
+	for i := 0; i < len(split); i++ {
+		if split[i] != error[i] {
+			for i := 0; i < len(split); i++ {
+				t.Logf("Line %d: %s", i, split[i])
+			}
+			t.Fatalf("Error is not correct (expected %s, got %s)", error[i], split[i])
+		}
 	}
 }
 
