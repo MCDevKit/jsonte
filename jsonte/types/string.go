@@ -47,7 +47,7 @@ func (n JsonString) Equals(value JsonType) bool {
 	return false
 }
 
-func (n JsonString) Unwrap() interface{} {
+func (n JsonString) Unbox() interface{} {
 	return n.StringValue()
 }
 

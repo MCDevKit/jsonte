@@ -78,7 +78,7 @@ func (s Semver) Equals(value JsonType) bool {
 	return false
 }
 
-func (s Semver) Unwrap() interface{} {
+func (s Semver) Unbox() interface{} {
 	return s.StringValue()
 }
 

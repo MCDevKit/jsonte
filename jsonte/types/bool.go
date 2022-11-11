@@ -59,7 +59,7 @@ func (n JsonBool) Equals(value JsonType) bool {
 	return false
 }
 
-func (n JsonBool) Unwrap() interface{} {
+func (n JsonBool) Unbox() interface{} {
 	return n.BoolValue()
 }
 

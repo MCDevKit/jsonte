@@ -547,7 +547,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 					continue
 				}
 				if header.ContainsKey("version") {
-					version := header.Get("version").Unwrap().([]interface{})
+					version := header.Get("version").Unbox().([]interface{})
 					array, err := types.ParseSemverArray(version)
 					if err != nil {
 						return versions, burrito.WrapErrorf(err, "Failed to parse version in %s", p)

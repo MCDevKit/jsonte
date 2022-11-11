@@ -48,7 +48,7 @@ func (n JsonNull) Equals(value JsonType) bool {
 	return false
 }
 
-func (n JsonNull) Unwrap() interface{} {
+func (n JsonNull) Unbox() interface{} {
 	return nil
 }
 

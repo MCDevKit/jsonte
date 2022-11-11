@@ -11,7 +11,7 @@ type JsonArray struct {
 }
 
 func (o JsonArray) StringValue() string {
-	return ToString(o.Unwrap())
+	return ToString(o.Unbox())
 }
 
 func (o JsonArray) BoolValue() bool {
@@ -28,10 +28,10 @@ func (o JsonArray) Equals(value JsonType) bool {
 	return false
 }
 
-func (o JsonArray) Unwrap() interface{} {
+func (o JsonArray) Unbox() interface{} {
 	result := make([]interface{}, len(o.Value))
 	for i, k := range o.Value {
-		result[i] = k.Unwrap()
+		result[i] = k.Unbox()
 	}
 	return result
 }

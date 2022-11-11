@@ -71,7 +71,7 @@ func StartIPC(ipcName string, scope types.JsonObject) error {
 					continue
 				}
 				response := EvaluateExpressionResponse{
-					Result:    result.Value.Unwrap(),
+					Result:    result.Value.Unbox(),
 					Action:    result.Action.String(),
 					ValueName: result.Name,
 					IndexName: result.IndexName,

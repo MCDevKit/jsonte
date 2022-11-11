@@ -19,8 +19,8 @@ type JsonType interface {
 	IsNull() bool
 	// LessThan returns true if the value is less than the given value.
 	LessThan(value JsonType) (bool, error)
-	// Unwrap returns the value without any containers.
-	Unwrap() interface{}
+	// Unbox returns the value without any containers.
+	Unbox() interface{}
 	// Negate returns the negated value.
 	Negate() JsonType
 	// Index returns the value at the given index.
@@ -132,7 +132,7 @@ func TypeName(obj interface{}) string {
 //		return nil
 //	}
 //	if v, ok := obj.(JsonType); ok {
-//		return v.Unwrap()
+//		return v.Unbox()
 //	}
 //	panic("Unknown type: " + TypeName(obj))
 //	return obj
@@ -217,7 +217,7 @@ func MergeJSON(template, parent JsonType, keepOverrides bool) (JsonType, error) 
 // ToString converts an interface to a string.
 func ToString(obj interface{}) string {
 	if b, ok := obj.(JsonType); ok {
-		obj = b.Unwrap()
+		obj = b.Unbox()
 	}
 	if obj == nil {
 		return "null"
@@ -250,7 +250,7 @@ func ToString(obj interface{}) string {
 // ToPrettyString converts an interface to a string. In case of an object or array, it will be pretty printed.
 func ToPrettyString(obj interface{}) string {
 	if b, ok := obj.(JsonType); ok {
-		obj = b.Unwrap()
+		obj = b.Unbox()
 	}
 	if obj == nil {
 		return "null"

@@ -79,7 +79,7 @@ func (n JsonNumber) Equals(value JsonType) bool {
 	return false
 }
 
-func (n JsonNumber) Unwrap() interface{} {
+func (n JsonNumber) Unbox() interface{} {
 	if n.Decimal {
 		return n.FloatValue()
 	}

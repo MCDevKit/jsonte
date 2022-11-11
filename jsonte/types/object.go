@@ -41,7 +41,7 @@ func (o JsonObject) ContainsKey(key string) bool {
 }
 
 func (o JsonObject) StringValue() string {
-	return ToString(o.Unwrap())
+	return ToString(o.Unbox())
 }
 
 func (o JsonObject) BoolValue() bool {
@@ -56,10 +56,10 @@ func (o JsonObject) LessThan(value JsonType) (bool, error) {
 	return false, burrito.WrappedErrorf("Objects cannot be compared")
 }
 
-func (o JsonObject) Unwrap() interface{} {
+func (o JsonObject) Unbox() interface{} {
 	result := utils.NewNavigableMap[string, interface{}]()
 	for _, k := range o.Keys() {
-		result.Put(k, o.Get(k).Unwrap())
+		result.Put(k, o.Get(k).Unbox())
 	}
 	return result
 }

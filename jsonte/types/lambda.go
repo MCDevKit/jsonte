@@ -35,7 +35,7 @@ func (n JsonLambda) Equals(value JsonType) bool {
 	return false
 }
 
-func (n JsonLambda) Unwrap() interface{} {
+func (n JsonLambda) Unbox() interface{} {
 	return nil
 }
 

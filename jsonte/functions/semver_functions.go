@@ -55,7 +55,7 @@ func semverString(str types.JsonString) (types.Semver, error) {
 }
 
 func semverArray(arr types.JsonArray) (types.Semver, error) {
-	return types.ParseSemverArray(arr.Unwrap().([]interface{}))
+	return types.ParseSemverArray(arr.Unbox().([]interface{}))
 }
 
 func semver(major, minor, patch types.JsonNumber) (types.Semver, error) {
