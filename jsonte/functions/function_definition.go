@@ -39,6 +39,7 @@ func Init() {
 		RegisterMinecraftFunctions()
 		RegisterFileFunctions()
 		RegisterSemverFunctions()
+		RegisterTypeFunctions()
 		initialized = true
 	}
 }
