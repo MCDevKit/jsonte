@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/Bedrock-OSS/go-burrito v0.0.0-20221107114029-9e8aa6cfcdd1
 	github.com/antlr/antlr4/runtime/Go/antlr v1.4.10
+	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20220911224424-aa1f1f12a846
 	github.com/faiface/beep v1.1.0
 	github.com/fatih/color v1.13.0
 	github.com/gammazero/deque v0.2.0
@@ -25,5 +26,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/sys v0.0.0-20220913153101-76c7481b5158 // indirect
+	golang.org/x/exp v0.0.0-20221114191408-850992195362 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 )

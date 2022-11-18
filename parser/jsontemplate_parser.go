@@ -1,4 +1,4 @@
-// Code generated from ../grammar/JsonTemplate.g4 by ANTLR 4.10.1. DO NOT EDIT.
+// Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
 
 package parser // JsonTemplate
 
@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 // Suppress unused import errors
@@ -190,7 +190,7 @@ func NewJsonTemplateParser(input antlr.TokenStream) *JsonTemplateParser {
 	this.RuleNames = staticData.ruleNames
 	this.LiteralNames = staticData.literalNames
 	this.SymbolicNames = staticData.symbolicNames
-	this.GrammarFileName = "JsonTemplate.g4"
+	this.GrammarFileName = "java-escape"
 
 	return this
 }
@@ -1779,7 +1779,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.GetErrorHandler().Sync(p)
 				_la = p.GetTokenStream().LA(1)
 
-				if ((_la-11)&-(0x1f+1)) == 0 && ((1<<uint((_la-11)))&((1<<(JsonTemplateParserNot-11))|(1<<(JsonTemplateParserSubtract-11))|(1<<(JsonTemplateParserLeftParen-11))|(1<<(JsonTemplateParserLeftBracket-11))|(1<<(JsonTemplateParserLeftBrace-11))|(1<<(JsonTemplateParserNull-11))|(1<<(JsonTemplateParserFalse-11))|(1<<(JsonTemplateParserTrue-11))|(1<<(JsonTemplateParserESCAPED_STRING-11))|(1<<(JsonTemplateParserSTRING-11))|(1<<(JsonTemplateParserNUMBER-11)))) != 0 {
+				if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&67914508288) != 0 {
 					{
 						p.SetState(165)
 						p.Function_param()
@@ -2009,7 +2009,7 @@ func (p *JsonTemplateParser) Array() (localctx IArrayContext) {
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
-	if ((_la-11)&-(0x1f+1)) == 0 && ((1<<uint((_la-11)))&((1<<(JsonTemplateParserNot-11))|(1<<(JsonTemplateParserSubtract-11))|(1<<(JsonTemplateParserLeftParen-11))|(1<<(JsonTemplateParserLeftBracket-11))|(1<<(JsonTemplateParserLeftBrace-11))|(1<<(JsonTemplateParserNull-11))|(1<<(JsonTemplateParserFalse-11))|(1<<(JsonTemplateParserTrue-11))|(1<<(JsonTemplateParserESCAPED_STRING-11))|(1<<(JsonTemplateParserSTRING-11))|(1<<(JsonTemplateParserNUMBER-11)))) != 0 {
+	if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&67914508288) != 0 {
 		{
 			p.SetState(189)
 			p.field(0)

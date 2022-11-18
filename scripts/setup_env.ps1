@@ -5,10 +5,10 @@ if ($confirmation -eq 'y') {
     New-Item -ItemType Directory -Force -Path "C:\antlr" | out-null
     # Download antlr
     Write-Host "Downloading ANTLR4"
-    Invoke-WebRequest -Uri "https://www.antlr.org/download/antlr-4.10.1-complete.jar" -OutFile "C:\antlr\antlr-4.10.1-complete.jar"
+    Invoke-WebRequest -Uri "https://www.antlr.org/download/antlr-4.11.1-complete.jar" -OutFile "C:\antlr\antlr-4.11.1-complete.jar"
     Write-Host "Setting environment variables"
     # Add to CLASSPATH
-    [Environment]::SetEnvironmentVariable("CLASSPATH", ".;C:\antlr\antlr-4.10.1-complete.jar" + $env:CLASSPATH, [System.EnvironmentVariableTarget]::User)
+    [Environment]::SetEnvironmentVariable("CLASSPATH", ".;C:\antlr\antlr-4.11.1-complete.jar" + $env:CLASSPATH, [System.EnvironmentVariableTarget]::User)
     # Add to Path
     [Environment]::SetEnvironmentVariable("Path", "C:\antlr\;" + $env:Path, [System.EnvironmentVariableTarget]::User)
     # Create runner script
