@@ -101,6 +101,9 @@ func (o JsonObject) Add(i JsonType) JsonType {
 	if IsObject(i) {
 		return MergeObject(o, AsObject(i), false)
 	}
+	if i == nil || i == Null {
+		return o
+	}
 	return NewString(o.StringValue() + i.StringValue())
 }
 

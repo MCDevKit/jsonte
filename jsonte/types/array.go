@@ -63,6 +63,9 @@ func (o JsonArray) Add(i JsonType) JsonType {
 	if IsArray(i) {
 		return MergeArray(o, AsArray(i), false)
 	}
+	if i == nil || i == Null {
+		return o
+	}
 	return NewString(o.StringValue() + i.StringValue())
 }
 

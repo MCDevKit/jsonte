@@ -470,3 +470,40 @@ func TestOutOfBoundsAccess(t *testing.T) {
 	}
 	assertError(t, expression, expectedError)
 }
+
+func TestObjectPlusOperator(t *testing.T) {
+	expression := evaluate(t, `{'a': 1} + {'b': 2}`)
+	assertObject(t, expression, types.AsObject(map[string]interface{}{
+		"a": 1,
+		"b": 2,
+	}))
+}
+
+func TestObjectPlusOperator2(t *testing.T) {
+	expression := evaluate(t, `null + {'b': 2}`)
+	assertObject(t, expression, types.AsObject(map[string]interface{}{
+		"b": 2,
+	}))
+}
+
+func TestObjectPlusOperator3(t *testing.T) {
+	expression := evaluate(t, `undefined + {'b': 2}`)
+	assertObject(t, expression, types.AsObject(map[string]interface{}{
+		"b": 2,
+	}))
+}
+
+func TestArrayPlusOperator(t *testing.T) {
+	expression := evaluate(t, `[1] + [2]`)
+	assertArray(t, expression, types.AsArray([]interface{}{1, 2}))
+}
+
+func TestArrayPlusOperator2(t *testing.T) {
+	expression := evaluate(t, `null + [2]`)
+	assertArray(t, expression, types.AsArray([]interface{}{2}))
+}
+
+func TestArrayPlusOperator3(t *testing.T) {
+	expression := evaluate(t, `undefined + [2]`)
+	assertArray(t, expression, types.AsArray([]interface{}{2}))
+}
