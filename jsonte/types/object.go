@@ -99,7 +99,7 @@ func (o JsonObject) Index(i JsonType) (JsonType, error) {
 
 func (o JsonObject) Add(i JsonType) JsonType {
 	if IsObject(i) {
-		return MergeObject(o, AsObject(i), false)
+		return MergeObject(AsObject(i), o, false)
 	}
 	if i == nil || i == Null {
 		return o
