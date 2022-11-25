@@ -473,10 +473,10 @@ func TestOutOfBoundsAccess(t *testing.T) {
 
 func TestObjectPlusOperator(t *testing.T) {
 	expression := evaluate(t, `{'a': 1} + {'b': 2}`)
-	assertObject(t, expression, types.AsObject(map[string]interface{}{
-		"b": 2,
-		"a": 1,
-	}))
+	assertObject(t, expression, types.AsObject(utils.ToNavigableMap(
+		"b", 2,
+		"a", 1,
+	)))
 }
 
 func TestObjectPlusOperator2(t *testing.T) {

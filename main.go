@@ -419,6 +419,14 @@ func repl(scope types.JsonObject) {
 		if text == "exit" {
 			break
 		}
+		text = strings.ReplaceAll(text, "\\\"", "\"") // Unescape quotes
+		text = strings.ReplaceAll(text, "\\n", "\n")  // Unescape newlines
+		text = strings.ReplaceAll(text, "\\t", "\t")  // Unescape tabs
+		text = strings.ReplaceAll(text, "\\r", "\r")  // Unescape carriage returns
+		text = strings.ReplaceAll(text, "\\b", "\b")  // Unescape backspaces
+		text = strings.ReplaceAll(text, "\\f", "\f")  // Unescape form feeds
+		text = strings.ReplaceAll(text, "\\\\", "\\") // Unescape backslashes
+
 		s := deque.Deque[types.JsonObject]{}
 		s.PushBack(scope)
 		eval, err := jsonte.Eval(text, s, "#/")
