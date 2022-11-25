@@ -2,12 +2,12 @@ package test
 
 import (
 	"fmt"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -169,23 +169,24 @@ func assertError(t *testing.T, text string, error []string) {
 	if err == nil {
 		t.Fatalf("Expected error, got none")
 	}
-	split := strings.Split(err.Error(), "\n")
-	for i := 0; i < len(split); i++ {
-		split[i] = strings.TrimSpace(split[i])
-	}
-	if len(split) != len(error) {
-		for i := 0; i < len(split); i++ {
-			t.Logf("Line %d: %s", i, split[i])
-		}
-		t.Fatalf("Error is not correct (expected %d lines, got %d)", len(error), len(split))
-	}
-	for i := 0; i < len(split); i++ {
-		if split[i] != error[i] {
+	if burrito.IsBurritoError(err) {
+		split := burrito.GetAllMessages(err)
+		if len(split) != len(error) {
 			for i := 0; i < len(split); i++ {
 				t.Logf("Line %d: %s", i, split[i])
 			}
-			t.Fatalf("Error is not correct (expected %s, got %s)", error[i], split[i])
+			t.Fatalf("Error is not correct (expected %d lines, got %d)", len(error), len(split))
 		}
+		for i := 0; i < len(split); i++ {
+			if split[i] != error[i] {
+				for i := 0; i < len(split); i++ {
+					t.Logf("Line %d: %s", i, split[i])
+				}
+				t.Fatalf("Error is not correct (expected %s, got %s)", error[i], split[i])
+			}
+		}
+	} else {
+		t.Fatalf("Error is not a burrito error (%s)", err.Error())
 	}
 }
 
@@ -466,7 +467,7 @@ func TestOutOfBoundsAccess(t *testing.T) {
 	expression := `'abc'[3]`
 	expectedError := []string{
 		"Cannot access 'abc'[3]",
-		"[+]: Index out of bounds: 3",
+		"Index out of bounds: 3",
 	}
 	assertError(t, expression, expectedError)
 }

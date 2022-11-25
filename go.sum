@@ -1,10 +1,8 @@
-github.com/Bedrock-OSS/go-burrito v0.0.0-20221107114029-9e8aa6cfcdd1 h1:bWp/p6LbzZ/TQh71y5d2pALBcxAXRXogdi/yz/KKjBk=
-github.com/Bedrock-OSS/go-burrito v0.0.0-20221107114029-9e8aa6cfcdd1/go.mod h1:K8EU2Q2ZlFoOmkyn8ZfiasoNq+9UkqiwLoTJa2at4qA=
+github.com/Bedrock-OSS/go-burrito v1.0.2 h1:1/ngabY4OKlZRez3ifzbcCfX876eYZB7hOyUNV0saD8=
+github.com/Bedrock-OSS/go-burrito v1.0.2/go.mod h1:K8EU2Q2ZlFoOmkyn8ZfiasoNq+9UkqiwLoTJa2at4qA=
 github.com/DATA-DOG/go-sqlmock v1.3.3/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
 github.com/Microsoft/go-winio v0.4.16 h1:FtSW/jqD+l4ba5iPBj9CODVtgfYAD8w2wS923g/cFDk=
 github.com/Microsoft/go-winio v0.4.16/go.mod h1:XB6nPKklQyQ7GC9LdcBEcBl8PF76WugXOPRXwdLnMv0=
-github.com/antlr/antlr4/runtime/Go/antlr v1.4.10 h1:yL7+Jz0jTC6yykIK/Wh74gnTJnrGr5AyrNMXuA0gves=
-github.com/antlr/antlr4/runtime/Go/antlr v1.4.10/go.mod h1:F7bn7fEU90QkQ3tnmaTx3LTKLEDqnwWODIYppRQ5hnY=
 github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20220911224424-aa1f1f12a846 h1:et5J11AOyUn9qwkIAF9kcxTxjTO8Z9oSmlOqH7MVSPo=
 github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20220911224424-aa1f1f12a846/go.mod h1:pSwJ0fSY5KhvocuWSx4fz3BA8OrA1bQn+K1Eli3BRwM=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=

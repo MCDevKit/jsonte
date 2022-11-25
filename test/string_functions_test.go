@@ -119,7 +119,7 @@ func TestWrongNumber(t *testing.T) {
 	expression := `'hello'.number()`
 	expectedError := []string{
 		"Error calling function 'number' on hello",
-		"[+]: String 'hello' is not a valid number",
+		"String 'hello' is not a valid number",
 	}
 	assertError(t, expression, expectedError)
 }

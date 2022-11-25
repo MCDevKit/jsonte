@@ -3,8 +3,7 @@ module github.com/MCDevKit/jsonte
 go 1.18
 
 require (
-	github.com/Bedrock-OSS/go-burrito v0.0.0-20221107114029-9e8aa6cfcdd1
-	github.com/antlr/antlr4/runtime/Go/antlr v1.4.10
+	github.com/Bedrock-OSS/go-burrito v1.0.2
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20220911224424-aa1f1f12a846
 	github.com/faiface/beep v1.1.0
 	github.com/fatih/color v1.13.0

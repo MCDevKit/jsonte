@@ -30,7 +30,7 @@ func InitLogging(level zapcore.Level) {
 	if Logger != nil {
 		return
 	}
-	burrito.Debug = level == zap.DebugLevel // Our custom stack traces
+	burrito.PrintStackTrace = level == zap.DebugLevel // Our custom stack traces
 	err := zap.RegisterSink("color", func(url *url.URL) (zap.Sink, error) {
 		if url.Host == "stderr" {
 			return colorWriter{color.Output}, nil

@@ -14,7 +14,7 @@ var CacheFS = safeio.CreateFakeFS(map[string]interface{}{}, true)
 
 func TestMain(m *testing.M) {
 	utils.InitLogging(zap.DebugLevel)
-	burrito.Debug = false
+	burrito.PrintStackTrace = false
 	types.Init()
 	functions.Init()
 	m.Run()
