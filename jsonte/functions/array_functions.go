@@ -17,7 +17,7 @@ func RegisterArrayFunctions() {
 	RegisterFunction(JsonFunction{
 		Group: group,
 		Name:  "asArray",
-		Body:  asArray,
+		Body:  objectAsArray,
 		Docs: Docs{
 			Summary: "Converts an object to an array of objects with the given key and value",
 			Arguments: []Argument{
@@ -815,7 +815,7 @@ the result will be
 	})
 }
 
-func asArray(obj types.JsonObject, key, value types.JsonString) types.JsonArray {
+func objectAsArray(obj types.JsonObject, key, value types.JsonString) types.JsonArray {
 	if obj.IsEmpty() {
 		return types.NewJsonArray()
 	}

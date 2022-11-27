@@ -136,6 +136,10 @@ func AsNumber(obj interface{}) JsonNumber {
 	if b, ok := obj.(JsonNumber); ok {
 		return b
 	}
+	if b, ok := obj.(JsonType); ok {
+		obj = b.Unbox()
+	}
+	// Past this point, we are dealing with a primitive type.
 	if b, ok := obj.(float64); ok {
 		return JsonNumber{
 			Value:   b,
@@ -218,6 +222,7 @@ func AsNumber(obj interface{}) JsonNumber {
 			Decimal: false,
 		}
 	}
+	// TODO: Consider returning an error here.
 	return JsonNumber{
 		Value:   0,
 		Decimal: false,

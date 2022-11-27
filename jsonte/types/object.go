@@ -45,7 +45,7 @@ func (o JsonObject) StringValue() string {
 }
 
 func (o JsonObject) BoolValue() bool {
-	return true
+	return o.Value != nil && !o.Value.IsEmpty()
 }
 
 func (o JsonObject) IsNull() bool {

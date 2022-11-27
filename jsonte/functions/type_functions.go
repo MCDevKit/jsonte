@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"github.com/Bedrock-OSS/go-burrito/burrito"
+	"github.com/MCDevKit/jsonte/jsonte/json"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 )
 
@@ -49,9 +51,12 @@ func RegisterTypeFunctions() {
 			Example: `
 <code>
 {
+  "$scope": {
+    "test": {}
+  },
   "$template": {
     "$comment": "The field below will be true",
-    "test": "{{isObject({})}}"
+    "test": "{{isObject(test)}}"
   }
 }
 </code>`,
@@ -149,6 +154,124 @@ func RegisterTypeFunctions() {
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "asString",
+		Body:  asString,
+		Docs: Docs{
+			Summary: "Returns the argument as a string.",
+			Arguments: []Argument{
+				{
+					Name:    "object",
+					Summary: "The value to convert.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be \"5\"",
+    "test": "{{asString(5)}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "asNumber",
+		Body:  asNumber,
+		Docs: Docs{
+			Summary: "Returns the argument as a number.",
+			Arguments: []Argument{
+				{
+					Name:    "object",
+					Summary: "The value to convert.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 5",
+    "test": "{{asNumber('5')}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "asBoolean",
+		Body:  asBool,
+		Docs: Docs{
+			Summary: "Returns the argument as a boolean.",
+			Arguments: []Argument{
+				{
+					Name:    "object",
+					Summary: "The value to convert.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be true",
+    "test": "{{asBoolean('true')}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "parseArray",
+		Body:  parseArray,
+		Docs: Docs{
+			Summary: "Returns the JSON string in the argument as an array.",
+			Arguments: []Argument{
+				{
+					Name:    "string",
+					Summary: "The JSON string to parse.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be [1, 2, 3]",
+    "test": "{{parseArray('[1, 2, 3]')}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "parseObject",
+		Body:  parseObject,
+		Docs: Docs{
+			Summary: "Returns the JSON string in the argument as an object.",
+			Arguments: []Argument{
+				{
+					Name:    "string",
+					Summary: "The JSON string to parse.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$scope": {
+	"test": "{\"a\": 1, \"b\": 2}"
+  },
+  "$template": {
+    "$comment": "The field below will be 1",
+    "test": "{{parseObject(test).a}}"
+  }
+}
+</code>`,
+		},
+	})
 }
 
 func isArray(obj types.JsonType) types.JsonBool {
@@ -173,4 +296,38 @@ func isSemver(obj types.JsonType) types.JsonBool {
 
 func isString(obj types.JsonType) types.JsonBool {
 	return types.NewBool(types.IsString(obj))
+}
+
+func asString(obj types.JsonType) types.JsonString {
+	return types.AsString(obj)
+}
+
+func asNumber(obj types.JsonType) types.JsonNumber {
+	return types.AsNumber(obj)
+}
+
+func asBool(obj types.JsonType) types.JsonBool {
+	return types.AsBool(obj)
+}
+
+func parseArray(obj types.JsonString) (types.JsonArray, error) {
+	jsonc, err := json.UnmarshallJSONC([]byte(obj.StringValue()))
+	if err != nil {
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to parse string as a valid JSON")
+	}
+	if !types.IsArray(jsonc) {
+		return types.NewJsonArray(), burrito.WrappedError("String is not a JSON array")
+	}
+	return types.AsArray(jsonc), nil
+}
+
+func parseObject(obj types.JsonString) (types.JsonObject, error) {
+	jsonc, err := json.UnmarshallJSONC([]byte(obj.StringValue()))
+	if err != nil {
+		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to parse string as a valid JSON")
+	}
+	if !types.IsObject(jsonc) {
+		return types.NewJsonObject(), burrito.WrappedError("String is not a JSON object")
+	}
+	return types.AsObject(jsonc), nil
 }
