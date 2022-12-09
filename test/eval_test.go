@@ -515,3 +515,13 @@ func TestArrayPlusOperator3(t *testing.T) {
 	expression := evaluate(t, `undefined + [2]`)
 	assertArray(t, expression, types.AsArray([]interface{}{2}))
 }
+
+func TestOrShortCircuit(t *testing.T) {
+	eval := evaluate(t, `true || error()`)
+	assertBool(t, eval, true)
+}
+
+func TestOrShortCircuit2(t *testing.T) {
+	eval := evaluate(t, `!false || error()`)
+	assertBool(t, eval, true)
+}

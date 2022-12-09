@@ -108,22 +108,22 @@ func jsontemplateParserInit() {
 		0, 99, 112, 5, 32, 0, 0, 100, 112, 5, 31, 0, 0, 101, 112, 5, 30, 0, 0,
 		102, 112, 5, 35, 0, 0, 103, 112, 5, 33, 0, 0, 104, 112, 3, 8, 4, 0, 105,
 		112, 3, 10, 5, 0, 106, 112, 3, 14, 7, 0, 107, 108, 5, 13, 0, 0, 108, 112,
-		3, 6, 3, 15, 109, 110, 5, 11, 0, 0, 110, 112, 3, 6, 3, 2, 111, 94, 1, 0,
-		0, 0, 111, 99, 1, 0, 0, 0, 111, 100, 1, 0, 0, 0, 111, 101, 1, 0, 0, 0,
-		111, 102, 1, 0, 0, 0, 111, 103, 1, 0, 0, 0, 111, 104, 1, 0, 0, 0, 111,
+		3, 6, 3, 15, 109, 110, 5, 11, 0, 0, 110, 112, 3, 6, 3, 14, 111, 94, 1,
+		0, 0, 0, 111, 99, 1, 0, 0, 0, 111, 100, 1, 0, 0, 0, 111, 101, 1, 0, 0,
+		0, 111, 102, 1, 0, 0, 0, 111, 103, 1, 0, 0, 0, 111, 104, 1, 0, 0, 0, 111,
 		105, 1, 0, 0, 0, 111, 106, 1, 0, 0, 0, 111, 107, 1, 0, 0, 0, 111, 109,
-		1, 0, 0, 0, 112, 185, 1, 0, 0, 0, 113, 114, 10, 14, 0, 0, 114, 115, 7,
-		0, 0, 0, 115, 184, 3, 6, 3, 15, 116, 117, 10, 13, 0, 0, 117, 118, 7, 1,
-		0, 0, 118, 184, 3, 6, 3, 14, 119, 120, 10, 12, 0, 0, 120, 121, 5, 24, 0,
-		0, 121, 184, 3, 6, 3, 13, 122, 123, 10, 11, 0, 0, 123, 124, 5, 23, 0, 0,
-		124, 184, 3, 6, 3, 12, 125, 126, 10, 10, 0, 0, 126, 127, 5, 5, 0, 0, 127,
-		184, 3, 6, 3, 11, 128, 129, 10, 9, 0, 0, 129, 130, 5, 3, 0, 0, 130, 184,
-		3, 6, 3, 10, 131, 132, 10, 8, 0, 0, 132, 133, 5, 4, 0, 0, 133, 184, 3,
-		6, 3, 9, 134, 135, 10, 7, 0, 0, 135, 136, 5, 6, 0, 0, 136, 184, 3, 6, 3,
-		8, 137, 138, 10, 6, 0, 0, 138, 139, 5, 7, 0, 0, 139, 184, 3, 6, 3, 7, 140,
-		141, 10, 5, 0, 0, 141, 142, 5, 8, 0, 0, 142, 184, 3, 6, 3, 6, 143, 144,
-		10, 4, 0, 0, 144, 145, 5, 9, 0, 0, 145, 184, 3, 6, 3, 5, 146, 147, 10,
-		3, 0, 0, 147, 148, 5, 10, 0, 0, 148, 184, 3, 6, 3, 4, 149, 151, 10, 18,
+		1, 0, 0, 0, 112, 185, 1, 0, 0, 0, 113, 114, 10, 13, 0, 0, 114, 115, 7,
+		0, 0, 0, 115, 184, 3, 6, 3, 14, 116, 117, 10, 12, 0, 0, 117, 118, 7, 1,
+		0, 0, 118, 184, 3, 6, 3, 13, 119, 120, 10, 11, 0, 0, 120, 121, 5, 24, 0,
+		0, 121, 184, 3, 6, 3, 12, 122, 123, 10, 10, 0, 0, 123, 124, 5, 23, 0, 0,
+		124, 184, 3, 6, 3, 11, 125, 126, 10, 9, 0, 0, 126, 127, 5, 5, 0, 0, 127,
+		184, 3, 6, 3, 10, 128, 129, 10, 8, 0, 0, 129, 130, 5, 3, 0, 0, 130, 184,
+		3, 6, 3, 9, 131, 132, 10, 7, 0, 0, 132, 133, 5, 4, 0, 0, 133, 184, 3, 6,
+		3, 8, 134, 135, 10, 6, 0, 0, 135, 136, 5, 6, 0, 0, 136, 184, 3, 6, 3, 7,
+		137, 138, 10, 5, 0, 0, 138, 139, 5, 7, 0, 0, 139, 184, 3, 6, 3, 6, 140,
+		141, 10, 4, 0, 0, 141, 142, 5, 8, 0, 0, 142, 184, 3, 6, 3, 5, 143, 144,
+		10, 3, 0, 0, 144, 145, 5, 9, 0, 0, 145, 184, 3, 6, 3, 4, 146, 147, 10,
+		2, 0, 0, 147, 148, 5, 10, 0, 0, 148, 184, 3, 6, 3, 3, 149, 151, 10, 18,
 		0, 0, 150, 152, 5, 21, 0, 0, 151, 150, 1, 0, 0, 0, 151, 152, 1, 0, 0, 0,
 		152, 153, 1, 0, 0, 0, 153, 154, 5, 1, 0, 0, 154, 184, 3, 14, 7, 0, 155,
 		157, 10, 17, 0, 0, 156, 158, 5, 21, 0, 0, 157, 156, 1, 0, 0, 0, 157, 158,
@@ -1463,7 +1463,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 		}
 		{
 			p.SetState(110)
-			p.field(2)
+			p.field(14)
 		}
 
 	default:
@@ -1488,8 +1488,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(113)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 14)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 14)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 13)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 13)", ""))
 				}
 				{
 					p.SetState(114)
@@ -1504,7 +1504,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(115)
-					p.field(15)
+					p.field(14)
 				}
 
 			case 2:
@@ -1512,8 +1512,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(116)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 13)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 13)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 12)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 12)", ""))
 				}
 				{
 					p.SetState(117)
@@ -1528,7 +1528,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(118)
-					p.field(14)
+					p.field(13)
 				}
 
 			case 3:
@@ -1536,8 +1536,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(119)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 12)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 12)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 11)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 11)", ""))
 				}
 				{
 					p.SetState(120)
@@ -1545,7 +1545,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(121)
-					p.field(13)
+					p.field(12)
 				}
 
 			case 4:
@@ -1553,8 +1553,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(122)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 11)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 11)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 10)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 10)", ""))
 				}
 				{
 					p.SetState(123)
@@ -1562,7 +1562,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(124)
-					p.field(12)
+					p.field(11)
 				}
 
 			case 5:
@@ -1570,8 +1570,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(125)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 10)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 10)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 9)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 9)", ""))
 				}
 				{
 					p.SetState(126)
@@ -1579,7 +1579,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(127)
-					p.field(11)
+					p.field(10)
 				}
 
 			case 6:
@@ -1587,8 +1587,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(128)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 9)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 9)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 8)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 8)", ""))
 				}
 				{
 					p.SetState(129)
@@ -1596,7 +1596,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(130)
-					p.field(10)
+					p.field(9)
 				}
 
 			case 7:
@@ -1604,8 +1604,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(131)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 8)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 8)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 7)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 7)", ""))
 				}
 				{
 					p.SetState(132)
@@ -1613,7 +1613,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(133)
-					p.field(9)
+					p.field(8)
 				}
 
 			case 8:
@@ -1621,8 +1621,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(134)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 7)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 7)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 6)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 6)", ""))
 				}
 				{
 					p.SetState(135)
@@ -1630,7 +1630,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(136)
-					p.field(8)
+					p.field(7)
 				}
 
 			case 9:
@@ -1638,8 +1638,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(137)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 6)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 6)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 5)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 5)", ""))
 				}
 				{
 					p.SetState(138)
@@ -1647,7 +1647,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(139)
-					p.field(7)
+					p.field(6)
 				}
 
 			case 10:
@@ -1655,8 +1655,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(140)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 5)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 5)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 4)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 4)", ""))
 				}
 				{
 					p.SetState(141)
@@ -1664,7 +1664,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(142)
-					p.field(6)
+					p.field(5)
 				}
 
 			case 11:
@@ -1672,8 +1672,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(143)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 4)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 4)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 3)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 3)", ""))
 				}
 				{
 					p.SetState(144)
@@ -1681,7 +1681,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(145)
-					p.field(5)
+					p.field(4)
 				}
 
 			case 12:
@@ -1689,8 +1689,8 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
 				p.SetState(146)
 
-				if !(p.Precpred(p.GetParserRuleContext(), 3)) {
-					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 3)", ""))
+				if !(p.Precpred(p.GetParserRuleContext(), 2)) {
+					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 2)", ""))
 				}
 				{
 					p.SetState(147)
@@ -1698,7 +1698,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				}
 				{
 					p.SetState(148)
-					p.field(4)
+					p.field(3)
 				}
 
 			case 13:
@@ -2669,40 +2669,40 @@ func (p *JsonTemplateParser) Field_Sempred(localctx antlr.RuleContext, predIndex
 
 	switch predIndex {
 	case 0:
-		return p.Precpred(p.GetParserRuleContext(), 14)
-
-	case 1:
 		return p.Precpred(p.GetParserRuleContext(), 13)
 
-	case 2:
+	case 1:
 		return p.Precpred(p.GetParserRuleContext(), 12)
 
-	case 3:
+	case 2:
 		return p.Precpred(p.GetParserRuleContext(), 11)
 
-	case 4:
+	case 3:
 		return p.Precpred(p.GetParserRuleContext(), 10)
 
-	case 5:
+	case 4:
 		return p.Precpred(p.GetParserRuleContext(), 9)
 
-	case 6:
+	case 5:
 		return p.Precpred(p.GetParserRuleContext(), 8)
 
-	case 7:
+	case 6:
 		return p.Precpred(p.GetParserRuleContext(), 7)
 
-	case 8:
+	case 7:
 		return p.Precpred(p.GetParserRuleContext(), 6)
 
-	case 9:
+	case 8:
 		return p.Precpred(p.GetParserRuleContext(), 5)
 
-	case 10:
+	case 9:
 		return p.Precpred(p.GetParserRuleContext(), 4)
 
-	case 11:
+	case 10:
 		return p.Precpred(p.GetParserRuleContext(), 3)
+
+	case 11:
+		return p.Precpred(p.GetParserRuleContext(), 2)
 
 	case 12:
 		return p.Precpred(p.GetParserRuleContext(), 18)
