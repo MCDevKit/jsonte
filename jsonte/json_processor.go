@@ -32,31 +32,40 @@ const MaxInt64 = int64(^uint64(0) >> 1)
 
 // LoadModule loads a module from a file and returns a JsonModule
 func LoadModule(input string) (JsonModule, error) {
-	json, err := types.ParseJsonObject([]byte(input))
+	jsonObject, err := types.ParseJsonObject([]byte(input))
 	if err != nil {
 		return JsonModule{}, burrito.WrapErrorf(err, "Failed to parse JSON module")
 	}
-	moduleName, ok := json.Get("$module").(types.JsonString)
-	if !ok {
-		return JsonModule{}, utils.WrappedJsonErrorf("$template", "The module does not have a name")
+	moduleName, err := FindAnyCase[types.JsonString](jsonObject, "$module")
+	if err != nil {
+		return JsonModule{}, utils.WrapJsonErrorf("$module", err, "Invalid $module")
 	}
-	scope, ok := json.Get("$scope").(types.JsonObject)
-	if !ok {
+	s, err := FindAnyCase[types.JsonObject](jsonObject, "$scope")
+	if err != nil && burrito.HasTag(err, WrongTypeErrTag) {
+		return JsonModule{}, utils.WrapJsonErrorf("$scope", err, "Invalid $scope")
+	}
+	var scope types.JsonObject
+	if err != nil {
 		scope = types.NewJsonObject()
+	} else {
+		scope = *s
 	}
-	template, ok := json.Get("$template").(types.JsonObject)
-	if !ok {
-		return JsonModule{}, utils.WrappedJsonErrorf("$template", "The module does not have a template")
+	template, err := FindAnyCase[types.JsonObject](jsonObject, "$template")
+	if err != nil {
+		return JsonModule{}, utils.WrapJsonErrorf("$template", err, "Invalid $template")
 	}
-	c, isCopy := json.Get("$copy").(types.JsonString)
-	if !isCopy {
-		c = types.EmptyString
+	c, err := FindAnyCase[types.JsonString](jsonObject, "$copy")
+	if err != nil && burrito.HasTag(err, WrongTypeErrTag) {
+		return JsonModule{}, utils.WrapJsonErrorf("$copy", err, "Invalid $copy")
+	}
+	if err != nil {
+		c = &types.EmptyString
 	}
 	return JsonModule{
-		Name:     moduleName,
+		Name:     *moduleName,
 		Scope:    scope,
-		Template: template,
-		Copy:     c,
+		Template: *template,
+		Copy:     *c,
 	}, nil
 }
 
@@ -72,22 +81,31 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 	result := utils.NewNavigableMap[string, types.JsonObject]()
 	root, err := types.ParseJsonObject([]byte(input))
 	if err != nil {
-		return utils.NewNavigableMap[string, types.JsonObject](), burrito.WrapErrorf(err, "Failed to parse JSON")
+		return result, burrito.WrapErrorf(err, "Failed to parse JSON")
 	}
 
 	// Define scope
 	scope := types.DeepCopyObject(globalScope)
-	if root.ContainsKey("$scope") {
-		scope = types.MergeObject(root.Get("$scope").(types.JsonObject), scope, false)
+	s, err := FindAnyCase[types.JsonObject](root, "$scope")
+	if err != nil && burrito.HasTag(err, WrongTypeErrTag) {
+		return result, utils.WrapJsonErrorf("$scope", err, "Invalid $scope")
+	}
+	if err == nil {
+		scope = types.MergeObject(*s, scope, false)
 	}
 
-	isCopy := root.ContainsKey("$copy")
-	var c types.JsonString
-	if isCopy {
-		c, isCopy = root.Get("$copy").(types.JsonString)
+	c, err := FindAnyCase[types.JsonString](root, "$copy")
+	if err != nil && burrito.HasTag(err, WrongTypeErrTag) {
+		return result, utils.WrapJsonErrorf("$copy", err, "Invalid $copy")
 	}
-	isExtend := root.ContainsKey("$extend")
-	hasTemplate := root.ContainsKey("$template")
+	isCopy := err == nil
+	tempExtend, err := FindAnyCase[types.JsonType](root, "$extend")
+	isExtend := err == nil
+	temp, err := FindAnyCase[types.JsonObject](root, "$template")
+	if err != nil && burrito.HasTag(err, WrongTypeErrTag) {
+		return result, utils.WrapJsonErrorf("$template", err, "Invalid $template")
+	}
+	hasTemplate := err == nil
 
 	// If none of the options are defined, return unmodified JSON
 	if !hasTemplate && !isCopy && !isExtend {
@@ -104,14 +122,21 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 	var template types.JsonObject
 
 	// handle generating multiple files
-	if root.ContainsKey("$files") {
-		file := root.Get("$files").(types.JsonObject)
-		array, err := Eval(file.Get("array").StringValue(), visitor.scope, "$files.array")
+	file, err := FindAnyCase[types.JsonObject](root, "$files")
+	if err != nil && burrito.HasTag(err, WrongTypeErrTag) {
+		return result, utils.WrapJsonErrorf("$files", err, "Invalid $file field")
+	}
+	if err == nil {
+		arrayExpression, err := FindAnyCase[types.JsonString](*file, "array")
 		if err != nil {
-			return utils.NewNavigableMap[string, types.JsonObject](), burrito.WrapErrorf(err, "Failed to evaluate $files.array")
+			return result, utils.WrapJsonErrorf("$files", err, "Invalid array expression")
+		}
+		array, err := Eval(arrayExpression.StringValue(), visitor.scope, "$files.array")
+		if err != nil {
+			return result, burrito.WrapErrorf(err, "Failed to evaluate $files.array")
 		}
 		if array.Value == nil {
-			return utils.NewNavigableMap[string, types.JsonObject](), utils.WrappedJsonErrorf("$files.array", "The array evaluated to null")
+			return result, utils.WrappedJsonErrorf("$files.array", "The array evaluated to null")
 		}
 		if arr, ok := array.Value.(types.JsonArray); ok {
 			for i, item := range arr.Value {
@@ -130,32 +155,32 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 				if isCopy {
 					template, err = processCopy(c, visitor, modules, "$files.array", timeout)
 					if err != nil {
-						return utils.NewNavigableMap[string, types.JsonObject](), burrito.PassError(err)
+						return result, burrito.PassError(err)
 					}
 					visitor.pushScope(types.AsObject(map[string]interface{}{"$copy": template}))
 				} else {
-					template = root.Get("$template").(types.JsonObject)
+					template = *temp
 				}
 				if isExtend {
-					template, err = extendTemplate(root.Get("$extend"), template, visitor, modules)
+					template, err = extendTemplate(*tempExtend, template, visitor, modules)
 					if err != nil {
-						return utils.NewNavigableMap[string, types.JsonObject](), burrito.PassError(err)
+						return result, burrito.PassError(err)
 					}
 				}
 				if isCopy && hasTemplate {
-					if temp, ok := root.Get("$template").(types.JsonObject); ok {
-						template = types.MergeObject(template, temp, false)
-					} else if temp1, ok := root.Get("$template").(types.JsonObject); ok {
-						template = types.MergeObject(template, temp1, false)
-					}
+					template = types.MergeObject(template, *temp, false)
 				}
-				mFileName, err := visitor.visitString(file.Get("fileName").StringValue(), "$files.fileName")
+				fName, err := FindAnyCase[types.JsonString](*file, "file", "name")
 				if err != nil {
-					return utils.NewNavigableMap[string, types.JsonObject](), burrito.WrapErrorf(err, "Failed to evaluate $files.fileName")
+					return result, utils.WrapJsonErrorf("$files", err, "Invalid file name")
+				}
+				mFileName, err := visitor.visitString(fName.StringValue(), "$files.filename")
+				if err != nil {
+					return result, burrito.WrapErrorf(err, "Failed to evaluate $files.filename")
 				}
 				f, err := visitor.visitObject(types.DeepCopyObject(template), "$template")
 				if err != nil {
-					return utils.NewNavigableMap[string, types.JsonObject](), burrito.PassError(err)
+					return result, burrito.PassError(err)
 				}
 				if isCopy {
 					visitor.popScope()
@@ -168,28 +193,28 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 				result.Put(mFileName.StringValue(), types.DeleteNulls(result.Get(mFileName.StringValue())))
 			}
 		} else {
-			return utils.NewNavigableMap[string, types.JsonObject](), utils.WrappedJsonErrorf("$files.array", "The array evaluated to a non-array")
+			return result, utils.WrappedJsonErrorf("$files.array", "The array evaluated to a non-array")
 		}
 	} else {
 		if isCopy {
 			template, err = processCopy(c, visitor, modules, "$copy", timeout)
 			if err != nil {
-				return utils.NewNavigableMap[string, types.JsonObject](), burrito.PassError(err)
+				return result, burrito.PassError(err)
 			}
 			visitor.pushScope(types.AsObject(map[string]interface{}{"$copy": template}))
 		}
 		if isExtend {
-			template, err = extendTemplate(root.Get("$extend"), template, visitor, modules)
+			template, err = extendTemplate(*tempExtend, template, visitor, modules)
 			if err != nil {
-				return utils.NewNavigableMap[string, types.JsonObject](), burrito.PassError(err)
+				return result, burrito.PassError(err)
 			}
 		}
 		if hasTemplate {
-			template = types.MergeObject(template, root.Get("$template").(types.JsonObject), false)
+			template = types.MergeObject(template, *temp, false)
 		}
 		f, err := visitor.visitObject(types.DeepCopyObject(template), "$template")
 		if err != nil {
-			return utils.NewNavigableMap[string, types.JsonObject](), burrito.PassError(err)
+			return result, burrito.PassError(err)
 		}
 		if isCopy {
 			visitor.popScope()
@@ -338,10 +363,11 @@ func (v *TemplateVisitor) visitObject(obj types.JsonObject, path string) (types.
 			return result, err
 		}
 		value := obj.Get(key)
-		if key == "$comment" {
+		// The only keys, that can be with $ prefix are ones specified in MergeObject function
+		if strings.EqualFold(key, "$comment") {
 			continue
 		}
-		if key == "$assert" {
+		if strings.EqualFold(key, "$assert") {
 			if err = v.visitAssert(value, fmt.Sprintf("%s/%s", path, "$assert")); err != nil {
 				return result, err
 			}
@@ -586,9 +612,9 @@ func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {
 			return utils.WrappedJsonErrorf(path, "Assertion failed for '%s'", str.StringValue())
 		}
 	} else if obj, ok := value.(types.JsonObject); ok {
-		condition, ok := obj.Get("condition").(types.JsonString)
-		if !ok {
-			return utils.WrappedJsonErrorf(path, "Condition must be a string")
+		condition, err := FindAnyCase[types.JsonString](obj, "condition")
+		if err != nil {
+			return utils.WrapJsonErrorf(path, err, "Invalid condition")
 		}
 		result, err := Eval(condition.StringValue(), v.scope, path)
 		if err != nil {
@@ -598,9 +624,12 @@ func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {
 			return utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())
 		}
 		if !result.Value.BoolValue() {
-			message, ok := obj.Get("message").(types.JsonString)
-			if !ok {
-				return utils.WrappedJsonErrorf(path, "Assertion failed for '%s'", str.StringValue())
+			message, err := FindAnyCase[types.JsonString](obj, "message")
+			if err != nil {
+				if burrito.HasTag(err, WrongTypeErrTag) {
+					return utils.WrapJsonErrorf(path, err, "Invalid assertion message")
+				}
+				return utils.WrapJsonErrorf(path, err, "Assertion failed for '%s'", str.StringValue())
 			}
 			msg, err := v.visitString(message.StringValue(), path)
 			if err != nil {

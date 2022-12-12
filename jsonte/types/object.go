@@ -208,7 +208,7 @@ out:
 				continue out
 			}
 		}
-		if strings.HasPrefix(k, "$") && k != "$comment" && k != "$assert" {
+		if strings.HasPrefix(k, "$") && !strings.EqualFold(k, "$comment") && !strings.EqualFold(k, "$assert") {
 			if keepOverrides {
 				result.Put(k, v)
 			} else {

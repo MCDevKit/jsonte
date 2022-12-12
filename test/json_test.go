@@ -188,6 +188,18 @@ func TestSimpleTemplate(t *testing.T) {
 	assertTemplate(t, template, expected)
 }
 
+func TestSimpleTemplateDifferentCase(t *testing.T) {
+	template := `{
+		"$Template": {
+			"test": "{{=1..3}}"
+		}
+	}`
+	expected := `{
+		"test": [1, 2, 3]
+	}`
+	assertTemplate(t, template, expected)
+}
+
 func TestSimpleIterationInObject(t *testing.T) {
 	template := `{
 		"$template": {
@@ -399,6 +411,30 @@ func TestSimpleModule(t *testing.T) {
 	assertTemplateWithModule(t, template, module, expected)
 }
 
+func TestSimpleModuleDifferentCase(t *testing.T) {
+	module := `{
+		"$Module": "simple",
+		"$Scope": {
+			"asd": 123
+		},
+		"$Template": {
+			"asd": "{{=asd}}",
+			"overrideMe": -1
+		}
+	}`
+	template := `{
+		"$Extend": "simple",
+		"$Template": {
+			"overrideMe": 1
+		}
+	}`
+	expected := `{
+		"asd": 123,
+		"overrideMe": 1
+	}`
+	assertTemplateWithModule(t, template, module, expected)
+}
+
 func TestSimpleCopy(t *testing.T) {
 	file := `{
 		"asd": 123,
@@ -410,6 +446,30 @@ func TestSimpleCopy(t *testing.T) {
 	template := `{
 		"$copy": "file.json",
 		"$template": {
+			"overrideMe": 1,
+			"oldOverrideMe": "{{=$copy.overrideMe}}"
+		}
+	}`
+	expected := `{
+		"asd": 123,
+		"overrideMe": 1,
+		"oldOverrideMe": -1
+	}`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestSimpleCopyDifferentCase(t *testing.T) {
+	file := `{
+		"asd": 123,
+		"overrideMe": -1
+	}`
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json": file,
+	}, false)
+	template := `{
+		"$Copy": "file.json",
+		"$Template": {
 			"overrideMe": 1,
 			"oldOverrideMe": "{{=$copy.overrideMe}}"
 		}
@@ -513,6 +573,30 @@ func TestMultipleFiles(t *testing.T) {
 			"array": "{{1..3}}"
 		},	
 		"$template": {
+			"test": "{{=index}}"
+		}
+	}`
+	expected := `{
+		"file0": {
+			"test": 0
+		},
+		"file1": {
+			"test": 1
+		},
+		"file2": {
+			"test": 2
+		}
+	}`
+	assertTemplateMultiple(t, template, expected)
+}
+
+func TestMultipleFilesDifferentCase(t *testing.T) {
+	template := `{
+		"$Files": {
+			"file_name": "file{{index}}",
+			"Array": "{{1..3}}"
+		},	
+		"$Template": {
 			"test": "{{=index}}"
 		}
 	}`
@@ -698,12 +782,45 @@ func TestIncorrectAssert(t *testing.T) {
 	}
 }
 
+func TestIncorrectAssertDifferentCase(t *testing.T) {
+	template := `{
+		"$template": {
+			"$Assert": "false"
+		}
+	}`
+	_, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "Assertion failed for 'false' at $template/$assert" {
+		t.Errorf("Unexpected error: %s", err.Error())
+	}
+}
+
 func TestIncorrectAssertWithMessage(t *testing.T) {
 	template := `{
 		"$template": {
 			"$assert": {
 				"condition": "false",
 				"message": "This is a test"
+			}
+		}
+	}`
+	_, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "This is a test at $template/$assert" {
+		t.Errorf("Unexpected error: %s", err.Error())
+	}
+}
+
+func TestIncorrectAssertWithMessageDifferentCase(t *testing.T) {
+	template := `{
+		"$template": {
+			"$Assert": {
+				"Condition": "false",
+				"Message": "This is a test"
 			}
 		}
 	}`
