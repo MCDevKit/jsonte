@@ -69,13 +69,13 @@ func RegisterFunction(fn JsonFunction) {
 	if (of.Type().NumOut() == 2) || (of.Type().NumOut() == 1 && of.Type().Out(0).String() == "error") {
 		fn.WithError = true
 	}
-	functions[fn.Name] = append(functions[fn.Name], fn)
+	functions[strings.ToLower(fn.Name)] = append(functions[strings.ToLower(fn.Name)], fn)
 	functionNames = append(functionNames, fn.Name)
 	if fn.IsInstance {
 		if _, ok := instanceFunctions[fn.Args[0].String()]; !ok {
 			instanceFunctions[fn.Args[0].String()] = make(map[string][]JsonFunction)
 		}
-		instanceFunctions[fn.Args[0].String()][fn.Name] = append(instanceFunctions[fn.Args[0].String()][fn.Name], fn)
+		instanceFunctions[fn.Args[0].String()][strings.ToLower(fn.Name)] = append(instanceFunctions[fn.Args[0].String()][strings.ToLower(fn.Name)], fn)
 	}
 }
 
@@ -96,14 +96,14 @@ func HasInstanceFunction(t reflect.Type, name string) bool {
 	if _, ok := instanceFunctions[t.String()]; !ok {
 		return false
 	}
-	if _, ok := instanceFunctions[t.String()][name]; !ok {
+	if _, ok := instanceFunctions[t.String()][strings.ToLower(name)]; !ok {
 		return false
 	}
 	return true
 }
 
 func HasFunction(name string) bool {
-	if _, ok := functions[name]; !ok {
+	if _, ok := functions[strings.ToLower(name)]; !ok {
 		return false
 	}
 	return true
@@ -126,7 +126,7 @@ func FindMisspelling(name string) *string {
 }
 
 func CallInstanceFunction(name string, instance types.JsonType, args []types.JsonType) (types.JsonType, error) {
-	fns, ok := instanceFunctions[reflect.TypeOf(instance).String()][name]
+	fns, ok := instanceFunctions[reflect.TypeOf(instance).String()][strings.ToLower(name)]
 	if !ok {
 		find := FindMisspelling(name)
 		if find != nil {
@@ -141,7 +141,7 @@ func CallInstanceFunction(name string, instance types.JsonType, args []types.Jso
 }
 
 func CallFunction(name string, args []types.JsonType) (types.JsonType, error) {
-	fns, ok := functions[name]
+	fns, ok := functions[strings.ToLower(name)]
 	if !ok {
 		find := FindMisspelling(name)
 		if find != nil {

@@ -525,3 +525,8 @@ func TestOrShortCircuit2(t *testing.T) {
 	eval := evaluate(t, `!false || error()`)
 	assertBool(t, eval, true)
 }
+
+func TestCaseSensitivity(t *testing.T) {
+	eval := evaluate(t, `(1..10).Count()`)
+	assertNumber(t, eval, 10)
+}
