@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
+	"strconv"
 	"strings"
 )
 
@@ -11,6 +12,7 @@ type flag struct {
 	Type                   string
 	BoolDestination        *bool
 	StringDestination      *string
+	IntDestination         *int64
 	StringSliceDestination *[]string
 	Found                  bool
 }
@@ -49,6 +51,14 @@ func (a *App) StringFlag(f Flag, destination *string) {
 		Flag:              f,
 		Type:              "string",
 		StringDestination: destination,
+	})
+}
+
+func (a *App) IntFlag(f Flag, destination *int64) {
+	a.flags = append(a.flags, flag{
+		Flag:           f,
+		Type:           "int",
+		IntDestination: destination,
 	})
 }
 
@@ -95,6 +105,18 @@ func (a *App) Run(args []string, onParse func()) error {
 						*flag.StringSliceDestination = append(*flag.StringSliceDestination, args[i+1])
 						i++
 						flag.Found = true
+						break
+					case "int":
+						if flag.Found {
+							return burrito.WrappedErrorf("flag --%s is already set", flag.Name)
+						}
+						k, err := strconv.ParseInt(args[i+1], 10, 64)
+						if err != nil {
+							return burrito.WrappedErrorf("flag %s is not an integer", args[i+1])
+						}
+						*flag.IntDestination = k
+						flag.Found = true
+						i++
 						break
 					default:
 						return burrito.WrappedErrorf("unknown flag type: %s", flag.Type)
