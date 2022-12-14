@@ -15,10 +15,12 @@ import (
 	"github.com/gobwas/glob"
 	"go.uber.org/zap"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var (
@@ -44,6 +46,7 @@ func main() {
 	include := make([]string, 0)
 	exclude := make([]string, 0)
 	ipcName := "jsonte"
+	seed := time.Now().UnixNano()
 	app := NewApp()
 	app.BoolFlag(Flag{
 		Name:  "debug",
@@ -85,6 +88,10 @@ func main() {
 		Name:  "ipc-name",
 		Usage: "Name for the IPC named pipe",
 	}, &ipcName)
+	app.IntFlag(Flag{
+		Name:  "seed",
+		Usage: "Seed for the random number generator",
+	}, &seed)
 	app.Action(Action{
 		Name: "compile",
 		Function: func(args []string) error {
@@ -304,6 +311,7 @@ func main() {
 		} else {
 			utils.InitLogging(zap.InfoLevel)
 		}
+		rand.Seed(seed)
 	})
 	if err != nil {
 		if utils.Logger == nil {

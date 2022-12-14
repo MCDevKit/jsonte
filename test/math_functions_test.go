@@ -3,6 +3,7 @@ package test
 import (
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"math"
+	"math/rand"
 	"testing"
 )
 
@@ -260,4 +261,16 @@ func TestNumberOfDigits(t *testing.T) {
 func TestNumberOfDigits2(t *testing.T) {
 	eval := evaluate(t, `numberOfDigits(12345)`)
 	assertNumber(t, eval, 5)
+}
+
+func TestRandom(t *testing.T) {
+	rand.Seed(0)
+	eval := evaluate(t, `random()`)
+	assertNumber(t, eval, 0.945196)
+}
+
+func TestRandomInt(t *testing.T) {
+	rand.Seed(0)
+	eval := evaluate(t, `randomInt(0, 100)`)
+	assertNumber(t, eval, 74)
 }

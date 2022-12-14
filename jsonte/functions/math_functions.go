@@ -3,6 +3,7 @@ package functions
 import (
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"math"
+	"math/rand"
 )
 
 func RegisterMathFunctions() {
@@ -666,6 +667,61 @@ func RegisterMathFunctions() {
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "random",
+		Body:  randomNumber,
+		Docs: Docs{
+			Summary: "Returns a random number between 0 and 1.",
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be a random number between 0 and 1",
+    "test": "{{random()}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "randomInt",
+		Body:  randomInt,
+		Docs: Docs{
+			Summary: "Returns a random integer number between the first and second argument.",
+			Arguments: []Argument{
+				{
+					Name:    "min",
+					Summary: "The minimum value of the random number.",
+				},
+				{
+					Name:    "max",
+					Summary: "The maximum value of the random number.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be a random number between 0 and 1",
+    "test": "{{random()}}"
+  }
+}
+</code>`,
+		},
+	})
+}
+
+func randomNumber() (types.JsonNumber, error) {
+	return types.AsNumber(rand.Float64()), nil
+}
+
+func randomInt(a, b types.JsonNumber) (types.JsonNumber, error) {
+	if a.IntValue() > b.IntValue() {
+		a, b = b, a
+	}
+	return types.AsNumber(rand.Intn(int(b.IntValue()-a.IntValue())) + int(a.IntValue())), nil
 }
 
 func floor(a types.JsonNumber) types.JsonNumber {
