@@ -4,6 +4,7 @@ import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"math"
+	"math/rand"
 	"sort"
 )
 
@@ -813,6 +814,37 @@ the result will be
 		Body:       findLastFilter,
 		IsInstance: true,
 	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "random",
+		Body:       randomElement,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Finds the random element in the array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to get random element from",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be a randomly selected element from the array",
+	"test": "{{[1, 2, 3, 5, 8, 10].random()}}"
+  }
+}
+</code>`,
+		},
+	})
+}
+
+func randomElement(arr types.JsonArray) (types.JsonType, error) {
+	if len(arr.Value) == 0 {
+		return nil, burrito.WrappedError("Cannot get random element from an empty array")
+	}
+	return arr.Value[rand.Intn(len(arr.Value))], nil
 }
 
 func objectAsArray(obj types.JsonObject, key, value types.JsonString) types.JsonArray {

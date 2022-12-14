@@ -224,6 +224,23 @@ func RegisterMinecraftFunctions() {
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "getAllItems",
+		Body:  getAllItems,
+		Docs: Docs{
+			Summary: "Returns a list of vanilla item infos. Uses https://github.com/stirante/minecraft-item-db/blob/main/items.json",
+			Example: `
+<code>
+{
+  "$template": {
+	// This will be a list of all vanilla item infos
+    "test": "{{getAllItems()}}"
+  }
+}
+</code>`,
+		},
+	})
 }
 
 var installDir = ""
@@ -590,6 +607,21 @@ func getItemInfo(id types.JsonString, metadata types.JsonNumber) (types.JsonObje
 
 func getItemInfo1(id types.JsonString) (types.JsonObject, error) {
 	return getItemInfo(id, types.JsonNumber{Value: 0})
+}
+
+func getAllItems() types.JsonArray {
+	if itemInfos.IsEmpty() {
+		err := fetchItemInfos()
+		if err != nil {
+			utils.Logger.Error(err)
+			return types.NewJsonArray()
+		}
+	}
+	var items = make([]types.JsonObject, 0)
+	for _, item := range itemInfosByName.Values() {
+		items = append(items, types.AsObject(item))
+	}
+	return types.AsArray(items)
 }
 
 func findItemInfoById(id types.JsonString, metadata types.JsonNumber) (types.JsonObject, error) {

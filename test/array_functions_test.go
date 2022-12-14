@@ -3,6 +3,7 @@ package test
 import (
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
+	"math/rand"
 	"testing"
 )
 
@@ -179,4 +180,10 @@ func TestArrayRange(t *testing.T) {
 func TestSublist(t *testing.T) {
 	eval := evaluate(t, `(1..5).sublist(1, 3)`)
 	assertArray(t, eval, types.Box([]interface{}{2, 3}).(types.JsonArray))
+}
+
+func TestRandomElement(t *testing.T) {
+	rand.Seed(0)
+	eval := evaluate(t, `(1..5).random()`)
+	assertNumber(t, eval, 5)
 }
