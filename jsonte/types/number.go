@@ -49,14 +49,14 @@ func toFixed(num float64, precision int) float64 {
 
 func (n JsonNumber) FloatValue() float64 {
 	if n.Decimal {
-		return toFixed(n.Value, 10)
+		return toFixed(n.Value, 6)
 	} else {
 		return math.Floor(n.Value)
 	}
 }
 
 func (n JsonNumber) BoolValue() bool {
-	if toFixed(n.Value, 10) == 0 {
+	if toFixed(n.Value, 6) == 0 {
 		return false
 	}
 	return true
@@ -64,7 +64,7 @@ func (n JsonNumber) BoolValue() bool {
 
 func (n JsonNumber) StringValue() string {
 	if n.Decimal {
-		return strconv.FormatFloat(n.Value, 'f', -1, 64)
+		return strconv.FormatFloat(n.FloatValue(), 'f', -1, 64)
 	}
 	return strconv.FormatInt(int64(n.IntValue()), 10)
 }
