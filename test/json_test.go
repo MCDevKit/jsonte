@@ -730,10 +730,10 @@ func TestJsonParser(t *testing.T) {
 	}
 	compareJsonObject(t, object, types.Box(expected).(types.JsonObject), "#", true)
 
-	expMini := "{\"obj\":{\"decimal\":0,\"integer\":0,\"string\":\"escape chars \\n\\t\\r\\b\\f \\\\ \\\" ሴ\",\"array\":[],\"object\":{},\"null\":null,\"true\":true,\"false\":false}}"
+	expMini := "{\"obj\":{\"decimal\":0.0,\"integer\":0,\"string\":\"escape chars \\n\\t\\r\\b\\f \\\\ \\\" ሴ\",\"array\":[],\"object\":{},\"null\":null,\"true\":true,\"false\":false}}"
 	expPretty := `{
   "obj": {
-    "decimal": 0,
+    "decimal": 0.0,
     "integer": 0,
     "string": "escape chars \n\t\r\b\f \\ \" ሴ",
     "array": [

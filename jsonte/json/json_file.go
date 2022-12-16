@@ -112,6 +112,10 @@ func MarshalJSONC(object interface{}, pretty bool) ([]byte, error) {
 	case string:
 		return writeString(object.(string)), nil
 	case float64:
+		// If the float doesn't have a decimal point, force `.0` to be appended
+		if object.(float64) == float64(int64(object.(float64))) {
+			return []byte(strconv.FormatFloat(object.(float64), 'f', 1, 64)), nil
+		}
 		return []byte(strconv.FormatFloat(object.(float64), 'f', -1, 64)), nil
 	case int:
 		return []byte(strconv.FormatInt(int64(object.(int)), 10)), nil
@@ -167,7 +171,12 @@ func writeObject(object utils.NavigableMap[string, interface{}], pretty bool, in
 			result = append(result, writeString(value.(string))...)
 			result = append(result, TokenDoubleQuote)
 		case float64:
-			result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', -1, 64))...)
+			// If the float doesn't have a decimal point, force `.0` to be appended
+			if value.(float64) == float64(int64(value.(float64))) {
+				result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', 1, 64))...)
+			} else {
+				result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', -1, 64))...)
+			}
 		case int:
 			result = append(result, []byte(strconv.FormatInt(int64(value.(int)), 10))...)
 		case int32:
@@ -223,7 +232,12 @@ func writeArray(arr []interface{}, pretty bool, indent int) ([]byte, error) {
 			result = append(result, writeString(value.(string))...)
 			result = append(result, TokenDoubleQuote)
 		case float64:
-			result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', -1, 64))...)
+			// If the float doesn't have a decimal point, force `.0` to be appended
+			if value.(float64) == float64(int64(value.(float64))) {
+				result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', 1, 64))...)
+			} else {
+				result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', -1, 64))...)
+			}
 		case int:
 			result = append(result, []byte(strconv.FormatInt(int64(value.(int)), 10))...)
 		case int32:
