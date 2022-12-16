@@ -228,7 +228,7 @@ func (f *FakeFileInfo) Size() int64 {
 }
 
 func (f *FakeFileInfo) IsDir() bool {
-	return f == nil
+	return f.f == nil
 }
 
 func (f *FakeFileInfo) Mode() os.FileMode {
