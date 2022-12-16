@@ -195,7 +195,7 @@ func CreateFakeFS(fs map[string]interface{}, withNetwork bool) IOResolver {
 			for s := range files {
 				if strings.HasPrefix(s, path) {
 					return &FakeFileInfo{
-						f: files[s],
+						f: nil,
 						p: path,
 					}, nil
 				}

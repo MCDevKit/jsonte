@@ -532,7 +532,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 			return versions, burrito.WrapErrorf(err, "An error occurred while removing %s", outName)
 		}
 
-		versions.Put("0.0.0", path.Join(base, dirName))
+		versions.Put("1.0.0", path.Join(base, dirName))
 		return versions, err
 	}
 	packDir := path.Join(installDir.StringValue(), "data", "behavior_packs")
