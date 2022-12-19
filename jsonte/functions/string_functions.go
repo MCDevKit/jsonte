@@ -538,6 +538,7 @@ func RegisterStringFunctions() {
 		Name:       "number",
 		Body:       number,
 		IsInstance: true,
+		Deprecated: true,
 		Docs: Docs{
 			Summary: "Converts a string to a number.",
 			Arguments: []Argument{
