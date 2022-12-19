@@ -275,10 +275,14 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 		for _, mod := range arr.Value {
 			if str, ok := mod.(types.JsonString); ok {
 				toResolve = append(toResolve, str.StringValue())
+			} else {
+				return types.NewJsonObject(), utils.WrappedJsonErrorf("$extend", "The extend array must contain only strings")
 			}
 		}
 	} else if str, ok := extend.(types.JsonString); ok {
 		toResolve = append(toResolve, str.StringValue())
+	} else  {
+		return types.NewJsonObject(), utils.WrappedJsonErrorf("$extend", "The extend value must be a string or array of strings")
 	}
 	for i, str := range toResolve {
 		path := "$extend"
