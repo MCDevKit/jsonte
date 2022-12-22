@@ -264,7 +264,9 @@ func CreateRange(start, end int32) JsonArray {
 
 // DeleteNulls removes all keys with null values from the given JSON object.
 func DeleteNulls(object JsonObject) JsonObject {
-	for _, k := range object.Keys() {
+	keys := make([]string, len(object.Keys()))
+	copy(keys, object.Keys())
+	for _, k := range keys {
 		v := object.Get(k)
 		if IsObject(v) {
 			object.Put(k, DeleteNulls(AsObject(v)))

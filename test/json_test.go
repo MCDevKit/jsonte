@@ -510,6 +510,124 @@ func TestTemplateCopy(t *testing.T) {
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
+func TestDeleteNullsInCopy(t *testing.T) {
+	file := `{
+		"asd": 123,
+		"overrideMe": -1,
+		"removeMe": {
+			"removeMeToo": "asd"
+		}
+	}`
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json": file,
+	}, false)
+	template := `{
+		"$copy": "file.json",
+		"$template": {
+			"overrideMe": null,
+			"removeMe": null
+		}
+	}`
+	expected := `{
+		"asd": 123
+	}`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+// The following test is for a bug, that would sometimes skip an element to remove, if it was right after another removed element.
+func TestCleanEntity(t *testing.T) {
+	file := `{
+  "format_version": "1.8.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "minecraft:parrot",
+      "materials": { "default": "parrot"},
+      "textures": {
+        "blue": "textures/entity/parrot/parrot_blue",
+        "green": "textures/entity/parrot/parrot_green",
+        "red_blue": "textures/entity/parrot/parrot_red_blue",
+        "yellow_blue": "textures/entity/parrot/parrot_yellow_blue",
+        "grey": "textures/entity/parrot/parrot_grey"
+      },
+      "geometry": {
+        "default": "geometry.parrot"
+      },
+      "scripts": {
+        "pre_animation": [
+          "variable.state = query.is_dancing ? 3 : (query.is_sitting ? 2 : (!query.is_on_ground && !query.is_jumping && !query.is_riding ? 0 : 1));",
+          "variable.dance.x = Math.cos(query.life_time * 57.3 * 20.0);",
+          "variable.dance.y = -Math.sin(query.life_time * 57.3 * 20.0);",
+          "variable.wing_flap = ((math.sin(query.wing_flap_position * 57.3) + 1) * query.wing_flap_speed);"
+        ]
+      },
+      "animations": {
+        "moving": "animation.parrot.moving",
+        "base": "animation.parrot.base",
+        "dance": "animation.parrot.dance",
+        "sitting": "animation.parrot.sitting",
+        "flying": "animation.parrot.flying",
+        "standing": "animation.parrot.standing",
+        "look_at_target": "animation.common.look_at_target"
+      },
+      "animation_controllers": [
+        { "setup": "controller.animation.parrot.setup" },
+        { "move": "controller.animation.parrot.move" }
+      ],
+      "render_controllers": [ "controller.render.parrot" ],
+      "spawn_egg": {
+        "texture": "spawn_egg",
+        "texture_index": 43
+      }
+    }
+  }
+}`
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json": file,
+	}, false)
+	template := `{
+		"$copy": "file.json",
+		"$template": {
+        "minecraft:client_entity": {
+            "description": {
+                "identifier": "example:parrot",
+                "scripts": null,
+                "animation_controllers": null,
+                "animations": null,
+                "particle_effects": null,
+                "spawn_egg": null
+            }
+        }
+		}
+	}`
+	expected := `{
+  "format_version": "1.8.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "example:parrot",
+      "materials": {
+        "default": "parrot"
+      },
+      "textures": {
+        "blue": "textures/entity/parrot/parrot_blue",
+        "green": "textures/entity/parrot/parrot_green",
+        "red_blue": "textures/entity/parrot/parrot_red_blue",
+        "yellow_blue": "textures/entity/parrot/parrot_yellow_blue",
+        "grey": "textures/entity/parrot/parrot_grey"
+      },
+      "geometry": {
+        "default": "geometry.parrot"
+      },
+      "render_controllers": [
+        "controller.render.parrot"
+      ]
+    }
+  }
+}`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
 func TestDeleteNulls(t *testing.T) {
 	file := `{
 		"$scope": {
@@ -517,7 +635,10 @@ func TestDeleteNulls(t *testing.T) {
 		},
 		"$template": {
 			"asd": "{{=asd}}",
-			"overrideMe": -1
+			"overrideMe": -1,
+			"removeMe": {
+				"removeMeToo": "asd"
+			}
 		}
 	}`
 	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
@@ -526,7 +647,8 @@ func TestDeleteNulls(t *testing.T) {
 	template := `{
 		"$copy": "file.templ",
 		"$template": {
-			"overrideMe": null
+			"overrideMe": null,
+			"removeMe": null
 		}
 	}`
 	expected := `{
@@ -540,7 +662,10 @@ func TestCopyAndExtend(t *testing.T) {
 	file := `{
 		"asd": 123,
 		"overrideMe": -1,
-		"removeMe": 1
+		"removeMe": 1,
+		"removeMe1": {
+			"removeMe2": 1
+		}
 	}`
 	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
 		"file.json": file,
@@ -555,7 +680,8 @@ func TestCopyAndExtend(t *testing.T) {
 		"$copy": "file.json",
 		"$extend": "simple",
 		"$template": {
-			"overrideMe": 1
+			"overrideMe": 1,
+			"removeMe1": null
 		}
 	}`
 	expected := `{
