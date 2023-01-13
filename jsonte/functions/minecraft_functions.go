@@ -328,12 +328,13 @@ func listLatestFiles(p string, m utils.NavigableMap[string, string]) (types.Json
 			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while reading file %s", p)
 		}
 		for _, f := range recursive {
-			rel, err := filepath.Rel(s, f)
+			joined := filepath.Join(s, f)
+			rel, err := filepath.Rel(s, joined)
 			if err != nil {
 				return types.NewJsonArray(), err
 			}
 			if _, ok := result[rel]; !ok {
-				result[rel] = f
+				result[rel] = joined
 			}
 		}
 	}
