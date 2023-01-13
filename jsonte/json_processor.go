@@ -119,6 +119,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 		deadline:    deadline,
 	}
 	visitor.pushScope(types.DeepCopyObject(scope))
+	visitor.pushScope(types.AsObject(map[string]interface{}{"$modules": modules}))
 	var template types.JsonObject
 
 	// handle generating multiple files
@@ -281,7 +282,7 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 		}
 	} else if str, ok := extend.(types.JsonString); ok {
 		toResolve = append(toResolve, str.StringValue())
-	} else  {
+	} else {
 		return types.NewJsonObject(), utils.WrappedJsonErrorf("$extend", "The extend value must be a string or array of strings")
 	}
 	for i, str := range toResolve {

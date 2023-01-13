@@ -127,6 +127,9 @@ func AsObject(obj interface{}) JsonObject {
 	if b, ok := obj.(JsonObject); ok {
 		return b
 	}
+	if _, ok := obj.(JsonType); ok {
+		return NewJsonObject()
+	}
 	if b, ok := obj.(utils.NavigableMap[string, JsonType]); ok {
 		return JsonObject{&b}
 	}
@@ -146,6 +149,13 @@ func AsObject(obj interface{}) JsonObject {
 			result.Put(key.String(), Box(rv.MapIndex(key).Interface()))
 		}
 		return result
+	case reflect.Struct:
+		rv := reflect.ValueOf(obj)
+		result := NewJsonObject()
+		for i := 0; i < rv.NumField(); i++ {
+			result.Put(rv.Type().Field(i).Name, Box(rv.Field(i).Interface()))
+		}
+		return result
 	}
 	return NewJsonObject()
 }
@@ -158,6 +168,9 @@ func IsObject(obj interface{}) bool {
 	if _, ok := obj.(JsonObject); ok {
 		return true
 	}
+	if _, ok := obj.(JsonType); ok {
+		return false
+	}
 	if _, ok := obj.(utils.NavigableMap[string, JsonType]); ok {
 		return true
 	}
@@ -166,7 +179,7 @@ func IsObject(obj interface{}) bool {
 	}
 	rt := reflect.TypeOf(obj)
 	switch rt.Kind() {
-	case reflect.Map:
+	case reflect.Map, reflect.Struct:
 		return true
 	}
 	return false
@@ -208,7 +221,7 @@ out:
 				continue out
 			}
 		}
-		if strings.HasPrefix(k, "$") && !strings.EqualFold(k, "$comment") && !strings.EqualFold(k, "$assert") {
+		if strings.HasPrefix(k, "$") && !isReservedKey(k) {
 			if keepOverrides {
 				result.Put(k, v)
 			} else {
@@ -259,4 +272,8 @@ func DeepCopyObject(object JsonObject) JsonObject {
 func NewJsonObject() JsonObject {
 	navigableMap := utils.NewNavigableMap[string, JsonType]()
 	return JsonObject{&navigableMap}
+}
+
+func isReservedKey(k string) bool {
+	return strings.EqualFold(k, "$comment") || strings.EqualFold(k, "$assert")
 }
