@@ -147,6 +147,10 @@ func (a *App) Run(args []string, onParse func()) error {
 		a.PrintHelp()
 		return nil
 	}
+	// This is a fix for regolith, that puts the settings as the first argument
+	if strings.HasPrefix(cleanArgs[0], "{") {
+		cleanArgs = cleanArgs[1:]
+	}
 	action, ok := a.actions[cleanArgs[0]]
 	if !ok {
 		a.PrintHelp()
