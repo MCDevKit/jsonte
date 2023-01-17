@@ -658,6 +658,33 @@ func TestDeleteNulls(t *testing.T) {
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
+func TestDeleteNulls2(t *testing.T) {
+	file := `{
+		"asd": 1,
+		"asd2": 2,
+		"asd3": 3
+	}`
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json": file,
+	}, false)
+	template := `{
+		"$scope": {
+			"del": ["asd", "asd2"]
+		},
+		"$copy": "file.json",
+		"$template": {
+			"${{#del}}": {
+				"{{value}}": null
+			}
+		}
+	}`
+	expected := `{
+		"asd3": 3
+	}`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
 func TestCopyAndExtend(t *testing.T) {
 	file := `{
 		"asd": 123,
