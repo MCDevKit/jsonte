@@ -119,7 +119,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 		deadline:    deadline,
 	}
 	visitor.pushScope(types.DeepCopyObject(scope))
-	visitor.pushScope(types.AsObject(map[string]interface{}{"$modules": modules}))
+	visitor.pushScope(types.AsObject(map[string]interface{}{"$allModules": modules}))
 	var template types.JsonObject
 
 	// handle generating multiple files
