@@ -68,3 +68,15 @@ func Eval(text string, scope deque.Deque[types.JsonObject], path string) (Result
 		IndexName: *visitor.indexName,
 	}, err
 }
+
+// EvalWithTempScope evaluates the given expression and returns the result
+func EvalWithTempScope(text string, scope deque.Deque[types.JsonObject], path string, temp ...types.JsonObject) (Result, error) {
+	d := deque.Deque[types.JsonObject]{}
+	for i := 0; i < scope.Len(); i++ {
+		d.PushBack(scope.At(i))
+	}
+	for _, t := range temp {
+		d.PushBack(t)
+	}
+	return Eval(text, d, path)
+}

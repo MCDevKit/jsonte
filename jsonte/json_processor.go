@@ -163,10 +163,17 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 					template = *temp
 				}
 				if isExtend {
-					template, err = extendTemplate(*tempExtend, template, visitor, modules)
+					var resolvedModules []string
+					template, resolvedModules, err = extendTemplate(*tempExtend, template, visitor, modules)
 					if err != nil {
 						return result, burrito.PassError(err)
 					}
+
+					mappedModules := make(map[string]JsonModule, len(resolvedModules))
+					for _, module := range resolvedModules {
+						mappedModules[module] = modules[module]
+					}
+					visitor.pushScope(types.AsObject(map[string]interface{}{"$modules": mappedModules}))
 				}
 				if isCopy && hasTemplate {
 					template = types.MergeObject(template, *temp, false)
@@ -205,10 +212,17 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 			visitor.pushScope(types.AsObject(map[string]interface{}{"$copy": template}))
 		}
 		if isExtend {
-			template, err = extendTemplate(*tempExtend, template, visitor, modules)
+			var resolvedModules []string
+			template, resolvedModules, err = extendTemplate(*tempExtend, template, visitor, modules)
 			if err != nil {
 				return result, burrito.PassError(err)
 			}
+
+			mappedModules := make(map[string]JsonModule, len(resolvedModules))
+			for _, module := range resolvedModules {
+				mappedModules[module] = modules[module]
+			}
+			visitor.pushScope(types.AsObject(map[string]interface{}{"$modules": mappedModules}))
 		}
 		if hasTemplate {
 			template = types.MergeObject(template, *temp, false)
@@ -266,7 +280,7 @@ func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]J
 var templatePattern, _ = regexp.Compile("\\{\\{(?:\\\\.|[^{}])+}}")
 var actionPattern, _ = regexp.Compile("^\\{\\{(?:\\\\.|[^{}])+}}$")
 
-func extendTemplate(extend types.JsonType, template types.JsonObject, visitor TemplateVisitor, modules map[string]JsonModule) (types.JsonObject, error) {
+func extendTemplate(extend types.JsonType, template types.JsonObject, visitor TemplateVisitor, modules map[string]JsonModule) (types.JsonObject, []string, error) {
 	resolvedModules := make([]string, 0)
 	toResolve := make([]string, 0)
 	isString := true
@@ -277,13 +291,13 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 			if str, ok := mod.(types.JsonString); ok {
 				toResolve = append(toResolve, str.StringValue())
 			} else {
-				return types.NewJsonObject(), utils.WrappedJsonErrorf("$extend", "The extend array must contain only strings")
+				return types.NewJsonObject(), resolvedModules, utils.WrappedJsonErrorf("$extend", "The extend array must contain only strings")
 			}
 		}
 	} else if str, ok := extend.(types.JsonString); ok {
 		toResolve = append(toResolve, str.StringValue())
 	} else {
-		return types.NewJsonObject(), utils.WrappedJsonErrorf("$extend", "The extend value must be a string or array of strings")
+		return types.NewJsonObject(), resolvedModules, utils.WrappedJsonErrorf("$extend", "The extend value must be a string or array of strings")
 	}
 	for i, str := range toResolve {
 		path := "$extend"
@@ -293,7 +307,7 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 		if actionPattern.MatchString(str) {
 			eval, err := Eval(str, visitor.scope, path)
 			if err != nil {
-				return types.NewJsonObject(), utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", path)
+				return types.NewJsonObject(), resolvedModules, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", path)
 			}
 			if mods, ok := eval.Value.(types.JsonArray); ok {
 				stringMods := make([]string, len(mods.Value))
@@ -304,7 +318,7 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 			} else if strMod, ok := eval.Value.(types.JsonString); ok {
 				resolvedModules = append(resolvedModules, strMod.StringValue())
 			} else {
-				return types.NewJsonObject(), utils.WrappedJsonErrorf(path, "The module name evaluated to a non-string")
+				return types.NewJsonObject(), resolvedModules, utils.WrappedJsonErrorf(path, "The module name evaluated to a non-string")
 			}
 		} else {
 			resolvedModules = append(resolvedModules, str)
@@ -312,28 +326,28 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 	}
 	for _, module := range resolvedModules {
 		if _, ok := modules[module]; !ok {
-			return types.NewJsonObject(), utils.WrappedJsonErrorf("$extend", "The module '%s' does not exist", module)
+			return types.NewJsonObject(), resolvedModules, utils.WrappedJsonErrorf("$extend", "The module '%s' does not exist", module)
 		}
 		mod := modules[module]
 		if mod.Template.IsEmpty() {
-			return types.NewJsonObject(), utils.WrappedJsonErrorf("$extend", "The module '%s' does not have a template", module)
+			return types.NewJsonObject(), resolvedModules, utils.WrappedJsonErrorf("$extend", "The module '%s' does not have a template", module)
 		}
 		visitor.scope.PushFront(mod.Scope)
 		if mod.Copy.StringValue() != "" {
 			object, err := processCopy(mod.Copy, visitor, modules, "$copy", -1)
 			if err != nil {
-				return types.NewJsonObject(), burrito.WrapErrorf(err, "Error processing $copy for module %s", mod.Name.StringValue())
+				return types.NewJsonObject(), resolvedModules, burrito.WrapErrorf(err, "Error processing $copy for module %s", mod.Name.StringValue())
 			}
 			template = types.MergeObject(object, template, true)
 		}
 		parent, err := visitor.visitObject(mod.Template, "[Module "+module+"]")
 		visitor.scope.PopFront()
 		if err != nil {
-			return types.NewJsonObject(), burrito.WrapErrorf(err, "Error processing template for module %s", mod.Name.StringValue())
+			return types.NewJsonObject(), resolvedModules, burrito.WrapErrorf(err, "Error processing template for module %s", mod.Name.StringValue())
 		}
 		template = types.MergeObject(template, parent.(types.JsonObject), true)
 	}
-	return template, nil
+	return template, resolvedModules, nil
 }
 
 func (v *TemplateVisitor) pushScope(obj types.JsonObject) {
