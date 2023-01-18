@@ -31,7 +31,13 @@ type TemplateVisitor struct {
 const MaxInt64 = int64(^uint64(0) >> 1)
 
 // LoadModule loads a module from a file and returns a JsonModule
-func LoadModule(input string) (JsonModule, error) {
+func LoadModule(input string, globalScope types.JsonObject, timeout int64) (JsonModule, error) {
+	// Set up the deadline
+	deadline := time.Now().UnixMilli() + timeout
+	if timeout <= 0 {
+		deadline = MaxInt64
+	}
+
 	jsonObject, err := types.ParseJsonObject([]byte(input))
 	if err != nil {
 		return JsonModule{}, burrito.WrapErrorf(err, "Failed to parse JSON module")
@@ -48,7 +54,18 @@ func LoadModule(input string) (JsonModule, error) {
 	if err != nil {
 		scope = types.NewJsonObject()
 	} else {
-		scope = *s
+		tempScope := deque.Deque[types.JsonObject]{}
+		tempScope.PushBack(scope)
+		scopeVisitor := TemplateVisitor{
+			scope:       tempScope,
+			globalScope: globalScope,
+			deadline:    deadline,
+		}
+		object, err := scopeVisitor.visitObject(types.DeepCopyObject(*s), "$scope")
+		if err != nil {
+			return JsonModule{}, burrito.WrapErrorf(err, "Failed to template scope")
+		}
+		scope = types.MergeObject(object.(types.JsonObject), scope, false)
 	}
 	template, err := FindAnyCase[types.JsonObject](jsonObject, "$template")
 	if err != nil {
@@ -91,7 +108,18 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 		return result, utils.WrapJsonErrorf("$scope", err, "Invalid $scope")
 	}
 	if err == nil {
-		scope = types.MergeObject(*s, scope, false)
+		tempScope := deque.Deque[types.JsonObject]{}
+		tempScope.PushBack(scope)
+		scopeVisitor := TemplateVisitor{
+			scope:       tempScope,
+			globalScope: globalScope,
+			deadline:    deadline,
+		}
+		object, err := scopeVisitor.visitObject(types.DeepCopyObject(*s), "$scope")
+		if err != nil {
+			return result, burrito.WrapErrorf(err, "Failed to template scope")
+		}
+		scope = types.MergeObject(object.(types.JsonObject), scope, false)
 	}
 
 	c, err := FindAnyCase[types.JsonString](root, "$copy")

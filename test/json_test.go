@@ -121,7 +121,7 @@ func compareJsonArray(t *testing.T, expected types.JsonArray, actual types.JsonA
 
 func assertTemplateWithModule(t *testing.T, template, module, expected string) {
 	t.Helper()
-	mod, err := jsonte.LoadModule(module)
+	mod, err := jsonte.LoadModule(module, types.NewJsonObject(), -1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1062,5 +1062,20 @@ func TestIteration(t *testing.T) {
     }
   }
 }`
+	assertTemplate(t, template, expected)
+}
+
+func TestTemplateScope(t *testing.T) {
+	template := `{
+		"$scope": {
+			"asd": "{{(1..10).map(x => x * 2)}}"
+		},
+		"$template": {
+			"data": "{{asd}}"
+		}
+	}`
+	expected := `{
+		"data": [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+	}`
 	assertTemplate(t, template, expected)
 }

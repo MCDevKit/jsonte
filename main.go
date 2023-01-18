@@ -129,7 +129,7 @@ func main() {
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while reading the module file %s", file)
 						}
-						module, err := jsonte.LoadModule(string(bytes))
+						module, err := jsonte.LoadModule(string(bytes), object, -1)
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while loading the module file %s", file)
 						}
@@ -152,6 +152,7 @@ func main() {
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".templ") {
+						utils.Logger.Infof("Templating file %s", file)
 						bytes, err := ioutil.ReadFile(file)
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while reading the template file %s", file)
