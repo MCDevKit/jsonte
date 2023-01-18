@@ -69,11 +69,14 @@ func (sr *StringReader) Read() byte {
 }
 
 func UnmarshallJSONC(str []byte) (interface{}, error) {
+	str, err := ConvertToUTF8(str)
+	if err != nil {
+		return nil, burrito.PassError(err)
+	}
 	reader := NewStringReader(str)
 	skipWhitespace(reader)
 	token := reader.Peek()
 	var object interface{}
-	var err error
 	if token == TokenOpenObject {
 		object, err = parseObject(reader, "#")
 		if err != nil {

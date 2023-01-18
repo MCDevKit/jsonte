@@ -11,7 +11,9 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/james-barrow/golang-ipc v1.0.0
 	github.com/paul-mannino/go-fuzzywuzzy v0.0.0-20200127021948-54652b135d0e
+	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d
 	go.uber.org/zap v1.23.0
+	golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
 	golang.org/x/text v0.3.7
 )
 

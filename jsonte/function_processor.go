@@ -2,6 +2,7 @@ package jsonte
 
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
+	"github.com/MCDevKit/jsonte/jsonte/json"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/gammazero/deque"
 	"strings"
@@ -9,6 +10,11 @@ import (
 
 // ProcessMCFunction processes an mcfunction file replacing all the jsonte expressions with their values
 func ProcessMCFunction(input string, scope types.JsonObject) (string, error) {
+	str, err := json.ConvertToUTF8([]byte(input))
+	if err != nil {
+		return input, burrito.PassError(err)
+	}
+	input = string(str)
 	globalScope := deque.Deque[types.JsonObject]{}
 	globalScope.PushBack(scope)
 
