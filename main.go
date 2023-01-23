@@ -343,7 +343,7 @@ func getScope(scope []string) (types.JsonObject, error) {
 				if err != nil {
 					return burrito.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
 				}
-				result = types.MergeObject(result, json, false)
+				result = types.MergeObject(result, json, false, false, "#")
 			}
 			return nil
 		})

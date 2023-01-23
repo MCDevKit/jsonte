@@ -65,7 +65,7 @@ func LoadModule(input string, globalScope types.JsonObject, timeout int64) (Json
 		if err != nil {
 			return JsonModule{}, burrito.WrapErrorf(err, "Failed to template scope")
 		}
-		scope = types.MergeObject(object.(types.JsonObject), scope, false)
+		scope = types.MergeObject(object.(types.JsonObject), scope, false, false, "#")
 	}
 	template, err := FindAnyCase[types.JsonObject](jsonObject, "$template")
 	if err != nil {
@@ -119,7 +119,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 		if err != nil {
 			return result, burrito.WrapErrorf(err, "Failed to template scope")
 		}
-		scope = types.MergeObject(object.(types.JsonObject), scope, false)
+		scope = types.MergeObject(object.(types.JsonObject), scope, false, false, "#")
 	}
 
 	c, err := FindAnyCase[types.JsonString](root, "$copy")
@@ -204,7 +204,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 					visitor.pushScope(types.AsObject(map[string]interface{}{"$modules": mappedModules}))
 				}
 				if isCopy && hasTemplate {
-					template = types.MergeObject(template, *temp, false)
+					template = types.MergeObject(template, *temp, false, false, "#")
 				}
 				fName, err := FindAnyCase[types.JsonString](*file, "file", "name")
 				if err != nil {
@@ -225,7 +225,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 				if _, ok := item.(types.JsonObject); ok {
 					visitor.popScope()
 				}
-				result.Put(mFileName.StringValue(), types.MergeObject(types.NewJsonObject(), f.(types.JsonObject), false))
+				result.Put(mFileName.StringValue(), types.MergeObject(types.NewJsonObject(), f.(types.JsonObject), false, false, "#"))
 				result.Put(mFileName.StringValue(), types.DeleteNulls(result.Get(mFileName.StringValue())))
 			}
 		} else {
@@ -253,7 +253,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 			visitor.pushScope(types.AsObject(map[string]interface{}{"$modules": mappedModules}))
 		}
 		if hasTemplate {
-			template = types.MergeObject(template, *temp, false)
+			template = types.MergeObject(template, *temp, false, false, "#")
 		}
 		f, err := visitor.visitObject(types.DeepCopyObject(template), "$template")
 		if err != nil {
@@ -262,7 +262,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 		if isCopy {
 			visitor.popScope()
 		}
-		result.Put(name, types.MergeObject(types.NewJsonObject(), f.(types.JsonObject), false))
+		result.Put(name, types.MergeObject(types.NewJsonObject(), f.(types.JsonObject), false, false, "#"))
 		result.Put(name, types.DeleteNulls(result.Get(name)))
 	}
 
@@ -366,14 +366,14 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 			if err != nil {
 				return types.NewJsonObject(), resolvedModules, burrito.WrapErrorf(err, "Error processing $copy for module %s", mod.Name.StringValue())
 			}
-			template = types.MergeObject(object, template, true)
+			template = types.MergeObject(object, template, true, false, "#")
 		}
 		parent, err := visitor.visitObject(mod.Template, "[Module "+module+"]")
 		visitor.scope.PopFront()
 		if err != nil {
 			return types.NewJsonObject(), resolvedModules, burrito.WrapErrorf(err, "Error processing template for module %s", mod.Name.StringValue())
 		}
-		template = types.MergeObject(template, parent.(types.JsonObject), true)
+		template = types.MergeObject(template, parent.(types.JsonObject), true, false, "#")
 	}
 	return template, resolvedModules, nil
 }

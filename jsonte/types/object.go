@@ -1,9 +1,11 @@
 package types
 
 import (
+	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"reflect"
+	"regexp"
 	"strings"
 )
 
@@ -99,7 +101,7 @@ func (o JsonObject) Index(i JsonType) (JsonType, error) {
 
 func (o JsonObject) Add(i JsonType) JsonType {
 	if IsObject(i) {
-		return MergeObject(AsObject(i), o, false)
+		return MergeObject(AsObject(i), o, false, false, "#")
 	}
 	if i == nil || i == Null {
 		return o
@@ -198,9 +200,12 @@ func IsEqualObject(a, b utils.NavigableMap[string, JsonType]) bool {
 	return true
 }
 
+// TODO: This should be moved to a shared package.
+var actionPattern, _ = regexp.Compile("^\\{\\{(?:\\\\.|[^{}])+}}$")
+
 // MergeObject merges two JSON objects into a new JSON object.
 // If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.
-func MergeObject(template, parent JsonObject, keepOverrides bool) JsonObject {
+func MergeObject(template, parent JsonObject, keepOverrides, insideTemplate bool, path string) JsonObject {
 	result := NewJsonObject()
 	for _, k := range template.Keys() {
 		v := template.Get(k)
@@ -222,6 +227,9 @@ out:
 			}
 		}
 		if strings.HasPrefix(k, "$") && !isReservedKey(k) {
+			if insideTemplate {
+				utils.Logger.Warnf("Overriding inside templated object is not supported. Unexpected behavior may occur at %s/%s", path, k)
+			}
 			if keepOverrides {
 				result.Put(k, v)
 			} else {
@@ -230,20 +238,20 @@ out:
 			}
 		} else if !template.ContainsKey(k) {
 			if IsObject(v) {
-				merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides)
+				merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else if IsArray(v) {
-				merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides)
+				merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else {
 				result.Put(k, v)
 			}
 		} else {
 			if IsObject(v) && IsObject(result.Get(k)) {
-				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides)
+				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else if IsArray(v) && IsArray(template.Get(k)) {
-				merge := MergeArray(AsArray(template.Get(k)), AsArray(v), keepOverrides)
+				merge := MergeArray(AsArray(template.Get(k)), AsArray(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else {
 				result.Put(k, v)
