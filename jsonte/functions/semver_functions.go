@@ -48,6 +48,11 @@ func RegisterSemverFunctions() {
 		Name:  "semver",
 		Body:  semver,
 	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "semver",
+		Body:  semverSemver,
+	})
 }
 
 func semverString(str types.JsonString) (types.Semver, error) {
@@ -60,4 +65,8 @@ func semverArray(arr types.JsonArray) (types.Semver, error) {
 
 func semver(major, minor, patch types.JsonNumber) (types.Semver, error) {
 	return types.Semver{Major: int(major.IntValue()), Minor: int(minor.IntValue()), Patch: int(patch.IntValue())}, nil
+}
+
+func semverSemver(ver types.Semver) types.Semver {
+	return ver
 }
