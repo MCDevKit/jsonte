@@ -55,6 +55,7 @@ func LoadModule(input string, globalScope types.JsonObject, timeout int64) (Json
 		scope = types.NewJsonObject()
 	} else {
 		tempScope := deque.Deque[types.JsonObject]{}
+		tempScope.PushBack(globalScope)
 		tempScope.PushBack(scope)
 		scopeVisitor := TemplateVisitor{
 			scope:       tempScope,

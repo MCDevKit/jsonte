@@ -119,13 +119,13 @@ func compareJsonArray(t *testing.T, expected types.JsonArray, actual types.JsonA
 	}
 }
 
-func assertTemplateWithModule(t *testing.T, template, module, expected string) {
+func assertTemplateWithModule(t *testing.T, template, module, expected string, globalScope types.JsonObject) {
 	t.Helper()
-	mod, err := jsonte.LoadModule(module, types.NewJsonObject(), -1)
+	mod, err := jsonte.LoadModule(module, globalScope, -1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	process, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{
+	process, err := jsonte.Process("test", template, globalScope, map[string]jsonte.JsonModule{
 		mod.Name.StringValue(): mod,
 	}, -1)
 	if err != nil {
@@ -408,7 +408,7 @@ func TestSimpleModule(t *testing.T) {
 		"asd": 123,
 		"overrideMe": 1
 	}`
-	assertTemplateWithModule(t, template, module, expected)
+	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
 }
 
 func TestSimpleModuleDifferentCase(t *testing.T) {
@@ -432,7 +432,7 @@ func TestSimpleModuleDifferentCase(t *testing.T) {
 		"asd": 123,
 		"overrideMe": 1
 	}`
-	assertTemplateWithModule(t, template, module, expected)
+	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
 }
 
 func TestSimpleCopy(t *testing.T) {
@@ -715,7 +715,7 @@ func TestCopyAndExtend(t *testing.T) {
 		"asd": 123,
 		"overrideMe": 1
 	}`
-	assertTemplateWithModule(t, template, module, expected)
+	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
@@ -848,7 +848,7 @@ func TestModuleOverride(t *testing.T) {
 			}
 		}
 	}`
-	assertTemplateWithModule(t, template, module, expected)
+	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
 }
 
 func TestJsonParser(t *testing.T) {
@@ -1078,4 +1078,28 @@ func TestTemplateScope(t *testing.T) {
 		"data": [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
 	}`
 	assertTemplate(t, template, expected)
+}
+
+func TestTemplateModuleScope(t *testing.T) {
+	module := `{
+		"$module": "simple",
+		"$scope": {
+			"asd": "{{globalData}}"
+		},
+		"$template": {
+			"asd": "{{=asd}}"
+		}
+	}`
+	template := `{
+		"$extend": "simple",
+		"$template": {
+			"qwe": "{{=asd}}"
+		}
+	}`
+	expected := `{
+		"asd": 5
+	}`
+	assertTemplateWithModule(t, template, module, expected, types.AsObject(map[string]interface{}{
+		"globalData": 5,
+	}))
 }
