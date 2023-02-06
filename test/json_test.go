@@ -395,18 +395,46 @@ func TestSimpleModule(t *testing.T) {
 		},
 		"$template": {
 			"asd": "{{=asd}}",
-			"overrideMe": -1
+			"overrideMe": -1,
+			"objectAndObject": {
+				"asd": 123
+			},
+			"arrayAndArray": [
+				1,
+				2,
+				3
+			]
 		}
 	}`
 	template := `{
 		"$extend": "simple",
 		"$template": {
-			"overrideMe": 1
+			"overrideMe": 1,
+			"objectAndObject": {
+				"qwe": 456
+			},
+			"arrayAndArray": [
+				4,
+				5,
+				6
+			]
 		}
 	}`
 	expected := `{
 		"asd": 123,
-		"overrideMe": 1
+		"overrideMe": 1,
+		"objectAndObject": {
+			"asd": 123,
+			"qwe": 456
+		},
+		"arrayAndArray": [
+			1,
+			2,
+			3,
+			4,
+			5,
+			6
+		]
 	}`
 	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
 }
