@@ -1131,3 +1131,28 @@ func TestTemplateModuleScope(t *testing.T) {
 		"globalData": 5,
 	}))
 }
+
+func TestArrayMergeAndOverride(t *testing.T) {
+	module := `{
+		"$module": "simple",
+		"$template": {
+			"arr1": [1, 2, 3],
+			"arr2": [1, 2, 3],
+			"arr2": [4, 5, 6]
+		}
+	}`
+	template := `{
+		"$extend": "simple",
+		"$template": {
+			"arr1": [4, 5, 6],
+			"$arr2": [1, 2, 3, 4, 5, 6],
+			"^arr2": [1, 2, 3]
+		}
+	}`
+	expected := `{
+		"arr1": [1, 2, 3, 4, 5, 6],
+		"arr2": [1, 2, 3, 4, 5, 6],
+		"arr2": [1, 2, 3, 4, 5, 6]
+	}`
+	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+}

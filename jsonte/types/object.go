@@ -226,6 +226,8 @@ out:
 				continue out
 			}
 		}
+		isReversedMerge := strings.HasPrefix(k, "^")
+		k = strings.TrimPrefix(k, "^")
 		if strings.HasPrefix(k, "$") && !isReservedKey(k) {
 			if insideTemplate {
 				utils.Logger.Warnf("Overriding inside templated object is not supported. Unexpected behavior may occur at %s/%s", path, k)
@@ -251,7 +253,12 @@ out:
 				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else if IsArray(v) && IsArray(template.Get(k)) {
-				merge := MergeArray(AsArray(template.Get(k)), AsArray(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+				var merge JsonArray
+				if isReversedMerge {
+					merge = MergeArray(AsArray(v), AsArray(template.Get(k)), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+				} else {
+					merge = MergeArray(AsArray(template.Get(k)), AsArray(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+				}
 				result.Put(k, merge)
 			} else {
 				result.Put(k, v)
