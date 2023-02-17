@@ -2,6 +2,7 @@ package functions
 
 import (
 	"github.com/MCDevKit/jsonte/jsonte/types"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"math"
 	"math/rand"
 )
@@ -711,10 +712,55 @@ func RegisterMathFunctions() {
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "wrap",
+		Body:  wrapFull,
+		Docs: Docs{
+			Summary: "Returns the given number wrapped between the first and second argument.",
+			Arguments: []Argument{
+				{
+					Name:    "value",
+					Summary: "The value to wrap.",
+				},
+				{
+					Name:     "start",
+					Summary:  "The start of the range to wrap the value between.",
+					Optional: true,
+				},
+				{
+					Name:    "end",
+					Summary: "The end of the range to wrap the value between.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 1",
+    "test": "{{wrap(10, 0, 4)}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "wrap",
+		Body:  wrapShort,
+	})
 }
 
-func randomNumber() (types.JsonNumber, error) {
-	return types.AsNumber(rand.Float64()), nil
+func wrapFull(value, start, end types.JsonNumber) types.JsonNumber {
+	return types.AsNumber(utils.WrapRange(int(value.IntValue()), int(start.IntValue()), int(end.IntValue())))
+}
+
+func wrapShort(value, end types.JsonNumber) types.JsonNumber {
+	return types.AsNumber(utils.WrapRange(int(value.IntValue()), 0, int(end.IntValue())))
+}
+
+func randomNumber() types.JsonNumber {
+	return types.AsNumber(rand.Float64())
 }
 
 func randomInt(a, b types.JsonNumber) (types.JsonNumber, error) {
