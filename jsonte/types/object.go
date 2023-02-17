@@ -253,11 +253,16 @@ out:
 				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else if IsArray(v) && IsArray(template.Get(k)) {
-				var merge JsonArray
-				if isReversedMerge {
-					merge = MergeArray(AsArray(v), AsArray(template.Get(k)), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+				var merge, v1 JsonArray
+				if result.ContainsKey(k) {
+					v1 = AsArray(result.Get(k))
 				} else {
-					merge = MergeArray(AsArray(template.Get(k)), AsArray(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+					v1 = AsArray(template.Get(k))
+				}
+				if isReversedMerge {
+					merge = MergeArray(AsArray(v), v1, keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+				} else {
+					merge = MergeArray(v1, AsArray(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
 				}
 				result.Put(k, merge)
 			} else {

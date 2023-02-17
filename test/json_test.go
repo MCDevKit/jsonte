@@ -74,6 +74,9 @@ func compareJsonObject(t *testing.T, expected types.JsonObject, actual types.Jso
 			}
 		}
 	}
+	if t.Failed() {
+		t.Errorf("\nExpected: %s\n  Actual: %s", types.ToString(expected), types.ToString(actual))
+	}
 }
 
 func compareJsonArray(t *testing.T, expected types.JsonArray, actual types.JsonArray, path string) {
@@ -1138,7 +1141,9 @@ func TestArrayMergeAndOverride(t *testing.T) {
 		"$template": {
 			"arr1": [1, 2, 3],
 			"arr2": [1, 2, 3],
-			"arr2": [4, 5, 6]
+			"arr3": [4, 5, 6],
+			"arr4": [3, 4],
+			"arr5": [3, 4]
 		}
 	}`
 	template := `{
@@ -1146,13 +1151,19 @@ func TestArrayMergeAndOverride(t *testing.T) {
 		"$template": {
 			"arr1": [4, 5, 6],
 			"$arr2": [1, 2, 3, 4, 5, 6],
-			"^arr2": [1, 2, 3]
+			"^arr3": [1, 2, 3],
+			"^arr4": [1, 2],
+			"arr4": [5, 6],
+			"arr5": [5, 6],
+			"^arr5": [1, 2]
 		}
 	}`
 	expected := `{
 		"arr1": [1, 2, 3, 4, 5, 6],
 		"arr2": [1, 2, 3, 4, 5, 6],
-		"arr2": [1, 2, 3, 4, 5, 6]
+		"arr3": [1, 2, 3, 4, 5, 6],
+		"arr4": [1, 2, 3, 4, 5, 6],
+		"arr5": [1, 2, 3, 4, 5, 6]
 	}`
 	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
 }
