@@ -106,3 +106,17 @@ func TestFilePath(t *testing.T) {
 	assertString(t, eval, "dir")
 	safeio.Resolver = safeio.DefaultIOResolver
 }
+
+func TestFileExists(t *testing.T) {
+	prepareFS()
+	eval := evaluate(t, `fileExists('test.txt')`)
+	assertBool(t, eval, true)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestFileDoesntExist(t *testing.T) {
+	prepareFS()
+	eval := evaluate(t, `fileExists('aaaaa.txt')`)
+	assertBool(t, eval, false)
+	safeio.Resolver = safeio.DefaultIOResolver
+}

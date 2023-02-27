@@ -227,6 +227,38 @@ func RegisterFileFunctions() {
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group:    group,
+		Name:     "fileExists",
+		Body:     fileExists,
+		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Checks if the file under given path exists.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be true if the file test.txt exists",
+    "test": "{{fileExists('test.txt')}}"
+  }
+}
+</code>`,
+		},
+	})
+}
+
+func fileExists(s types.JsonString) (types.JsonBool, error) {
+	_, err := safeio.Resolver.Stat(s.StringValue())
+	if err != nil {
+		return types.NewBool(false), nil
+	}
+	return types.NewBool(true), nil
 }
 
 func load(s types.JsonString) (types.JsonObject, error) {

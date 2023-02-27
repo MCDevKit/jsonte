@@ -136,7 +136,7 @@ func assertBool(t *testing.T, eval jsonte.Result, expected bool) {
 		t.Fatalf("Result is not a boolean (%s)", reflect.TypeOf(eval.Value).Name())
 	}
 	if eval.Value.(types.JsonBool).BoolValue() != expected {
-		t.Fatalf("Result is not correct (expected %t, got %t)", expected, eval.Value)
+		t.Fatalf("Result is not correct (expected %t, got %s)", expected, eval.Value.StringValue())
 	}
 }
 
@@ -150,7 +150,7 @@ func assertString(t *testing.T, eval jsonte.Result, expected string) {
 		t.Fatalf("Result is not a string (%s)", reflect.TypeOf(eval.Value).Name())
 	}
 	if eval.Value.(types.JsonString).StringValue() != expected {
-		t.Fatalf("Result is not correct (expected %s, got %s)", expected, eval.Value)
+		t.Fatalf("Result is not correct (expected %s, got %s)", expected, eval.Value.StringValue())
 	}
 }
 
