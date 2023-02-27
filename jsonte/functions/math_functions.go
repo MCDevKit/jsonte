@@ -399,7 +399,7 @@ func RegisterMathFunctions() {
 <code>
 {
   "$template": {
-    "$comment": "The field below will be 3.141592653589793",
+    "$comment": "The field below will be 3.141593",
     "test": "{{pi()}}"
   }
 }
