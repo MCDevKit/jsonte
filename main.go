@@ -239,6 +239,45 @@ func main() {
 					}
 				}
 			}
+			//Process lang files
+			for base, files := range fileSets {
+				for _, file := range files {
+					if strings.HasSuffix(file, ".lang") {
+						bytes, err := ioutil.ReadFile(file)
+						if err != nil {
+							return burrito.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file)
+						}
+						fileName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+						output, err := jsonte.ProcessLangFile(string(bytes), object)
+						if err != nil {
+							return burrito.WrapErrorf(err, "An error occurred while processing the mcfunction file %s", file)
+						}
+						filename := filepath.Dir(file) + "/" + fileName + ".lang"
+						if outFile != "" {
+							filename, err = filepath.Rel(base, filename)
+							if err != nil {
+								return burrito.WrapErrorf(err, "An error occurred while creating the output file name")
+							}
+							filename = filepath.Join(outFile, base, filename)
+							rel, err := filepath.Rel(outFile, filename)
+							if err != nil {
+								return burrito.WrapErrorf(err, "An error occurred while relativizing the output file name")
+							}
+							utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
+						} else {
+							utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
+						}
+						err = os.MkdirAll(filepath.Dir(filename), 0755)
+						if err != nil {
+							return burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
+						}
+						err = ioutil.WriteFile(filename, []byte(output), 0644)
+						if err != nil {
+							return burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
+						}
+					}
+				}
+			}
 			return nil
 		},
 	})
@@ -391,7 +430,7 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 				return burrito.WrapErrorf(err, "An error occurred while reading the path %s", p)
 			}
 			if !info.IsDir() {
-				if !strings.HasSuffix(path, ".templ") && !strings.HasSuffix(path, ".modl") && !strings.HasSuffix(path, ".mcfunction") {
+				if !strings.HasSuffix(path, ".templ") && !strings.HasSuffix(path, ".modl") && !strings.HasSuffix(path, ".mcfunction") && !strings.HasSuffix(path, ".lang") {
 					return nil
 				}
 				for _, g := range includes {

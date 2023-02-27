@@ -56,3 +56,8 @@ func TestParsingStrings3(t *testing.T) {
 	expected := "say test\nsay test2"
 	assertMCFunction(t, f, expected)
 }
+
+func TestMCFunctionNormalComment(t *testing.T) {
+	f := `# Just a comment\n#Another comment\nsay hello`
+	assertMCFunction(t, f, f)
+}
