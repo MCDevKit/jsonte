@@ -102,8 +102,15 @@ func TestFileName(t *testing.T) {
 
 func TestFilePath(t *testing.T) {
 	prepareFS()
-	eval := evaluate(t, `filePath('dir/test.png')`)
-	assertString(t, eval, "dir")
+	eval := evaluate(t, `filePath('dir/dir2/test.png')`)
+	assertString(t, eval, "dir"+string(filepath.Separator)+"dir2")
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestFilePathSeparator(t *testing.T) {
+	prepareFS()
+	eval := evaluate(t, `filePath('dir/dir2/test.png', '/')`)
+	assertString(t, eval, "dir/dir2")
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 

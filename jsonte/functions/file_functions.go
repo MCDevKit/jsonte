@@ -183,7 +183,7 @@ func RegisterFileFunctions() {
 	RegisterFunction(JsonFunction{
 		Group: group,
 		Name:  "filePath",
-		Body:  filePath,
+		Body:  filePathSeparator,
 		Docs: Docs{
 			Summary: "Gets the path of a file.",
 			Arguments: []Argument{
@@ -191,17 +191,26 @@ func RegisterFileFunctions() {
 					Name:    "path",
 					Summary: "The path to the file.",
 				},
+				{
+					Name:    "separator",
+					Summary: "Separator to use for the path.",
+				},
 			},
 			Example: `
 <code>
 {
   "$template": {
     "$comment": "The field below will be 'data'",
-    "test": "{{filePath('data.json')}}"
+    "test": "{{filePath('data/file.json')}}"
   }
 }
 </code>`,
 		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "filePath",
+		Body:  filePath,
 	})
 	RegisterFunction(JsonFunction{
 		Group:    group,
@@ -351,6 +360,10 @@ func fileBaseName(s types.JsonString) types.JsonString {
 
 func filePath(s types.JsonString) types.JsonString {
 	return types.NewString(filepath.Dir(s.StringValue()))
+}
+
+func filePathSeparator(s, separator types.JsonString) types.JsonString {
+	return types.NewString(strings.ReplaceAll(filepath.Dir(s.StringValue()), string(filepath.Separator), separator.Value))
 }
 
 func isDir(s types.JsonString) (types.JsonBool, error) {
