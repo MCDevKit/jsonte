@@ -4,12 +4,15 @@ import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/types"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gobwas/glob"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+const fileCache = "fileCache"
 
 func RegisterFileFunctions() {
 	const group = "file"
@@ -18,6 +21,7 @@ func RegisterFileFunctions() {
 		Title:   "File functions",
 		Summary: "Functions related to files and file paths.",
 	})
+	utils.CreateCacheBucket(fileCache)
 	RegisterFunction(JsonFunction{
 		Group:    group,
 		Name:     "load",
@@ -271,19 +275,28 @@ func fileExists(s types.JsonString) (types.JsonBool, error) {
 }
 
 func load(s types.JsonString) (types.JsonObject, error) {
-	resolver, err := safeio.Resolver.Open(s.StringValue())
-	if err != nil {
-		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
+	cache := utils.GetCache(fileCache, s.StringValue())
+	if cache != nil {
+		return (*cache).(types.JsonObject), nil
+	} else {
+		resolver, err := safeio.Resolver.Open(s.StringValue())
+		if err != nil {
+			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
+		}
+		readAll, err := ioutil.ReadAll(resolver)
+		if err != nil {
+			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read file %s", s.StringValue())
+		}
+		err = resolver.Close()
+		if err != nil {
+			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to close file %s", s.StringValue())
+		}
+		object, err := types.ParseJsonObject(readAll)
+		if err != nil {
+			utils.PutCache(fileCache, s.StringValue(), object)
+		}
+		return object, err
 	}
-	readAll, err := ioutil.ReadAll(resolver)
-	if err != nil {
-		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read file %s", s.StringValue())
-	}
-	err = resolver.Close()
-	if err != nil {
-		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to close file %s", s.StringValue())
-	}
-	return types.ParseJsonObject(readAll)
 }
 
 func fileList(s types.JsonString) (types.JsonArray, error) {
