@@ -704,7 +704,7 @@ func TestDeleteNulls2(t *testing.T) {
 		},
 		"$copy": "file.json",
 		"$template": {
-			"${{#del}}": {
+			"{{#del}}": {
 				"{{value}}": null
 			}
 		}
@@ -739,7 +739,9 @@ func TestCopyAndExtend(t *testing.T) {
 		"$extend": "simple",
 		"$template": {
 			"overrideMe": 1,
-			"removeMe1": null
+			"{{?true}}": {
+				"$removeMe1": null
+			}
 		}
 	}`
 	expected := `{

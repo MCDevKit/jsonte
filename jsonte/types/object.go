@@ -236,8 +236,8 @@ out:
 				result.Put(k, v)
 			} else {
 				result.Put(strings.TrimPrefix(k, "$"), v)
-				skipKeys = append(skipKeys, strings.TrimPrefix(k, "$"))
 			}
+			skipKeys = append(skipKeys, strings.TrimPrefix(k, "$"))
 		} else if !template.ContainsKey(k) {
 			if IsObject(v) {
 				merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))

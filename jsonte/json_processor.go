@@ -205,7 +205,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 					visitor.pushScope(types.AsObject(map[string]interface{}{"$modules": mappedModules}))
 				}
 				if isCopy && hasTemplate {
-					template = types.MergeObject(template, *temp, false, false, "#")
+					template = types.MergeObject(template, *temp, true, false, "#")
 				}
 				fName, err := FindAnyCase[types.JsonString](*file, "file", "name")
 				if err != nil {
@@ -254,7 +254,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 			visitor.pushScope(types.AsObject(map[string]interface{}{"$modules": mappedModules}))
 		}
 		if hasTemplate {
-			template = types.MergeObject(template, *temp, false, false, "#")
+			template = types.MergeObject(template, *temp, true, false, "#")
 		}
 		f, err := visitor.visitObject(types.DeepCopyObject(template), "$template")
 		if err != nil {
@@ -450,14 +450,9 @@ func (v *TemplateVisitor) visitObject(obj types.JsonObject, path string) (types.
 						}
 						u := o.(types.JsonObject)
 						for _, k := range u.Keys() {
-							if u.Get(k) == nil || u.Get(k) == types.Null {
-								result.Put(k, types.Null)
-							} else {
-								json, err := types.MergeJSON(result.Get(k), u.Get(k), true)
-								if err != nil {
-									return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", k)
-								}
-								result.Put(k, json)
+							err = PutValue(result, k, u.Get(k), path)
+							if err != nil {
+								return nil, burrito.PassError(err)
 							}
 						}
 					}
@@ -472,14 +467,9 @@ func (v *TemplateVisitor) visitObject(obj types.JsonObject, path string) (types.
 					}
 					if obj, ok := o.(types.JsonObject); ok {
 						for _, k := range obj.Keys() {
-							if obj.Get(k) == nil || obj.Get(k) == types.Null {
-								result.Put(k, types.Null)
-							} else {
-								json, err := types.MergeJSON(result.Get(k), obj.Get(k), true)
-								if err != nil {
-									return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", k)
-								}
-								result.Put(k, json)
+							err = PutValue(result, k, obj.Get(k), path)
+							if err != nil {
+								return nil, burrito.PassError(err)
 							}
 						}
 					} else {
@@ -495,14 +485,9 @@ func (v *TemplateVisitor) visitObject(obj types.JsonObject, path string) (types.
 				if err != nil {
 					return nil, burrito.PassError(err)
 				}
-				if r == nil || r == types.Null {
-					result.Put(k.StringValue(), types.Null)
-				} else {
-					json, err := types.MergeJSON(result.Get(k.StringValue()), r, true)
-					if err != nil {
-						return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", k.StringValue())
-					}
-					result.Put(k.StringValue(), json)
+				err = PutValue(result, k.StringValue(), r, path)
+				if err != nil {
+					return nil, burrito.PassError(err)
 				}
 			default:
 				return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", eval.Action.String())
@@ -516,14 +501,9 @@ func (v *TemplateVisitor) visitObject(obj types.JsonObject, path string) (types.
 			if err != nil {
 				return nil, burrito.PassError(err)
 			}
-			if r == nil || r == types.Null {
-				result.Put(key, types.Null)
-			} else {
-				json, err := types.MergeJSON(result.Get(k.StringValue()), r, true)
-				if err != nil {
-					return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", k.StringValue())
-				}
-				result.Put(k.StringValue(), json)
+			err = PutValue(result, k.StringValue(), r, path)
+			if err != nil {
+				return nil, burrito.PassError(err)
 			}
 		} else {
 			var err error
@@ -531,18 +511,26 @@ func (v *TemplateVisitor) visitObject(obj types.JsonObject, path string) (types.
 			if err != nil {
 				return nil, burrito.PassError(err)
 			}
-			if r == nil || r == types.Null {
-				result.Put(key, types.Null)
-			} else {
-				json, err := types.MergeJSON(result.Get(key), r, true)
-				if err != nil {
-					return nil, utils.WrapJsonErrorf(path, err, "Failed to merge %s", key)
-				}
-				result.Put(key, json)
+			err = PutValue(result, key, r, path)
+			if err != nil {
+				return nil, burrito.PassError(err)
 			}
 		}
 	}
 	return result, nil
+}
+
+func PutValue(result types.JsonObject, key string, r types.JsonType, path string) error {
+	if r == nil || r == types.Null {
+		result.Put(key, types.Null)
+	} else {
+		json, err := types.MergeJSON(result.Get(key), r, true)
+		if err != nil {
+			return utils.WrapJsonErrorf(path, err, "Failed to merge %s", key)
+		}
+		result.Put(key, json)
+	}
+	return nil
 }
 
 func (v *TemplateVisitor) visitArray(arr types.JsonArray, path string) (types.JsonType, error) {
