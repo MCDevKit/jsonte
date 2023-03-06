@@ -62,7 +62,7 @@ func (o JsonArray) Index(i JsonType) (JsonType, error) {
 
 func (o JsonArray) Add(i JsonType) JsonType {
 	if IsArray(i) {
-		return MergeArray(o, AsArray(i), false, false, "#")
+		return MergeArray(o, AsArray(i), false, "#")
 	}
 	if i == nil || i == Null {
 		return o
@@ -129,14 +129,14 @@ func AsArray(obj interface{}) JsonArray {
 }
 
 // MergeArray merges two JSON arrays into a new JSON array.
-func MergeArray(template, parent JsonArray, keepOverrides, insideTemplate bool, path string) JsonArray {
+func MergeArray(template, parent JsonArray, keepOverrides bool, path string) JsonArray {
 	var result = NewJsonArray()
 	for i, v := range template.Value {
 		if IsObject(v) {
-			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, insideTemplate, fmt.Sprintf("%s[%d]", path, i))
+			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s[%d]", path, i))
 			result.Value = append(result.Value, merge)
 		} else if IsArray(v) {
-			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, insideTemplate, fmt.Sprintf("%s[%d]", path, i))
+			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, fmt.Sprintf("%s[%d]", path, i))
 			result.Value = append(result.Value, merge)
 		} else {
 			result.Value = append(result.Value, v)
@@ -144,10 +144,10 @@ func MergeArray(template, parent JsonArray, keepOverrides, insideTemplate bool, 
 	}
 	for i, v := range parent.Value {
 		if IsObject(v) {
-			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, insideTemplate, fmt.Sprintf("%s[%d]", path, i))
+			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s[%d]", path, i))
 			result.Value = append(result.Value, merge)
 		} else if IsArray(v) {
-			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, insideTemplate, fmt.Sprintf("%s[%d]", path, i))
+			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, fmt.Sprintf("%s[%d]", path, i))
 			result.Value = append(result.Value, merge)
 		} else {
 			result.Value = append(result.Value, v)

@@ -101,7 +101,7 @@ func (o JsonObject) Index(i JsonType) (JsonType, error) {
 
 func (o JsonObject) Add(i JsonType) JsonType {
 	if IsObject(i) {
-		return MergeObject(AsObject(i), o, false, false, "#")
+		return MergeObject(AsObject(i), o, false, "#")
 	}
 	if i == nil || i == Null {
 		return o
@@ -205,7 +205,7 @@ var actionPattern, _ = regexp.Compile("^\\{\\{(?:\\\\.|[^{}])+}}$")
 
 // MergeObject merges two JSON objects into a new JSON object.
 // If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.
-func MergeObject(template, parent JsonObject, keepOverrides, insideTemplate bool, path string) JsonObject {
+func MergeObject(template, parent JsonObject, keepOverrides bool, path string) JsonObject {
 	result := NewJsonObject()
 	for _, k := range template.Keys() {
 		v := template.Get(k)
@@ -229,9 +229,6 @@ out:
 		isReversedMerge := strings.HasPrefix(k, "^")
 		k = strings.TrimPrefix(k, "^")
 		if strings.HasPrefix(k, "$") && !isReservedKey(k) {
-			if insideTemplate {
-				utils.Logger.Warnf("Overriding inside templated object is not supported. Unexpected behavior may occur at %s/%s", path, k)
-			}
 			if keepOverrides {
 				result.Put(k, v)
 			} else {
@@ -240,17 +237,17 @@ out:
 			skipKeys = append(skipKeys, strings.TrimPrefix(k, "$"))
 		} else if !template.ContainsKey(k) {
 			if IsObject(v) {
-				merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+				merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else if IsArray(v) {
-				merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+				merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else {
 				result.Put(k, v)
 			}
 		} else {
 			if IsObject(v) && IsObject(result.Get(k)) {
-				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else if IsArray(v) && IsArray(template.Get(k)) {
 				var merge, v1 JsonArray
@@ -260,9 +257,9 @@ out:
 					v1 = AsArray(template.Get(k))
 				}
 				if isReversedMerge {
-					merge = MergeArray(AsArray(v), v1, keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+					merge = MergeArray(AsArray(v), v1, keepOverrides, fmt.Sprintf("%s/%s", path, k))
 				} else {
-					merge = MergeArray(v1, AsArray(v), keepOverrides, insideTemplate || actionPattern.MatchString(k), fmt.Sprintf("%s/%s", path, k))
+					merge = MergeArray(v1, AsArray(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
 				}
 				result.Put(k, merge)
 			} else {

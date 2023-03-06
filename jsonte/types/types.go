@@ -145,12 +145,12 @@ func MergeJSON(template, parent JsonType, keepOverrides bool) (JsonType, error) 
 	if IsObject(template) && IsObject(parent) {
 		templateMap := AsObject(template)
 		parentMap := AsObject(parent)
-		return MergeObject(templateMap, parentMap, keepOverrides, false, "#"), nil
+		return MergeObject(templateMap, parentMap, keepOverrides, "#"), nil
 	}
 	if IsArray(template) && IsArray(parent) {
 		templateArray := AsArray(template)
 		parentArray := AsArray(parent)
-		return MergeArray(templateArray, parentArray, keepOverrides, false, "#"), nil
+		return MergeArray(templateArray, parentArray, keepOverrides, "#"), nil
 	}
 	if IsObject(template) != IsObject(parent) {
 		return nil, burrito.WrappedErrorf("Cannot merge %s and %s", TypeName(template), TypeName(parent))
