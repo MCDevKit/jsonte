@@ -524,11 +524,15 @@ func PutValue(result types.JsonObject, key string, r types.JsonType, path string
 	if r == nil || r == types.Null {
 		result.Put(key, types.Null)
 	} else {
-		json, err := types.MergeJSON(result.Get(key), r, true)
-		if err != nil {
-			return utils.WrapJsonErrorf(path, err, "Failed to merge %s", key)
+		if strings.HasPrefix(key, "$") && result.ContainsKey(key) && !types.IsReservedKey(key) {
+			result.Put(key, r)
+		} else {
+			json, err := types.MergeJSON(result.Get(key), r, true)
+			if err != nil {
+				return utils.WrapJsonErrorf(path, err, "Failed to merge %s", key)
+			}
+			result.Put(key, json)
 		}
-		result.Put(key, json)
 	}
 	return nil
 }

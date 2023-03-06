@@ -228,7 +228,7 @@ out:
 		}
 		isReversedMerge := strings.HasPrefix(k, "^")
 		k = strings.TrimPrefix(k, "^")
-		if strings.HasPrefix(k, "$") && !isReservedKey(k) {
+		if strings.HasPrefix(k, "$") && !IsReservedKey(k) {
 			if keepOverrides {
 				result.Put(k, v)
 			} else {
@@ -291,6 +291,6 @@ func NewJsonObject() JsonObject {
 	return JsonObject{&navigableMap}
 }
 
-func isReservedKey(k string) bool {
+func IsReservedKey(k string) bool {
 	return strings.EqualFold(k, "$comment") || strings.EqualFold(k, "$assert")
 }

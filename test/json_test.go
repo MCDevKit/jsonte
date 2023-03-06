@@ -752,6 +752,35 @@ func TestCopyAndExtend(t *testing.T) {
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
+func TestReplaceInTemplate(t *testing.T) {
+	file := `{
+		"example": ["one"]
+	}`
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json": file,
+	}, false)
+	module := `{
+		"$module": "simple",
+		"$template": {
+			"$example": ["four","five"]
+		}
+	}`
+	template := `{
+	"$copy": "file.json",
+	"$extend": "simple",
+	"$template": {
+		"{{?true}}": {
+			"$example": ["two", "three"]
+		}
+	}
+}`
+	expected := `{
+		"example": ["two", "three"]
+	}`
+	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
 func TestMultipleFiles(t *testing.T) {
 	template := `{
 		"$files": {
