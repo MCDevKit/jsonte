@@ -232,7 +232,13 @@ out:
 			if keepOverrides {
 				result.Put(k, v)
 			} else {
-				result.Put(strings.TrimPrefix(k, "$"), v)
+				if IsObject(v) {
+					result.Put(strings.TrimPrefix(k, "$"), MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s/%s", path, k)))
+				} else if IsArray(v) {
+					result.Put(strings.TrimPrefix(k, "$"), MergeArray(NewJsonArray(), AsArray(v), keepOverrides, fmt.Sprintf("%s/%s", path, k)))
+				} else {
+					result.Put(strings.TrimPrefix(k, "$"), v)
+				}
 			}
 			skipKeys = append(skipKeys, strings.TrimPrefix(k, "$"))
 		} else if !template.ContainsKey(k) {

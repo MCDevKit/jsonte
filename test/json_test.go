@@ -20,7 +20,6 @@ func safeTypeName(v interface{}) string {
 }
 
 func compareJsonObject(t *testing.T, expected types.JsonObject, actual types.JsonObject, path string, checkExtra bool) {
-	t.Helper()
 	for _, key := range expected.Keys() {
 		value1 := expected.Get(key)
 		if actual.ContainsKey(key) {
@@ -68,7 +67,7 @@ func compareJsonObject(t *testing.T, expected types.JsonObject, actual types.Jso
 		if actual.Size() == expected.Size() {
 			for i := 0; i < actual.Size(); i++ {
 				if actual.Keys()[i] != expected.Keys()[i] {
-					t.Errorf("Array keys are not in the right order at %d (expected %s, got %s)", i, types.ToString(types.AsArray(expected.Keys())), types.ToString(types.AsArray(actual.Keys())))
+					t.Errorf("Keys are not in the right order at %d (expected %s, got %s)", i, types.ToString(types.AsArray(expected.Keys())), types.ToString(types.AsArray(actual.Keys())))
 					break
 				}
 			}
@@ -80,7 +79,6 @@ func compareJsonObject(t *testing.T, expected types.JsonObject, actual types.Jso
 }
 
 func compareJsonArray(t *testing.T, expected types.JsonArray, actual types.JsonArray, path string) {
-	t.Helper()
 	for i := 0; i < int(math.Min(float64(len(expected.Value)), float64(len(actual.Value)))); i++ {
 		newPath := fmt.Sprintf("%s[%d]", path, i)
 		value1 := expected.Value[i]
@@ -123,7 +121,6 @@ func compareJsonArray(t *testing.T, expected types.JsonArray, actual types.JsonA
 }
 
 func assertTemplateWithModule(t *testing.T, template, module, expected string, globalScope types.JsonObject) {
-	t.Helper()
 	mod, err := jsonte.LoadModule(module, globalScope, -1)
 	if err != nil {
 		t.Fatal(err)
@@ -142,7 +139,6 @@ func assertTemplateWithModule(t *testing.T, template, module, expected string, g
 }
 
 func assertTemplate(t *testing.T, template, expected string) {
-	t.Helper()
 	process, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
 	if err != nil {
 		t.Fatal(err)
@@ -155,7 +151,6 @@ func assertTemplate(t *testing.T, template, expected string) {
 }
 
 func assertTemplateMultiple(t *testing.T, template, expected string) {
-	t.Helper()
 	process, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
 	if err != nil {
 		t.Fatal(err)
@@ -1197,4 +1192,46 @@ func TestArrayMergeAndOverride(t *testing.T) {
 		"arr5": [1, 2, 3, 4, 5, 6]
 	}`
 	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+}
+
+func TestOverrideNestedFields(t *testing.T) {
+	file := `{
+		"minecraft:client_entity": {
+			"description": {
+				"identifier": "minecraft:cow",
+				"scripts": {
+					"animate": ["test"]
+				}
+			}
+		}
+	}`
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json": file,
+	}, false)
+	template := `{
+		"$copy": "file.json",
+		"$template": {
+			"minecraft:client_entity": {
+				"description": {
+					"{{?true}}": {
+						"$scripts": {
+							"$animate": ["test2"]
+						}
+					}
+				}
+			}
+		}
+	}`
+	expected := `{
+		"minecraft:client_entity": {
+			"description": {
+				"identifier": "minecraft:cow",
+				"scripts": {
+					"animate": ["test2"]
+				}
+			}
+		}
+	}`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
 }
