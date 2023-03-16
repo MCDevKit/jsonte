@@ -20,7 +20,7 @@ func (o JsonArray) BoolValue() bool {
 }
 
 func (o JsonArray) Equals(value JsonType) bool {
-	if value.IsNull() {
+	if value == Null {
 		return false
 	}
 	if b, ok := value.(JsonArray); ok {
@@ -69,10 +69,6 @@ func (o JsonArray) Add(i JsonType) JsonType {
 		return o
 	}
 	return NewString(o.StringValue() + i.StringValue())
-}
-
-func (o JsonArray) IsNull() bool {
-	return false
 }
 
 func (o JsonArray) LessThan(other JsonType) (bool, error) {

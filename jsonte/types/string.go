@@ -14,12 +14,8 @@ type JsonString struct {
 
 var EmptyString = JsonString{Value: ""}
 
-func (n JsonString) IsNull() bool {
-	return false
-}
-
 func (n JsonString) LessThan(other JsonType) (bool, error) {
-	if other == nil || other.IsNull() {
+	if other == nil || other == Null {
 		return false, nil
 	}
 	if IsString(other) {

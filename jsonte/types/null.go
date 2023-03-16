@@ -9,16 +9,12 @@ type JsonNull struct {
 
 var Null = JsonNull{}
 
-func (n JsonNull) IsNull() bool {
-	return true
-}
-
 func (n JsonNull) LessThan(other JsonType) (bool, error) {
 	if other == nil {
 		return true, nil
 	}
 	if b, ok := other.(JsonType); ok {
-		if b.IsNull() {
+		if b == Null {
 			return false, nil
 		}
 		if b.Equals(n) {
@@ -42,7 +38,7 @@ func (n JsonNull) Equals(value JsonType) bool {
 	if value == Null {
 		return true
 	}
-	if b, ok := value.(JsonType); ok && b.IsNull() {
+	if b, ok := value.(JsonType); ok && b == Null {
 		return true
 	}
 	return false
@@ -61,7 +57,7 @@ func (n JsonNull) Index(i JsonType) (JsonType, error) {
 }
 
 func (n JsonNull) Add(i JsonType) JsonType {
-	if i.IsNull() {
+	if i == Null {
 		return Null
 	}
 	return i.Add(n)

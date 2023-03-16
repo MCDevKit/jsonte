@@ -15,11 +15,7 @@ var IdentityLambda = JsonLambda{Value: func(args []JsonType) (JsonType, error) {
 	return args[0], nil
 }}
 
-func (n JsonLambda) IsNull() bool {
-	return false
-}
-
-func (n JsonLambda) LessThan(other JsonType) (bool, error) {
+func (n JsonLambda) LessThan(JsonType) (bool, error) {
 	return false, burrito.WrappedErrorf("Lambdas cannot be compared")
 }
 
@@ -31,7 +27,7 @@ func (n JsonLambda) StringValue() string {
 	return "<lambda>"
 }
 
-func (n JsonLambda) Equals(value JsonType) bool {
+func (n JsonLambda) Equals(JsonType) bool {
 	return false
 }
 

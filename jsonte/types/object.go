@@ -50,10 +50,6 @@ func (o JsonObject) BoolValue() bool {
 	return o.Value != nil && !o.Value.IsEmpty()
 }
 
-func (o JsonObject) IsNull() bool {
-	return false
-}
-
 func (o JsonObject) LessThan(value JsonType) (bool, error) {
 	return false, burrito.WrappedErrorf("Objects cannot be compared")
 }
@@ -68,9 +64,6 @@ func (o JsonObject) Unbox() interface{} {
 
 func (o JsonObject) Equals(value JsonType) bool {
 	if value == Null {
-		return false
-	}
-	if b, ok := value.(JsonType); ok && b.IsNull() {
 		return false
 	}
 	if b, ok := value.(JsonObject); ok {

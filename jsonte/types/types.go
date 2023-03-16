@@ -15,13 +15,11 @@ type JsonType interface {
 	BoolValue() bool
 	// Equals returns true if the value is equal to the given value.
 	Equals(value JsonType) bool
-	// IsNull returns true if the value is null.
-	IsNull() bool
 	// LessThan returns true if the value is less than the given value.
 	LessThan(value JsonType) (bool, error)
 	// Unbox returns the value without any containers.
 	Unbox() interface{}
-	// Negate returns the negated value.
+	// Negate returns the value negated with a minus operator.
 	Negate() JsonType
 	// Index returns the value at the given index.
 	Index(index JsonType) (JsonType, error)

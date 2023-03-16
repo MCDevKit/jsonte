@@ -5,19 +5,17 @@ import (
 	"strconv"
 )
 
-// JsonBool is a struct that represents a number, that can be either integer or decimal.
+// JsonBool is a struct that represents a boolean JSON value.
 type JsonBool struct {
 	JsonType
 	Value bool
 }
 
+// True and False are predefined JsonBool values for true and false respectively.
 var True = JsonBool{Value: true}
 var False = JsonBool{Value: false}
 
-func (n JsonBool) IsNull() bool {
-	return false
-}
-
+// LessThan compares the JsonBool with another JsonType, returning true if the boolean is false and the other value is true.
 func (n JsonBool) LessThan(other JsonType) (bool, error) {
 	if other == nil {
 		return false, nil
@@ -38,14 +36,17 @@ func (n JsonBool) LessThan(other JsonType) (bool, error) {
 	return false, incompatibleTypesError(n, other)
 }
 
+// BoolValue returns the boolean value of the JsonBool.
 func (n JsonBool) BoolValue() bool {
 	return n.Value
 }
 
+// StringValue returns the string representation of the JsonBool.
 func (n JsonBool) StringValue() string {
 	return strconv.FormatBool(n.BoolValue())
 }
 
+// Equals checks if the JsonBool is equal to another JsonType.
 func (n JsonBool) Equals(value JsonType) bool {
 	if value == Null {
 		return false
@@ -59,18 +60,22 @@ func (n JsonBool) Equals(value JsonType) bool {
 	return false
 }
 
+// Unbox returns the JsonBool as a native Go bool.
 func (n JsonBool) Unbox() interface{} {
 	return n.BoolValue()
 }
 
+// Negate returns a new JsonBool with the opposite value.
 func (n JsonBool) Negate() JsonType {
 	return NewBool(!n.BoolValue())
 }
 
+// Index returns an error since indexing is not supported for booleans.
 func (n JsonBool) Index(i JsonType) (JsonType, error) {
 	return Null, burrito.WrappedErrorf("Cannot access %s from a boolean", i.StringValue())
 }
 
+// Add performs addition of the JsonBool with another JsonType.
 func (n JsonBool) Add(i JsonType) JsonType {
 	if IsNumber(i) {
 		return AsNumber(i).Add(n)
@@ -91,7 +96,7 @@ func (n JsonBool) Add(i JsonType) JsonType {
 	return NewString(n.StringValue() + i.StringValue())
 }
 
-// AsBool converts an interface to a boolean.
+// AsBool converts an interface to a JsonBool.
 func AsBool(obj interface{}) JsonBool {
 	if obj == nil {
 		return False
@@ -114,7 +119,7 @@ func AsBool(obj interface{}) JsonBool {
 	return NewBool(obj != nil)
 }
 
-// IsBool returns true if the given interface is a boolean.
+// IsBool returns true if the given interface is a boolean or a JsonBool.
 func IsBool(obj interface{}) bool {
 	if obj == nil {
 		return false
@@ -128,6 +133,7 @@ func IsBool(obj interface{}) bool {
 	return false
 }
 
+// NewBool creates a new JsonBool with the specified value.
 func NewBool(value bool) JsonBool {
 	if value {
 		return True

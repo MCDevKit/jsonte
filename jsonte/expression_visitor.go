@@ -180,7 +180,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			return types.Null, err
 		}
 		if context.NullCoalescing() != nil {
-			if f1.IsNull() {
+			if f1 == types.Null {
 				return f2, nil
 			} else {
 				return f1, nil

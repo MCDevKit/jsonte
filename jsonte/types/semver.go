@@ -56,10 +56,6 @@ func (s Semver) LessThan(other JsonType) (bool, error) {
 	return false, burrito.WrapErrorf(nil, "Cannot compare semver to %s", other.StringValue())
 }
 
-func (s Semver) IsNull() bool {
-	return false
-}
-
 // StringValue returns a string representation of the semantic version
 func (s Semver) StringValue() string {
 	return fmt.Sprintf("%d.%d.%d", s.Major, s.Minor, s.Patch)

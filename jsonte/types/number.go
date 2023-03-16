@@ -23,12 +23,8 @@ type JsonNumber struct {
 	Decimal bool
 }
 
-func (n JsonNumber) IsNull() bool {
-	return false
-}
-
 func (n JsonNumber) LessThan(other JsonType) (bool, error) {
-	if other == nil || other.IsNull() {
+	if other == nil || other == Null {
 		return n.FloatValue() < float64(0), nil
 	}
 	if IsNumber(other) {
@@ -98,7 +94,7 @@ func (n JsonNumber) Index(i JsonType) (JsonType, error) {
 }
 
 func (n JsonNumber) Add(i JsonType) JsonType {
-	if i.IsNull() {
+	if i == Null {
 		return JsonNumber{
 			Value:   n.FloatValue(),
 			Decimal: n.Decimal,
