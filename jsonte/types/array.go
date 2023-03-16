@@ -38,6 +38,7 @@ func (o JsonArray) Unbox() interface{} {
 }
 
 func (o JsonArray) Negate() JsonType {
+	// TODO: This should be removed, because `-array` and `array * -1` both should work and currently they don't.
 	result := make([]JsonType, len(o.Value))
 	for i, v := range o.Value {
 		result[i] = v.Negate()
