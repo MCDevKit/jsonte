@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"golang.org/x/text/cases"
@@ -558,6 +559,34 @@ func RegisterStringFunctions() {
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "format",
+		Body:       formatString,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Formats a string using the given arguments.",
+			Arguments: []Argument{
+				{
+					Name:    "string",
+					Summary: "The string to format.",
+				},
+				{
+					Name:    "args",
+					Summary: "The arguments to use when formatting the string.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 1.0",
+    "test": "{{=formatString('%s %s', 'hello', 'world')}}"
+  }
+}
+</code>`,
+		},
+	})
 }
 
 func replace(str, old, new types.JsonString) types.JsonString {
@@ -680,4 +709,23 @@ func number(str types.JsonString) (types.JsonNumber, error) {
 		return types.AsNumber(0), burrito.WrappedErrorf("String '%s' is not a valid number", str.StringValue())
 	}
 	return types.AsNumber(str.StringValue()), nil
+}
+
+func formatString(str types.JsonString, args ...types.JsonType) (types.JsonString, error) {
+	if len(args) == 0 {
+		return str, nil
+	}
+	fmtArgs := make([]interface{}, len(args))
+	for i, arg := range args {
+		switch arg.(type) {
+		case types.JsonNumber:
+			fmtArgs[i] = arg.(types.JsonNumber).FloatValue()
+		case types.JsonBool:
+			fmtArgs[i] = arg.BoolValue()
+		default:
+			fmtArgs[i] = arg.StringValue()
+		}
+	}
+
+	return types.NewString(fmt.Sprintf(str.StringValue(), fmtArgs...)), nil
 }

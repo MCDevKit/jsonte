@@ -123,3 +123,8 @@ func TestWrongNumber(t *testing.T) {
 	}
 	assertError(t, expression, expectedError)
 }
+
+func TestFormatString(t *testing.T) {
+	expression := `'%s %s'.format('Hello', 'World')`
+	assertString(t, evaluate(t, expression), "Hello World")
+}

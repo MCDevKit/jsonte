@@ -17,6 +17,7 @@ type JsonFunction struct {
 	WithError  bool
 	IsInstance bool
 	IsUnsafe   bool
+	IsVarArgs  bool
 	Deprecated bool
 	Docs       Docs
 }
@@ -59,6 +60,9 @@ func RegisterFunction(fn JsonFunction) {
 	for i := 0; i < of.Type().NumIn(); i++ {
 		typeSanityCheck(of.Type().In(i))
 		fn.Args = append(fn.Args, of.Type().In(i))
+		if of.Type().In(i).AssignableTo(reflect.TypeOf((*[]types.JsonType)(nil)).Elem()) {
+			fn.IsVarArgs = true
+		}
 	}
 	if (of.Type().NumOut() > 2) || (of.Type().NumOut() == 2 && of.Type().Out(1).String() != "error") {
 		panic("Function body must return only one value and can return an error!")
@@ -84,6 +88,9 @@ func typeSanityCheck(in reflect.Type) {
 		return
 	}
 	if in.AssignableTo(reflect.TypeOf((*types.JsonLambda)(nil)).Elem()) {
+		return
+	}
+	if in.AssignableTo(reflect.TypeOf((*[]types.JsonType)(nil)).Elem()) {
 		return
 	}
 	if in.AssignableTo(reflect.TypeOf((*error)(nil)).Elem()) {
@@ -155,7 +162,7 @@ func CallFunction(name string, args []types.JsonType) (types.JsonType, error) {
 func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType) (types.JsonType, error) {
 	sizeMatching := make([]JsonFunction, 0)
 	for _, fn := range fns {
-		if len(fn.Args) == len(args) {
+		if len(fn.Args) == len(args) || (fn.IsVarArgs && len(fn.Args)-1 <= len(args)) {
 			sizeMatching = append(sizeMatching, fn)
 		}
 	}
@@ -204,7 +211,13 @@ func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType) (t
 
 func checkParams(fn JsonFunction, args []types.JsonType) bool {
 	for i, arg := range args {
-		if arg == nil || !reflect.TypeOf(arg).AssignableTo(fn.Args[i]) {
+		if arg == nil {
+			return false
+		}
+		if fn.IsVarArgs && i >= len(fn.Args)-1 {
+			return true
+		}
+		if !reflect.TypeOf(arg).AssignableTo(fn.Args[i]) {
 			return false
 		}
 	}
