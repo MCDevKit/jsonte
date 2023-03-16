@@ -135,7 +135,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if err != nil {
 			return types.Null, err
 		}
-		return visit.Negate(), nil
+		return types.AsBool(!visit.BoolValue()), nil
 	}
 	// process field composed of two other fields
 	if len(context.AllField()) == 2 {
@@ -155,7 +155,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				return types.False, nil
 			}
 		} else if context.Or() != nil {
-			if f1.Negate().BoolValue() {
+			if !f1.BoolValue() {
 				f2, err := v.Visit(context.Field(1))
 				if err != nil {
 					return types.Null, err
