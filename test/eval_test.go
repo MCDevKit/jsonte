@@ -517,12 +517,18 @@ func TestArrayPlusOperator3(t *testing.T) {
 }
 
 func TestOrShortCircuit(t *testing.T) {
-	eval := evaluate(t, `true || error()`)
+	eval := evaluateWithScope(t, `true || error()`, utils.ToNavigableMap("error", types.NewLambda(func(args []types.JsonType) (types.JsonType, error) {
+		t.Fatalf("error() should not be called")
+		return nil, nil
+	})))
 	assertBool(t, eval, true)
 }
 
 func TestOrShortCircuit2(t *testing.T) {
-	eval := evaluate(t, `!false || error()`)
+	eval := evaluateWithScope(t, `!false || error()`, utils.ToNavigableMap("error", types.NewLambda(func(args []types.JsonType) (types.JsonType, error) {
+		t.Fatalf("error() should not be called")
+		return nil, nil
+	})))
 	assertBool(t, eval, true)
 }
 
