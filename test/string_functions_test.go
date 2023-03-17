@@ -128,3 +128,13 @@ func TestFormatString(t *testing.T) {
 	expression := `'%s %s'.format('Hello', 'World')`
 	assertString(t, evaluate(t, expression), "Hello World")
 }
+
+func TestRegexMatch(t *testing.T) {
+	expression := `'hello world'.regexMatch('^hello ').count() == 1`
+	assertBool(t, evaluate(t, expression), true)
+}
+
+func TestRegexMatch2(t *testing.T) {
+	expression := `'not hello world'.regexMatch('^hello ').count() == 0`
+	assertBool(t, evaluate(t, expression), true)
+}

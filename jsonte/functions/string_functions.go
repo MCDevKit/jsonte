@@ -587,6 +587,34 @@ func RegisterStringFunctions() {
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "regexMatch",
+		Body:       regexMatch,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Returns an array of matches. Each match is an array containing the submatches (groups) derived from the regular expression pattern. The first submatch in each array is always the complete match found in the target string. If no matches are found, the function returns an empty array.",
+			Arguments: []Argument{
+				{
+					Name:    "string",
+					Summary: "The string to match.",
+				},
+				{
+					Name:    "args",
+					Summary: "The regular expression to match against.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be true",
+    "test": "{{='hello world'.regexMatch('^hello ')}}"
+  }
+}
+</code>`,
+		},
+	})
 }
 
 func replace(str, old, new types.JsonString) types.JsonString {
@@ -728,4 +756,12 @@ func formatString(str types.JsonString, args ...types.JsonType) (types.JsonStrin
 	}
 
 	return types.NewString(fmt.Sprintf(str.StringValue(), fmtArgs...)), nil
+}
+
+func regexMatch(str, pattern types.JsonString) (types.JsonArray, error) {
+	compile, err := regexp.Compile(pattern.StringValue())
+	if err != nil {
+		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile regex pattern")
+	}
+	return types.AsArray(compile.FindAllStringSubmatch(str.StringValue(), -1)), nil
 }
