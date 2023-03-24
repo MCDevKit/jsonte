@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/types"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/paul-mannino/go-fuzzywuzzy"
 	"reflect"
 	"strings"
@@ -29,6 +30,9 @@ var instanceFunctions = make(map[string]map[string][]JsonFunction)
 
 var initialized = false
 
+var cacheAll = false
+var cacheAllBucket = "all-cache"
+
 func Init() {
 	if !initialized {
 		RegisterMathFunctions()
@@ -42,6 +46,13 @@ func Init() {
 		RegisterSemverFunctions()
 		RegisterTypeFunctions()
 		initialized = true
+	}
+}
+
+func SetCacheAll(cache bool) {
+	cacheAll = cache
+	if cacheAll {
+		utils.CreateCacheBucket(cacheAllBucket)
 	}
 }
 
@@ -194,6 +205,17 @@ func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType) (t
 		return nil, burrito.WrapErrorf(nil, "Ambiguous function call for \"%s\". Matched: %s", name, strings.Join(matched, ", "))
 	} else {
 		fn := matching[0]
+		key := ""
+		if cacheAll {
+			key = types.AsObject(utils.ToNavigableMap(
+				"f", fn.Name,
+				"args", types.JsonArray{Value: args},
+			)).StringValue()
+			cached := utils.GetCache(cacheAllBucket, key)
+			if cached != nil {
+				return (*cached).(types.JsonType), nil
+			}
+		}
 		vArgs := make([]reflect.Value, len(args))
 		for i, arg := range args {
 			vArgs[i] = reflect.ValueOf(arg)
@@ -204,6 +226,11 @@ func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType) (t
 		}
 		if fn.WithError && len(call) == 1 {
 			return nil, nil
+		}
+		if cacheAll {
+			//utils.Logger.Debugf("Caching function call: %s", key)
+			//utils.Logger.Debugf("Caching function call result: %s", call[0].Interface().(types.JsonType).StringValue())
+			utils.PutCache(cacheAllBucket, key, call[0].Interface())
 		}
 		return call[0].Interface().(types.JsonType), nil
 	}

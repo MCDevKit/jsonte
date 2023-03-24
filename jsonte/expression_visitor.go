@@ -341,15 +341,16 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			return types.Null, err
 		}
 		if functions.HasInstanceFunction(reflect.TypeOf(object), text) {
-			return types.JsonLambda{
-				Value: func(o []types.JsonType) (types.JsonType, error) {
+			return types.NewLambda(
+				func(o []types.JsonType) (types.JsonType, error) {
 					function, err := functions.CallInstanceFunction(text, object.(types.JsonType), o)
 					if err != nil {
 						return types.Null, burrito.WrapErrorf(err, "Error calling function '%s' on %s", text, object.StringValue())
 					}
 					return function, nil
 				},
-			}, nil
+				text,
+			), nil
 		} else {
 			index, err := object.Index(types.NewString(text))
 			if err != nil {
@@ -493,8 +494,8 @@ func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContex
 }
 
 func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonType, error) {
-	return types.JsonLambda{
-		Value: func(o []types.JsonType) (types.JsonType, error) {
+	return types.NewLambda(
+		func(o []types.JsonType) (types.JsonType, error) {
 			if len(ctx.AllName()) > len(o) {
 				return types.Null, burrito.WrappedErrorf("Lambda expects %d arguments, but got %d", len(ctx.AllName()), len(o))
 			}
@@ -511,7 +512,8 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			}
 			return result, nil
 		},
-	}, nil
+		ctx.GetText(),
+	), nil
 }
 
 func (v *ExpressionVisitor) VisitFunction_param(ctx *parser.Function_paramContext) (types.JsonType, error) {

@@ -47,6 +47,7 @@ func main() {
 	exclude := make([]string, 0)
 	ipcName := "jsonte"
 	seed := time.Now().UnixNano()
+	cacheAll := false
 	app := NewApp()
 	app.BoolFlag(Flag{
 		Name:  "debug",
@@ -92,9 +93,14 @@ func main() {
 		Name:  "seed",
 		Usage: "Seed for the random number generator",
 	}, &seed)
+	app.BoolFlag(Flag{
+		Name:  "cache-all",
+		Usage: "Cache all function calls",
+	}, &cacheAll)
 	app.Action(Action{
 		Name: "compile",
 		Function: func(args []string) error {
+			functions.SetCacheAll(cacheAll)
 			outFile := ""
 			if out != "" {
 				stat, err := os.Stat(out)
@@ -285,6 +291,7 @@ func main() {
 		Name:  "eval",
 		Usage: "Evaluate a JSON expression or run a REPL",
 		Function: func(args []string) error {
+			functions.SetCacheAll(cacheAll)
 			object, err := getScope(scope)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
@@ -325,6 +332,7 @@ func main() {
 		Name:  "ipc",
 		Usage: "Start an IPC server",
 		Function: func(args []string) error {
+			functions.SetCacheAll(cacheAll)
 			object, err := getScope(scope)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")

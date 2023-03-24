@@ -520,7 +520,7 @@ func TestOrShortCircuit(t *testing.T) {
 	eval := evaluateWithScope(t, `true || error()`, utils.ToNavigableMap("error", types.NewLambda(func(args []types.JsonType) (types.JsonType, error) {
 		t.Fatalf("error() should not be called")
 		return nil, nil
-	})))
+	}, "error")))
 	assertBool(t, eval, true)
 }
 
@@ -528,8 +528,16 @@ func TestOrShortCircuit2(t *testing.T) {
 	eval := evaluateWithScope(t, `!false || error()`, utils.ToNavigableMap("error", types.NewLambda(func(args []types.JsonType) (types.JsonType, error) {
 		t.Fatalf("error() should not be called")
 		return nil, nil
-	})))
+	}, "error")))
 	assertBool(t, eval, true)
+}
+
+func TestAndShortCircuit(t *testing.T) {
+	eval := evaluateWithScope(t, `false && error()`, utils.ToNavigableMap("error", types.NewLambda(func(args []types.JsonType) (types.JsonType, error) {
+		t.Fatalf("error() should not be called")
+		return nil, nil
+	}, "error")))
+	assertBool(t, eval, false)
 }
 
 func TestCaseSensitivity(t *testing.T) {
