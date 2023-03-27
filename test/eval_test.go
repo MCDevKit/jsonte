@@ -12,14 +12,12 @@ import (
 )
 
 func assertAction(t *testing.T, eval jsonte.Result, action types.JsonAction) {
-	t.Helper()
 	if eval.Action != action {
 		t.Errorf("Action is not %d", action)
 	}
 }
 
 func assertArray(t *testing.T, eval jsonte.Result, expected types.JsonArray) {
-	t.Helper()
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -62,7 +60,6 @@ func assertArray(t *testing.T, eval jsonte.Result, expected types.JsonArray) {
 }
 
 func assertObject(t *testing.T, eval jsonte.Result, expected types.JsonObject) {
-	t.Helper()
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -78,7 +75,6 @@ func assertObject(t *testing.T, eval jsonte.Result, expected types.JsonObject) {
 }
 
 func assertObjectContains(t *testing.T, eval jsonte.Result, expected types.JsonObject) {
-	t.Helper()
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -94,7 +90,6 @@ func assertObjectContains(t *testing.T, eval jsonte.Result, expected types.JsonO
 }
 
 func assertNumber(t *testing.T, eval jsonte.Result, expected float64) {
-	t.Helper()
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -112,7 +107,6 @@ func assertNumber(t *testing.T, eval jsonte.Result, expected float64) {
 }
 
 func assertSemver(t *testing.T, eval jsonte.Result, expected types.Semver) {
-	t.Helper()
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -127,7 +121,6 @@ func assertSemver(t *testing.T, eval jsonte.Result, expected types.Semver) {
 }
 
 func assertBool(t *testing.T, eval jsonte.Result, expected bool) {
-	t.Helper()
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -141,7 +134,6 @@ func assertBool(t *testing.T, eval jsonte.Result, expected bool) {
 }
 
 func assertString(t *testing.T, eval jsonte.Result, expected string) {
-	t.Helper()
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -155,7 +147,6 @@ func assertString(t *testing.T, eval jsonte.Result, expected string) {
 }
 
 func assertNull(t *testing.T, eval jsonte.Result) {
-	t.Helper()
 	assertAction(t, eval, types.Value)
 	if eval.Value != types.Null {
 		t.Fatalf("Result is not null (%s)", types.ToString(eval.Value))
@@ -163,7 +154,6 @@ func assertNull(t *testing.T, eval jsonte.Result) {
 }
 
 func assertError(t *testing.T, text string, error []string) {
-	t.Helper()
 	eval, err := jsonte.QuickEval(text, "#")
 	assertAction(t, eval, types.Value)
 	if err == nil {
@@ -191,7 +181,6 @@ func assertError(t *testing.T, text string, error []string) {
 }
 
 func evaluate(t *testing.T, text string) jsonte.Result {
-	t.Helper()
 	eval, err := jsonte.QuickEval(text, "#")
 	if err != nil {
 		t.Fatal(err)
@@ -200,7 +189,6 @@ func evaluate(t *testing.T, text string) jsonte.Result {
 }
 
 func evaluateWithScope(t *testing.T, text string, scope utils.NavigableMap[string, interface{}]) jsonte.Result {
-	t.Helper()
 	s := deque.Deque[types.JsonObject]{}
 	s.PushBack(types.AsObject(scope))
 	eval, err := jsonte.Eval(text, s, "#")

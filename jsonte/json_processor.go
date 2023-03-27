@@ -625,31 +625,39 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 	if err != nil {
 		return nil, err
 	}
-	matches := templatePattern.FindAllString(str, -1)
-	replacements := make(map[string]string, len(matches))
+	matches, err := FindTemplateMatches(str, "{", "}")
+	if err != nil {
+		return nil, burrito.WrapErrorf(err, "Failed to parse string '%s'", str)
+	}
+	var sb strings.Builder
+	lastMatchEnd := 0
 	for _, match := range matches {
-		result, err := Eval(match, v.scope, path)
+		if match.Start > lastMatchEnd {
+			sb.WriteString(str[lastMatchEnd:match.Start])
+		}
+		result, err := Eval(match.Match, v.scope, path)
 		if err != nil {
-			return nil, utils.WrapJsonErrorf(path, err, "Error evaluating '%s'", match)
+			return nil, burrito.WrapErrorf(err, "Error evaluating '%s'", match.UnescapedMatch)
 		}
 		if result.Value == nil {
 			return nil, utils.WrappedJsonErrorf(path, "The expression '%s' evaluated to null", match)
 		}
-		if _, ok := result.Value.(types.JsonString); !ok && str == match {
+		if _, ok := result.Value.(types.JsonString); !ok && str == match.UnescapedMatch {
 			return result.Value, nil
 		}
 		if result.Action == types.Literal {
 			return result.Value, nil
 		} else if result.Action == types.Value {
-			replacements[match] = types.ToString(result.Value)
+			sb.WriteString(types.ToString(result.Value))
+			lastMatchEnd = match.Start + match.Length + 1
 		} else {
 			return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())
 		}
 	}
-	result := templatePattern.ReplaceAllStringFunc(str, func(match string) string {
-		return replacements[match]
-	})
-	return types.NewString(result), nil
+	if lastMatchEnd < len(str) {
+		sb.WriteString(str[lastMatchEnd:])
+	}
+	return types.NewString(sb.String()), nil
 }
 
 func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {

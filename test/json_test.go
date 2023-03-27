@@ -174,6 +174,16 @@ func assertTemplateMultiple(t *testing.T, template, expected string) {
 	}
 }
 
+func assertStringParse(t *testing.T, template, startToken, endToken, expected string) {
+	process, err := jsonte.ProcessString(template, types.NewJsonObject(), startToken, endToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if process != expected {
+		t.Fatalf("Expected: \n%s\ngot: \n%s", expected, process)
+	}
+}
+
 func TestSimpleTemplate(t *testing.T) {
 	template := `{
 		"$template": {
@@ -1283,4 +1293,32 @@ func TestModuleReplacingTemplate(t *testing.T) {
 	}`
 	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
 	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestObjectLiteralInArrayLiteralTemplate(t *testing.T) {
+	template := `{
+		"$template": {
+			"example": "{{(1..10).filter(x => mod(x, 2) == 0).map((x, i) => { 'index': i, 'value': x})}}"
+		}
+	}`
+	expected := `{
+		"example": [{"index":0,"value":2},{"index":1,"value":4},{"index":2,"value":6},{"index":3,"value":8},{"index":4,"value":10}]
+	}`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestStringParse(t *testing.T) {
+	f := `#{'Hello World'}`
+	assertStringParse(t, f, "#", "", "Hello World")
+}
+
+func TestStringParse2(t *testing.T) {
+	f := `##{'Hello World'}`
+	assertStringParse(t, f, "##", "", "Hello World")
+}
+
+func TestStringParse3(t *testing.T) {
+	f := `{{'Hello World'}}`
+	assertStringParse(t, f, "{", "}", "Hello World")
 }

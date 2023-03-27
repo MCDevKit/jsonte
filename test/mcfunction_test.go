@@ -7,7 +7,6 @@ import (
 )
 
 func assertMCFunction(t *testing.T, template, expected string) {
-	t.Helper()
 	process, err := jsonte.ProcessMCFunction(template, types.NewJsonObject())
 	if err != nil {
 		t.Fatal(err)

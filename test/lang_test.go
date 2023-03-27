@@ -7,7 +7,6 @@ import (
 )
 
 func assertLang(t *testing.T, template, expected string) {
-	t.Helper()
 	process, err := jsonte.ProcessLangFile(template, types.NewJsonObject())
 	if err != nil {
 		t.Fatal(err)

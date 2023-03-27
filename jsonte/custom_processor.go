@@ -14,95 +14,14 @@ func ProcessLangFile(input string, scope types.JsonObject) (string, error) {
 	if err != nil {
 		return input, burrito.PassError(err)
 	}
-	input = string(str)
-	inputLen := len(input)
-	globalScope := deque.Deque[types.JsonObject]{}
-	globalScope.PushBack(scope)
-
-	matches := map[string]string{}
-	started := false
-	startedString := false
-	stringType := '"'
-	bracketCount := 0
-	var currentMatch strings.Builder
-	var debugMatch strings.Builder
-	for i := 0; i < inputLen; i++ {
-		char := rune(input[i])
-		if !started {
-			if i+2 < inputLen && char == '#' && input[i+1] == '#' && input[i+2] == '{' {
-				started = true
-				bracketCount = 1
-				i += 2
-				currentMatch.Reset()
-				debugMatch.Reset()
-				continue
-			}
-		} else {
-			if char == '\n' {
-				return "", burrito.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
-			}
-			if char == '"' || char == '\'' {
-				if !startedString {
-					startedString = true
-					stringType = char
-				} else if char == stringType {
-					startedString = false
-				}
-				currentMatch.WriteRune(char)
-				debugMatch.WriteRune(char)
-			} else if char == '{' && !startedString {
-				bracketCount++
-				currentMatch.WriteRune(char)
-				debugMatch.WriteRune(char)
-			} else if char == '}' && !startedString {
-				bracketCount--
-				if bracketCount == 0 {
-					started = false
-					match := currentMatch.String()
-					result, err := Eval(match, globalScope, "#")
-					if err != nil {
-						return "", burrito.WrapErrorf(err, "Failed to evaluate expression '%s'", debugMatch.String())
-					}
-					if result.Value == nil {
-						return "", burrito.WrappedErrorf("The expression '%s' evaluated to null.", debugMatch.String())
-					}
-					if result.Action == types.Value {
-						matches[debugMatch.String()] = types.ToString(result.Value)
-					} else {
-						return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", debugMatch.String())
-					}
-				} else {
-					currentMatch.WriteRune(char)
-					debugMatch.WriteRune(char)
-				}
-			} else if char == '\\' {
-				nextChar := input[i+1]
-				if nextChar == 'n' {
-					currentMatch.WriteRune('\n')
-				} else if nextChar == 't' {
-					currentMatch.WriteRune('\t')
-				} else if nextChar == 'r' {
-					currentMatch.WriteRune('\r')
-				} else if nextChar == 'b' {
-					currentMatch.WriteRune('\b')
-				} else {
-					currentMatch.WriteRune(rune(nextChar))
-				}
-				debugMatch.WriteRune(char)
-				debugMatch.WriteRune(rune(nextChar))
-				i++
-			} else {
-				currentMatch.WriteRune(char)
-				debugMatch.WriteRune(char)
-			}
+	lines := strings.Split(string(str), "\n")
+	for i, line := range lines {
+		lines[i], err = ProcessString(line, scope, "##", "")
+		if err != nil {
+			return "", burrito.WrapErrorf(err, "Failed to process line %d", i+1)
 		}
 	}
-
-	for s, s2 := range matches {
-		input = strings.ReplaceAll(input, "##{"+s+"}", s2)
-	}
-
-	return input, nil
+	return strings.Join(lines, "\n"), nil
 }
 
 // ProcessMCFunction processes a file replacing all the jsonte expressions with their values
@@ -111,33 +30,91 @@ func ProcessMCFunction(input string, scope types.JsonObject) (string, error) {
 	if err != nil {
 		return input, burrito.PassError(err)
 	}
-	input = string(str)
-	inputLen := len(input)
+	lines := strings.Split(string(str), "\n")
+	for i, line := range lines {
+		lines[i], err = ProcessString(line, scope, "#", "")
+		if err != nil {
+			return "", burrito.WrapErrorf(err, "Failed to process line %d", i+1)
+		}
+	}
+	return strings.Join(lines, "\n"), nil
+}
+
+// ProcessString processes a string replacing all the jsonte expressions with their values
+func ProcessString(input string, scope types.JsonObject, startToken, endToken string) (string, error) {
+	templateMatches, err := FindTemplateMatches(input, startToken, endToken)
+	if err != nil {
+		return "", burrito.PassError(err)
+	}
 	globalScope := deque.Deque[types.JsonObject]{}
 	globalScope.PushBack(scope)
+	var sb strings.Builder
+	lastMatchEnd := 0
+	for _, match := range templateMatches {
+		if match.Start > lastMatchEnd {
+			sb.WriteString(input[lastMatchEnd:match.Start])
+		}
+		result, err := Eval(match.Match, globalScope, "#")
+		if err != nil {
+			return "", burrito.WrapErrorf(err, "Failed to evaluate expression '%s'", match.UnescapedMatch)
+		}
+		if result.Value == nil {
+			return "", burrito.WrappedErrorf("The expression '%s' evaluated to null.", match.UnescapedMatch)
+		}
+		if result.Action == types.Value {
+			sb.WriteString(types.ToString(result.Value))
+			lastMatchEnd = match.Start + match.Length + 1
+		} else {
+			return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", match.UnescapedMatch)
+		}
+	}
+	if lastMatchEnd < len(input) {
+		sb.WriteString(input[lastMatchEnd:])
+	}
 
-	matches := map[string]string{}
+	return sb.String(), nil
+}
+
+type TemplateMatch struct {
+	Match          string
+	UnescapedMatch string
+	Start          int
+	Length         int
+}
+
+// FindTemplateMatches processes a string replacing all the jsonte expressions with their values
+func FindTemplateMatches(input, startToken, endToken string) ([]TemplateMatch, error) {
+	inputLen := len(input)
+	startLen := len(startToken)
+	endLen := len(endToken)
+
+	matches := make([]TemplateMatch, 0)
 	started := false
 	startedString := false
 	stringType := '"'
 	bracketCount := 0
+	startIndex := 0
 	var currentMatch strings.Builder
 	var debugMatch strings.Builder
+outerFor:
 	for i := 0; i < inputLen; i++ {
 		char := rune(input[i])
 		if !started {
-			if i+1 < inputLen && char == '#' && input[i+1] == '{' {
+			if i+startLen < inputLen && input[i+startLen] == '{' {
+				for j := 0; j < startLen; j++ {
+					if input[i+j] != startToken[j] {
+						continue outerFor
+					}
+				}
 				started = true
 				bracketCount = 1
-				i++
+				startIndex = i
+				i += startLen
 				currentMatch.Reset()
 				debugMatch.Reset()
 				continue
 			}
 		} else {
-			if char == '\n' {
-				return "", burrito.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
-			}
 			if char == '"' || char == '\'' {
 				if !startedString {
 					startedString = true
@@ -153,21 +130,21 @@ func ProcessMCFunction(input string, scope types.JsonObject) (string, error) {
 				debugMatch.WriteRune(char)
 			} else if char == '}' && !startedString {
 				bracketCount--
-				if bracketCount == 0 {
+				if bracketCount == 0 && i+endLen < inputLen {
+					for j := 0; j < endLen; j++ {
+						if input[i+j] != endToken[j] {
+							return matches, burrito.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
+						}
+					}
 					started = false
+					i += endLen
 					match := currentMatch.String()
-					result, err := Eval(match, globalScope, "#")
-					if err != nil {
-						return "", burrito.WrapErrorf(err, "Failed to evaluate expression '%s'", debugMatch.String())
-					}
-					if result.Value == nil {
-						return "", burrito.WrappedErrorf("The expression '%s' evaluated to null.", debugMatch.String())
-					}
-					if result.Action == types.Value {
-						matches[debugMatch.String()] = types.ToString(result.Value)
-					} else {
-						return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", debugMatch.String())
-					}
+					matches = append(matches, TemplateMatch{
+						Match:          match,
+						UnescapedMatch: startToken + "{" + debugMatch.String() + "}" + endToken,
+						Start:          startIndex,
+						Length:         i - startIndex,
+					})
 				} else {
 					currentMatch.WriteRune(char)
 					debugMatch.WriteRune(char)
@@ -194,10 +171,9 @@ func ProcessMCFunction(input string, scope types.JsonObject) (string, error) {
 			}
 		}
 	}
-
-	for s, s2 := range matches {
-		input = strings.ReplaceAll(input, "#{"+s+"}", s2)
+	if started {
+		return matches, burrito.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
 	}
 
-	return input, nil
+	return matches, nil
 }
