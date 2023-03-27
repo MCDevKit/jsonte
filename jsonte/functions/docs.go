@@ -3,8 +3,6 @@ package functions
 import (
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
-	"github.com/MCDevKit/jsonte/jsonte/json"
-	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"io/ioutil"
 	"os"
 	"strings"
