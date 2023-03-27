@@ -5,3 +5,5 @@
 packs
 docs/
 /wasm
+*.jsonl
+*txt

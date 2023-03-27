@@ -3,6 +3,8 @@ package functions
 import (
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
+	"github.com/MCDevKit/jsonte/jsonte/json"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -18,6 +20,7 @@ type Argument struct {
 	Name     string
 	Summary  string
 	Optional bool
+	VarArgs  bool
 }
 
 type Group struct {
@@ -115,7 +118,11 @@ func generateArgumentDocs(arguments []Argument) string {
 		if arg.Optional {
 			op = "(optional) "
 		}
-		s += fmt.Sprintf("- `%s` - %s%s\n", arg.Name, op, arg.Summary)
+		va := ""
+		if arg.VarArgs {
+			va = "..."
+		}
+		s += fmt.Sprintf("- `%s%s` - %s%s\n", arg.Name, va, op, arg.Summary)
 	}
 	return s
 }

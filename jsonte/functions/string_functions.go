@@ -573,6 +573,7 @@ func RegisterStringFunctions() {
 				},
 				{
 					Name:    "args",
+					VarArgs: true,
 					Summary: "The arguments to use when formatting the string.",
 				},
 			},
