@@ -123,7 +123,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 		scope = types.MergeObject(object.(types.JsonObject), scope, false, "#")
 	}
 
-	c, err := FindAnyCase[types.JsonString](root, "$copy")
+	c, err := FindAnyCase[types.JsonType](root, "$copy")
 	if err != nil && burrito.HasTag(err, WrongTypeErrTag) {
 		return result, utils.WrapJsonErrorf("$copy", err, "Invalid $copy")
 	}
@@ -183,7 +183,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 					visitor.pushScope(obj)
 				}
 				if isCopy {
-					template, err = processCopy(c, visitor, modules, "$files.array", timeout)
+					template, err = processCopy(*c, visitor, modules, "$files.array", timeout)
 					if err != nil {
 						return result, burrito.PassError(err)
 					}
@@ -234,7 +234,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 		}
 	} else {
 		if isCopy {
-			template, err = processCopy(c, visitor, modules, "$copy", timeout)
+			template, err = processCopy(*c, visitor, modules, "$copy", timeout)
 			if err != nil {
 				return result, burrito.PassError(err)
 			}
@@ -271,39 +271,60 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 }
 
 func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]JsonModule, path string, timeout int64) (types.JsonObject, error) {
-	c, err := visitor.visitString(c.StringValue(), path)
-	if err != nil {
-		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to evaluate $copy")
-	}
-	if copyPath, ok := c.(types.JsonString); ok {
-		resolve, err := safeio.Resolver.Open(copyPath.StringValue())
-		if err != nil {
-			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to open %s", copyPath.StringValue())
-		}
-		all, err := ioutil.ReadAll(resolve)
-		if err != nil {
-			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read %s", copyPath.StringValue())
-		}
-		if strings.HasSuffix(copyPath.StringValue(), ".templ") {
-			processedMap, err := Process("copy", string(all), visitor.globalScope, modules, timeout)
-			if err != nil {
-				return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to process copy template %s", copyPath.StringValue())
+	result := types.NewJsonObject()
+	copies := make([]types.JsonString, 0)
+	if copyArray, ok := c.(types.JsonArray); ok {
+		for i, item := range copyArray.Value {
+			if copyPath, ok := item.(types.JsonString); ok {
+				copies = append(copies, copyPath)
+			} else {
+				return types.NewJsonObject(), utils.WrappedJsonErrorf(fmt.Sprintf("%s[%d]", path, i), "The copy path is not a string")
 			}
-			if processedMap.Size() > 1 {
-				return types.NewJsonObject(), utils.WrappedJsonErrorf(path, "The copy template must compile to a single object")
-			}
-			template := processedMap.Get("copy")
-			return template, nil
-		} else {
-			template, err := types.ParseJsonObject(all)
-			if err != nil {
-				return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to parse %s", copyPath.StringValue())
-			}
-			return template, nil
 		}
+	} else if copyPath, ok := c.(types.JsonString); ok {
+		copies = append(copies, copyPath)
 	} else {
-		return types.NewJsonObject(), utils.WrappedJsonErrorf(path, "The copy path evaluated to a non-string")
+		return types.NewJsonObject(), utils.WrappedJsonErrorf(path, "The copy path is not a string")
 	}
+	for i, c := range copies {
+		loopPath := fmt.Sprintf("%s[%d]", path, i)
+		c, err := visitor.visitString(c.StringValue(), path)
+		if err != nil {
+			return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to evaluate $copy")
+		}
+		if copyPath, ok := c.(types.JsonString); ok {
+			resolve, err := safeio.Resolver.Open(copyPath.StringValue())
+			if err != nil {
+				return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to open %s", copyPath.StringValue())
+			}
+			all, err := ioutil.ReadAll(resolve)
+			if err != nil {
+				return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to read %s", copyPath.StringValue())
+			}
+			if strings.HasSuffix(copyPath.StringValue(), ".templ") {
+				processedMap, err := Process("copy", string(all), visitor.globalScope, modules, timeout)
+				if err != nil {
+					return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to process copy template %s", copyPath.StringValue())
+				}
+				if processedMap.Size() > 1 {
+					return types.NewJsonObject(), utils.WrappedJsonErrorf(path, "The copy template must compile to a single object")
+				}
+				template := processedMap.Get("copy")
+				result = types.MergeObject(result, template, false, "#")
+				continue
+			} else {
+				template, err := types.ParseJsonObject(all)
+				if err != nil {
+					return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to parse %s", copyPath.StringValue())
+				}
+				result = types.MergeObject(result, template, false, "#")
+				continue
+			}
+		} else {
+			return types.NewJsonObject(), utils.WrappedJsonErrorf(path, "The copy path evaluated to a non-string")
+		}
+	}
+	return result, nil
 }
 
 var templatePattern, _ = regexp.Compile("\\{\\{(?:\\\\.|[^{}])+}}")

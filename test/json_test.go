@@ -495,6 +495,35 @@ func TestSimpleCopy(t *testing.T) {
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
+func TestMultipleCopy(t *testing.T) {
+	file := `{
+		"asd": 123,
+		"overrideMe": -1
+	}`
+	file2 := `{
+		"new": 222
+	}`
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json":  file,
+		"file2.json": file2,
+	}, false)
+	template := `{
+		"$copy": ["file.json", "file2.json"],
+		"$template": {
+			"overrideMe": 1,
+			"oldOverrideMe": "{{=$copy.overrideMe}}"
+		}
+	}`
+	expected := `{
+		"asd": 123,
+		"overrideMe": 1,
+		"new": 222,
+		"oldOverrideMe": -1
+	}`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
 func TestSimpleCopyDifferentCase(t *testing.T) {
 	file := `{
 		"asd": 123,
