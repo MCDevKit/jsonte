@@ -292,7 +292,25 @@ func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]J
 		if err != nil {
 			return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to evaluate $copy")
 		}
-		if copyPath, ok := c.(types.JsonString); ok {
+		if c == nil || c == types.Null {
+			utils.Logger.Debugf("Skipping null copy path at %s", loopPath)
+			continue
+		}
+		insideCopies := make([]types.JsonString, 0)
+		if copyArray, ok := c.(types.JsonArray); ok {
+			for j, inside := range copyArray.Value {
+				if insideCopyPath, ok := inside.(types.JsonString); ok {
+					insideCopies = append(insideCopies, insideCopyPath)
+				} else {
+					return types.NewJsonObject(), utils.WrappedJsonErrorf(fmt.Sprintf("%s[%d]", loopPath, j), "The copy path inside evaluated copy array is not a string")
+				}
+			}
+		} else if copyPath, ok := c.(types.JsonString); ok {
+			insideCopies = append(insideCopies, copyPath)
+		} else {
+			return types.NewJsonObject(), utils.WrappedJsonErrorf(loopPath, "The copy path evaluated to a non-string")
+		}
+		for _, copyPath := range insideCopies {
 			resolve, err := safeio.Resolver.Open(copyPath.StringValue())
 			if err != nil {
 				return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to open %s", copyPath.StringValue())
@@ -320,8 +338,6 @@ func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]J
 				result = types.MergeObject(result, template, false, "#")
 				continue
 			}
-		} else {
-			return types.NewJsonObject(), utils.WrappedJsonErrorf(path, "The copy path evaluated to a non-string")
 		}
 	}
 	return result, nil
@@ -358,6 +374,10 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 			eval, err := Eval(str, visitor.scope, path)
 			if err != nil {
 				return types.NewJsonObject(), resolvedModules, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", path)
+			}
+			if eval.Value == nil || eval.Value == types.Null {
+				utils.Logger.Debugf("Skipping null module at %s", path)
+				continue
 			}
 			if mods, ok := eval.Value.(types.JsonArray); ok {
 				stringMods := make([]string, len(mods.Value))
