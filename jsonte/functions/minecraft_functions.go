@@ -47,7 +47,7 @@ func RegisterMinecraftFunctions() {
 	RegisterFunction(JsonFunction{
 		Group:    group,
 		Name:     "getLatestBPFile",
-		Body:     getLatestBPFile,
+		Body:     getLatestBPFileOrFail,
 		IsUnsafe: true,
 		Docs: Docs{
 			Summary: "Returns a path to the latest behavior pack file.",
@@ -55,6 +55,11 @@ func RegisterMinecraftFunctions() {
 				{
 					Name:    "path",
 					Summary: "The path to the file inside behavior pack.",
+				},
+				{
+					Name:     "shouldFail",
+					Optional: true,
+					Summary:  "Whether to throw an error and stop compilation or return null when the file is not found.",
 				},
 			},
 			Example: `
@@ -70,8 +75,14 @@ func RegisterMinecraftFunctions() {
 	})
 	RegisterFunction(JsonFunction{
 		Group:    group,
+		Name:     "getLatestBPFile",
+		Body:     getLatestBPFile,
+		IsUnsafe: true,
+	})
+	RegisterFunction(JsonFunction{
+		Group:    group,
 		Name:     "getLatestRPFile",
-		Body:     getLatestRPFile,
+		Body:     getLatestRPFileOrFail,
 		IsUnsafe: true,
 		Docs: Docs{
 			Summary: "Returns a path to the latest resource pack file.",
@@ -79,6 +90,11 @@ func RegisterMinecraftFunctions() {
 				{
 					Name:    "path",
 					Summary: "The path to the file inside resource pack.",
+				},
+				{
+					Name:     "shouldFail",
+					Optional: true,
+					Summary:  "Whether to throw an error and stop compilation or return null when the file is not found.",
 				},
 			},
 			Example: `
@@ -91,6 +107,12 @@ func RegisterMinecraftFunctions() {
 }
 </code>`,
 		},
+	})
+	RegisterFunction(JsonFunction{
+		Group:    group,
+		Name:     "getLatestRPFile",
+		Body:     getLatestRPFile,
+		IsUnsafe: true,
 	})
 	RegisterFunction(JsonFunction{
 		Group: group,
@@ -266,7 +288,11 @@ func getMinecraftInstallDir() (types.JsonString, error) {
 	return types.NewString(installDir), nil
 }
 
-func getLatestBPFile(p types.JsonString) (types.JsonString, error) {
+func getLatestBPFileOrFail(p types.JsonString) (types.JsonType, error) {
+	return getLatestBPFile(p, types.True)
+}
+
+func getLatestBPFile(p types.JsonString, shouldFail types.JsonBool) (types.JsonType, error) {
 	if bpFiles.IsEmpty() {
 		bp, err := findPackVersions(true, VanillaBpUUID)
 		if err != nil {
@@ -274,10 +300,18 @@ func getLatestBPFile(p types.JsonString) (types.JsonString, error) {
 		}
 		bpFiles = bp
 	}
-	return getLatestFile(p.StringValue(), bpFiles)
+	file, err := getLatestFile(p.StringValue(), bpFiles)
+	if !shouldFail.BoolValue() && err != nil && burrito.AsBurritoError(err).HasTag(os.ErrNotExist.Error()) {
+		return types.Null, nil
+	}
+	return file, err
 }
 
-func getLatestRPFile(p types.JsonString) (types.JsonString, error) {
+func getLatestRPFileOrFail(p types.JsonString) (types.JsonType, error) {
+	return getLatestRPFile(p, types.True)
+}
+
+func getLatestRPFile(p types.JsonString, shouldFail types.JsonBool) (types.JsonType, error) {
 	if rpFiles.IsEmpty() {
 		rp, err := findPackVersions(false, VanillaRpUUID)
 		if err != nil {
@@ -285,7 +319,11 @@ func getLatestRPFile(p types.JsonString) (types.JsonString, error) {
 		}
 		rpFiles = rp
 	}
-	return getLatestFile(p.StringValue(), rpFiles)
+	file, err := getLatestFile(p.StringValue(), rpFiles)
+	if !shouldFail.BoolValue() && err != nil && burrito.AsBurritoError(err).HasTag(os.ErrNotExist.Error()) {
+		return types.Null, nil
+	}
+	return file, err
 }
 
 func listLatestRPFiles(p types.JsonString) (types.JsonArray, error) {
@@ -361,7 +399,9 @@ func getLatestFile(p string, m utils.NavigableMap[string, string]) (types.JsonSt
 		}
 		return types.NewString(s), nil
 	}
-	return types.EmptyString, burrito.WrapErrorf(os.ErrNotExist, "File '%s' does not exist", p)
+	err := burrito.AsBurritoError(burrito.WrapErrorf(os.ErrNotExist, "File '%s' does not exist", p))
+	err.AddTag(os.ErrNotExist.Error())
+	return types.EmptyString, err
 }
 
 // From https://stackoverflow.com/a/24792688/6459649

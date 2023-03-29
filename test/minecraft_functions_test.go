@@ -47,6 +47,22 @@ func TestGetLatestBPFile(t *testing.T) {
 	}
 }
 
+func TestFindFileAndFail(t *testing.T) {
+	safeio.Resolver = CacheFS
+	expected := []string{
+		"Error calling function 'getLatestBPFile'",
+		"File 'items/please_dont_make_such_item.json' does not exist",
+		"file does not exist",
+	}
+	assertError(t, "getLatestBPFile('items/please_dont_make_such_item.json')", expected)
+}
+
+func TestFindFileWithoutFail(t *testing.T) {
+	safeio.Resolver = CacheFS
+	eval := evaluate(t, "getLatestBPFile('items/please_dont_make_such_item.json', false)")
+	assertNull(t, eval)
+}
+
 func TestFindItemInfoByName(t *testing.T) {
 	safeio.Resolver = CacheFS
 	expected := `{"id":"minecraft:stone","legacyId":1,"metadata":5}`
