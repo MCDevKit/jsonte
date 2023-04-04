@@ -8,7 +8,6 @@ import (
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/gammazero/deque"
 	"reflect"
-	"strings"
 )
 
 const DefaultName = "value"
@@ -532,9 +531,5 @@ func unescapeString(str string) string {
 		return ""
 	}
 	str = str[1 : len(str)-1]
-	str = strings.ReplaceAll(str, "\\\\\"", "\"")
-	str = strings.ReplaceAll(str, "\\\\'", "'")
-	str = strings.ReplaceAll(str, "\\\\n", "\n")
-	str = strings.ReplaceAll(str, "\\\\\\\\", "\\\\")
-	return str
+	return UnescapeString(str)
 }

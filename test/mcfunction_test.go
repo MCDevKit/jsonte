@@ -7,6 +7,7 @@ import (
 )
 
 func assertMCFunction(t *testing.T, template, expected string) {
+	t.Helper()
 	process, err := jsonte.ProcessMCFunction(template, types.NewJsonObject())
 	if err != nil {
 		t.Fatal(err)
@@ -53,6 +54,17 @@ func TestParsingStrings2(t *testing.T) {
 func TestParsingStrings3(t *testing.T) {
 	f := `#{"say test\nsay test2"}`
 	expected := "say test\nsay test2"
+	assertMCFunction(t, f, expected)
+}
+
+func TestMultilineExpression(t *testing.T) {
+	f := `#{
+	(1..10)
+		.map(x => x * 2)
+		.filter(x => mod(x, 3) == 0)
+		.join(", ")
+}`
+	expected := "6, 12, 18"
 	assertMCFunction(t, f, expected)
 }
 

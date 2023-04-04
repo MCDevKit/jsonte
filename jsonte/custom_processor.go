@@ -30,14 +30,11 @@ func ProcessMCFunction(input string, scope types.JsonObject) (string, error) {
 	if err != nil {
 		return input, burrito.PassError(err)
 	}
-	lines := strings.Split(string(str), "\n")
-	for i, line := range lines {
-		lines[i], err = ProcessString(line, scope, "#", "")
-		if err != nil {
-			return "", burrito.WrapErrorf(err, "Failed to process line %d", i+1)
-		}
+	output, err := ProcessString(string(str), scope, "#", "")
+	if err != nil {
+		return "", burrito.PassError(err)
 	}
-	return strings.Join(lines, "\n"), nil
+	return output, nil
 }
 
 // ProcessString processes a string replacing all the jsonte expressions with their values
@@ -90,8 +87,6 @@ func FindTemplateMatches(input, startToken, endToken string) ([]TemplateMatch, e
 
 	matches := make([]TemplateMatch, 0)
 	started := false
-	startedString := false
-	stringType := '"'
 	bracketCount := 0
 	startIndex := 0
 	var currentMatch strings.Builder
@@ -116,19 +111,21 @@ outerFor:
 			}
 		} else {
 			if char == '"' || char == '\'' {
-				if !startedString {
-					startedString = true
-					stringType = char
-				} else if char == stringType {
-					startedString = false
-				}
 				currentMatch.WriteRune(char)
 				debugMatch.WriteRune(char)
-			} else if char == '{' && !startedString {
+				i++
+				ended, debug := UnescapeStringToBuffer(input, &currentMatch, &i, char)
+				if !ended {
+					return matches, burrito.WrappedErrorf("The string '%s' is not closed.", debug)
+				}
+				debugMatch.WriteString(debug)
+				currentMatch.WriteRune(char)
+				debugMatch.WriteRune(char)
+			} else if char == '{' {
 				bracketCount++
 				currentMatch.WriteRune(char)
 				debugMatch.WriteRune(char)
-			} else if char == '}' && !startedString {
+			} else if char == '}' {
 				bracketCount--
 				if bracketCount == 0 && i+endLen < inputLen {
 					for j := 0; j < endLen; j++ {
@@ -149,22 +146,6 @@ outerFor:
 					currentMatch.WriteRune(char)
 					debugMatch.WriteRune(char)
 				}
-			} else if char == '\\' {
-				nextChar := input[i+1]
-				if nextChar == 'n' {
-					currentMatch.WriteRune('\n')
-				} else if nextChar == 't' {
-					currentMatch.WriteRune('\t')
-				} else if nextChar == 'r' {
-					currentMatch.WriteRune('\r')
-				} else if nextChar == 'b' {
-					currentMatch.WriteRune('\b')
-				} else {
-					currentMatch.WriteRune(rune(nextChar))
-				}
-				debugMatch.WriteRune(char)
-				debugMatch.WriteRune(rune(nextChar))
-				i++
 			} else {
 				currentMatch.WriteRune(char)
 				debugMatch.WriteRune(char)
