@@ -80,3 +80,23 @@ func EvalWithTempScope(text string, scope deque.Deque[types.JsonObject], path st
 	}
 	return Eval(text, d, path)
 }
+
+func ParseLambda(text string) ([]string, []string, error) {
+	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
+	is := antlr.NewInputStream(text)
+	lexer := parser.NewJsonTemplateLexer(is)
+	lexer.RemoveErrorListeners()
+	lexer.AddErrorListener(&listener)
+	stream := antlr.NewCommonTokenStream(lexer, 0)
+	p := parser.NewJsonTemplateParser(stream)
+	p.RemoveErrorListeners()
+	p.AddErrorListener(&listener)
+	p.BuildParseTrees = true
+	tree := p.Lambda()
+	if listener.Error != nil {
+		return nil, nil, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
+	}
+	visitor := LambdaVisitor{}
+	visitor.Visit(tree)
+	return visitor.usedVariables, visitor.arguments, nil
+}

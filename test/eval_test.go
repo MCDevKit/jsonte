@@ -505,30 +505,106 @@ func TestArrayPlusOperator3(t *testing.T) {
 }
 
 func TestOrShortCircuit(t *testing.T) {
-	eval := evaluateWithScope(t, `true || error()`, utils.ToNavigableMap("error", types.NewLambda(func(args []types.JsonType) (types.JsonType, error) {
+	eval := evaluateWithScope(t, `true || error()`, utils.ToNavigableMap("error", types.NewLambda(func(this *types.JsonLambda, args []types.JsonType) (types.JsonType, error) {
 		t.Fatalf("error() should not be called")
 		return nil, nil
-	}, "error")))
+	}, "error", []string{}, []string{})))
 	assertBool(t, eval, true)
 }
 
 func TestOrShortCircuit2(t *testing.T) {
-	eval := evaluateWithScope(t, `!false || error()`, utils.ToNavigableMap("error", types.NewLambda(func(args []types.JsonType) (types.JsonType, error) {
+	eval := evaluateWithScope(t, `!false || error()`, utils.ToNavigableMap("error", types.NewLambda(func(this *types.JsonLambda, args []types.JsonType) (types.JsonType, error) {
 		t.Fatalf("error() should not be called")
 		return nil, nil
-	}, "error")))
+	}, "error", []string{}, []string{})))
 	assertBool(t, eval, true)
 }
 
 func TestAndShortCircuit(t *testing.T) {
-	eval := evaluateWithScope(t, `false && error()`, utils.ToNavigableMap("error", types.NewLambda(func(args []types.JsonType) (types.JsonType, error) {
+	eval := evaluateWithScope(t, `false && error()`, utils.ToNavigableMap("error", types.NewLambda(func(this *types.JsonLambda, args []types.JsonType) (types.JsonType, error) {
 		t.Fatalf("error() should not be called")
 		return nil, nil
-	}, "error")))
+	}, "error", []string{}, []string{})))
 	assertBool(t, eval, false)
 }
 
 func TestCaseSensitivity(t *testing.T) {
 	eval := evaluate(t, `(1..10).Count()`)
 	assertNumber(t, eval, 10)
+}
+
+func TestLambdaInfo(t *testing.T) {
+	testCases := []struct {
+		name          string
+		input         string
+		expectedVars  []string
+		expectedArgs  []string
+		expectedError error
+	}{
+		{
+			name:          "single_variable",
+			input:         `x => x`,
+			expectedVars:  []string{"x"},
+			expectedArgs:  []string{"x"},
+			expectedError: nil,
+		},
+		{
+			name:          "two_variables",
+			input:         `(x, y) => [x, y]`,
+			expectedVars:  []string{"x", "y"},
+			expectedArgs:  []string{"x", "y"},
+			expectedError: nil,
+		},
+		{
+			name:          "no_variables",
+			input:         `() => null`,
+			expectedVars:  []string{},
+			expectedArgs:  []string{},
+			expectedError: nil,
+		},
+		{
+			name:          "outside_variables",
+			input:         `() => x`,
+			expectedVars:  []string{"x"},
+			expectedArgs:  []string{},
+			expectedError: nil,
+		},
+		{
+			name:          "embedded_lambda",
+			input:         `x => !arr2.any(y => x.startsWith(y))`,
+			expectedVars:  []string{"arr2", "x", "y"},
+			expectedArgs:  []string{"x", "y"},
+			expectedError: nil,
+		},
+	}
+
+	for idx, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			vars, args, err := jsonte.ParseLambda(tc.input)
+
+			if err != tc.expectedError {
+				t.Fatalf("Test case %d (%s) - Expected error: %v, got: %v", idx, tc.name, tc.expectedError, err)
+			}
+
+			if len(args) != len(tc.expectedArgs) {
+				t.Fatalf("Test case %d (%s) - Expected %d argument(s), got: %d", idx, tc.name, len(tc.expectedArgs), len(args))
+			}
+
+			if len(vars) != len(tc.expectedVars) {
+				t.Fatalf("Test case %d (%s) - Expected %d variable(s), got: %d", idx, tc.name, len(tc.expectedVars), len(vars))
+			}
+
+			for i, arg := range args {
+				if arg != tc.expectedArgs[i] {
+					t.Fatalf("Test case %d (%s) - Expected argument '%s', got: '%s'", idx, tc.name, tc.expectedArgs[i], arg)
+				}
+			}
+
+			for i, v := range vars {
+				if v != tc.expectedVars[i] {
+					t.Fatalf("Test case %d (%s) - Expected variable '%s', got: '%s'", idx, tc.name, tc.expectedVars[i], v)
+				}
+			}
+		})
+	}
 }

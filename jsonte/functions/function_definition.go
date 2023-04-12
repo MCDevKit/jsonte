@@ -143,7 +143,7 @@ func FindMisspelling(name string) *string {
 	return nil
 }
 
-func CallInstanceFunction(name string, instance types.JsonType, args []types.JsonType) (types.JsonType, error) {
+func CallInstanceFunction(name string, instance types.JsonType, args []types.JsonType, resolveFunc func(string) types.JsonType) (types.JsonType, error) {
 	fns, ok := instanceFunctions[reflect.TypeOf(instance).String()][strings.ToLower(name)]
 	if !ok {
 		find := FindMisspelling(name)
@@ -155,10 +155,10 @@ func CallInstanceFunction(name string, instance types.JsonType, args []types.Jso
 	a := make([]types.JsonType, 0)
 	a = append(a, instance)
 	a = append(a, args...)
-	return callFunctionImpl(name, fns, a)
+	return callFunctionImpl(name, fns, a, resolveFunc)
 }
 
-func CallFunction(name string, args []types.JsonType) (types.JsonType, error) {
+func CallFunction(name string, args []types.JsonType, resolveFunc func(string) types.JsonType) (types.JsonType, error) {
 	fns, ok := functions[strings.ToLower(name)]
 	if !ok {
 		find := FindMisspelling(name)
@@ -167,10 +167,10 @@ func CallFunction(name string, args []types.JsonType) (types.JsonType, error) {
 		}
 		return nil, burrito.WrappedErrorf("Function '%s' not found", name)
 	}
-	return callFunctionImpl(name, fns, args)
+	return callFunctionImpl(name, fns, args, resolveFunc)
 }
 
-func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType) (types.JsonType, error) {
+func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType, resolveFunc func(string) types.JsonType) (types.JsonType, error) {
 	sizeMatching := make([]JsonFunction, 0)
 	for _, fn := range fns {
 		if len(fn.Args) == len(args) || (fn.IsVarArgs && len(fn.Args)-1 <= len(args)) {
@@ -207,12 +207,32 @@ func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType) (t
 		fn := matching[0]
 		key := ""
 		if cacheAll {
-			key = types.AsObject(utils.ToNavigableMap(
+			keyObject := types.AsObject(utils.ToNavigableMap(
 				"f", fn.Name,
 				"args", types.JsonArray{Value: args},
-			)).StringValue()
+			))
+			// Need to take care of lambdas, that use outside variables
+			scope := types.NewJsonObject()
+			for _, arg := range args {
+				if lambda, ok := arg.(types.JsonLambda); ok && len(lambda.UsedVariables) > 0 {
+				outer:
+					for _, variable := range lambda.UsedVariables {
+						if lambda.Arguments != nil {
+							for _, argument := range lambda.Arguments {
+								if argument == variable {
+									continue outer
+								}
+							}
+						}
+						scope.Put(variable, resolveFunc(variable))
+					}
+				}
+			}
+			keyObject.Put("scope", scope)
+			key = keyObject.StringValue()
 			cached := utils.GetCache(cacheAllBucket, key)
 			if cached != nil {
+				//utils.Logger.Debugf("Using cached function call: %s", key)
 				return (*cached).(types.JsonType), nil
 			}
 		}

@@ -15,11 +15,12 @@ const DefaultIndexName = "index"
 
 type ExpressionVisitor struct {
 	parser.BaseJsonTemplateVisitor
-	action    types.JsonAction
-	name      *string
-	indexName *string
-	scope     deque.Deque[types.JsonObject]
-	path      *string
+	action        types.JsonAction
+	name          *string
+	indexName     *string
+	scope         deque.Deque[types.JsonObject]
+	path          *string
+	usedVariables []string
 }
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) {
@@ -80,8 +81,18 @@ func isError(v interface{}) bool {
 	return err
 }
 
-// resolveScope resolves a value from the scope by name
-func (v *ExpressionVisitor) resolveScope(name string) types.JsonType {
+// ResolveScope resolves a value from the scope by name
+func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
+	if name == "this" {
+		scope := types.NewJsonObject()
+		for i := 0; i < v.scope.Len(); i++ {
+			s := v.scope.At(i)
+			for _, key := range s.Keys() {
+				scope.Put(key, s.Get(key))
+			}
+		}
+		return scope
+	}
 	for i := v.scope.Len() - 1; i >= 0; i-- {
 		m := v.scope.At(i)
 		if m.ContainsKey(name) {
@@ -294,8 +305,8 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			if err != nil {
 				return types.Null, err
 			}
-			if _, ok := fun.(types.JsonLambda); ok {
-				i, err := fun.(types.JsonLambda).Value(params)
+			if f, ok := fun.(types.JsonLambda); ok {
+				i, err := f.Value(&f, params)
 				if err != nil {
 					return types.Null, err
 				}
@@ -303,8 +314,8 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			} else {
 				return types.Null, burrito.WrappedErrorf("%s is not a function", lambda.StringValue())
 			}
-		} else if _, ok := lambda.(types.JsonLambda); ok {
-			i, err := lambda.(types.JsonLambda).Value(params)
+		} else if l, ok := lambda.(types.JsonLambda); ok {
+			i, err := l.Value(&l, params)
 			if err != nil {
 				return types.Null, err
 			}
@@ -325,7 +336,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				}
 				return types.Null, burrito.WrappedErrorf("Function '%s' not found!", context.Field(0).GetText())
 			}
-			function, err := functions.CallFunction(*methodName, params)
+			function, err := functions.CallFunction(*methodName, params, v.ResolveScope)
 			if err != nil {
 				return types.Null, burrito.WrapErrorf(err, "Error calling function '%s'", *methodName)
 			}
@@ -341,14 +352,16 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		}
 		if functions.HasInstanceFunction(reflect.TypeOf(object), text) {
 			return types.NewLambda(
-				func(o []types.JsonType) (types.JsonType, error) {
-					function, err := functions.CallInstanceFunction(text, object.(types.JsonType), o)
+				func(this *types.JsonLambda, o []types.JsonType) (types.JsonType, error) {
+					function, err := functions.CallInstanceFunction(text, object.(types.JsonType), o, v.ResolveScope)
 					if err != nil {
 						return types.Null, burrito.WrapErrorf(err, "Error calling function '%s' on %s", text, object.StringValue())
 					}
 					return function, nil
 				},
 				text,
+				[]string{},
+				[]string{},
 			), nil
 		} else {
 			index, err := object.Index(types.NewString(text))
@@ -412,18 +425,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 
 func (v *ExpressionVisitor) VisitName(context *parser.NameContext) (types.JsonType, error) {
 	text := context.GetText()
-	// "this" is a special case that always refers to the current full scope
-	if text == "this" {
-		scope := types.NewJsonObject()
-		for i := 0; i < v.scope.Len(); i++ {
-			s := v.scope.At(i)
-			for _, key := range s.Keys() {
-				scope.Put(key, s.Get(key))
-			}
-		}
-		return scope, nil
-	}
-	newScope := v.resolveScope(text)
+	newScope := v.ResolveScope(text)
 
 	back := v.scope.Len() - 1
 	for newScope == nil && back >= 0 {
@@ -493,8 +495,9 @@ func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContex
 }
 
 func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonType, error) {
+	vars, args, _ := ParseLambda(ctx.GetText())
 	return types.NewLambda(
-		func(o []types.JsonType) (types.JsonType, error) {
+		func(this *types.JsonLambda, o []types.JsonType) (types.JsonType, error) {
 			if len(ctx.AllName()) > len(o) {
 				return types.Null, burrito.WrappedErrorf("Lambda expects %d arguments, but got %d", len(ctx.AllName()), len(o))
 			}
@@ -512,6 +515,8 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			return result, nil
 		},
 		ctx.GetText(),
+		vars,
+		args,
 	), nil
 }
 
