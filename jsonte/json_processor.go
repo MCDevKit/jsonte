@@ -370,22 +370,22 @@ func extendTemplate(extend types.JsonType, template types.JsonObject, visitor Te
 		if !isString {
 			path += "[" + strconv.Itoa(i) + "]"
 		}
-		if actionPattern.MatchString(str) {
-			eval, err := Eval(str, visitor.scope, path)
+		if templatePattern.MatchString(str) {
+			eval, err := visitor.visitString(str, path)
 			if err != nil {
 				return types.NewJsonObject(), resolvedModules, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", path)
 			}
-			if eval.Value == nil || eval.Value == types.Null {
+			if eval == nil || eval == types.Null {
 				utils.Logger.Debugf("Skipping null module at %s", path)
 				continue
 			}
-			if mods, ok := eval.Value.(types.JsonArray); ok {
+			if mods, ok := eval.(types.JsonArray); ok {
 				stringMods := make([]string, len(mods.Value))
 				for i, mod := range mods.Value {
 					stringMods[i] = types.ToString(mod)
 				}
 				resolvedModules = append(resolvedModules, stringMods...)
-			} else if strMod, ok := eval.Value.(types.JsonString); ok {
+			} else if strMod, ok := eval.(types.JsonString); ok {
 				resolvedModules = append(resolvedModules, strMod.StringValue())
 			} else {
 				return types.NewJsonObject(), resolvedModules, utils.WrappedJsonErrorf(path, "The module name evaluated to a non-string")
