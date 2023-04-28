@@ -521,7 +521,7 @@ func parseNumber(str *StringReader) json.Number {
 	start := str.marker
 	for {
 		token := str.Peek()
-		if token >= '0' && token <= '9' || token == '.' || token == 'e' || token == 'E' || token == '-' {
+		if token >= '0' && token <= '9' || token == '.' || token == 'e' || token == 'E' || token == '-' || token == '+' {
 			str.Read()
 		} else {
 			break
