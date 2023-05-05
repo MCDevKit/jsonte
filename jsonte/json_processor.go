@@ -676,14 +676,14 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 		if match.Start > lastMatchEnd {
 			sb.WriteString(str[lastMatchEnd:match.Start])
 		}
-		result, err := Eval(match.Match, v.scope, path)
+		result, err := Eval(match.EscapedMatch, v.scope, path)
 		if err != nil {
-			return nil, burrito.WrapErrorf(err, "Error evaluating '%s'", match.UnescapedMatch)
+			return nil, burrito.WrapErrorf(err, "Error evaluating '%s'", match.EscapedMatch)
 		}
 		if result.Value == nil {
 			return nil, utils.WrappedJsonErrorf(path, "The expression '%s' evaluated to null", match)
 		}
-		if _, ok := result.Value.(types.JsonString); !ok && str == match.UnescapedMatch {
+		if _, ok := result.Value.(types.JsonString); !ok && str == match.EscapedMatch {
 			return result.Value, nil
 		}
 		if result.Action == types.Literal {

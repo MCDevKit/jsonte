@@ -1403,3 +1403,16 @@ func TestStringParse3(t *testing.T) {
 	f := `{{'Hello World'}}`
 	assertStringParse(t, f, "{", "}", "Hello World")
 }
+
+func TestEscapingSingleQuotes(t *testing.T) {
+	template := `{
+		"$template": {
+			"example": "{{'That\\'s a nice string'}}"
+		}
+	}`
+	expected := `{
+		"example": "That's a nice string"
+	}`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}

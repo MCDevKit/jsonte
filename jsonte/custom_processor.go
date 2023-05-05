@@ -53,16 +53,16 @@ func ProcessString(input string, scope types.JsonObject, startToken, endToken st
 		}
 		result, err := Eval(match.Match, globalScope, "#")
 		if err != nil {
-			return "", burrito.WrapErrorf(err, "Failed to evaluate expression '%s'", match.UnescapedMatch)
+			return "", burrito.WrapErrorf(err, "Failed to evaluate expression '%s'", match.EscapedMatch)
 		}
 		if result.Value == nil {
-			return "", burrito.WrappedErrorf("The expression '%s' evaluated to null.", match.UnescapedMatch)
+			return "", burrito.WrappedErrorf("The expression '%s' evaluated to null.", match.EscapedMatch)
 		}
 		if result.Action == types.Value {
 			sb.WriteString(types.ToString(result.Value))
 			lastMatchEnd = match.Start + match.Length + 1
 		} else {
-			return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", match.UnescapedMatch)
+			return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", match.EscapedMatch)
 		}
 	}
 	if lastMatchEnd < len(input) {
@@ -73,9 +73,9 @@ func ProcessString(input string, scope types.JsonObject, startToken, endToken st
 }
 
 type TemplateMatch struct {
-	Match          string
-	UnescapedMatch string
-	Start          int
+	Match        string
+	EscapedMatch string
+	Start        int
 	Length         int
 }
 
@@ -137,10 +137,10 @@ outerFor:
 					i += endLen
 					match := currentMatch.String()
 					matches = append(matches, TemplateMatch{
-						Match:          match,
-						UnescapedMatch: startToken + "{" + debugMatch.String() + "}" + endToken,
-						Start:          startIndex,
-						Length:         i - startIndex,
+						Match:        match,
+						EscapedMatch: startToken + "{" + debugMatch.String() + "}" + endToken,
+						Start:        startIndex,
+						Length:       i - startIndex,
 					})
 				} else {
 					currentMatch.WriteRune(char)
