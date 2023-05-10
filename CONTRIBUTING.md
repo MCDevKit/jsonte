@@ -28,46 +28,47 @@ covers the project. Feel free to contact the maintainers if that's a concern.
 We use GitHub issues to track public bugs. Report a bug by [opening a new
 issue](https://github.com/MCDevKit/jsonte/issues/new); it's that easy!
 
-## Common changes and how to make them
+## How to Implement Common Changes
 
-### Adding a new function group
+### Instructions for Adding a New Function Group
 
-1. Create a new file in `jsonte/functions` directory named `<group>_functions.go`.
-2. Create a function for registering all functions in that group. It should be named `Register<group>Functions`.
-3. Register group by calling `RegisterGroup` function with following struct:
-    - `Name` - name of the group
-    - `Title` - title of the group
-    - `Summary` - summary of the group
-4. Register all functions by to that group (refer to the next section for more info).
-5. Add a call to that function in `Init` function in `jsonte/functions/function_definition.go`.
-6. Add tests for all functions in that group in a new file called `test/<group>_functions_test.go`.
+1. Create a new file in the `jsonte/functions` directory. The file should be named `<group>_functions.go`.
+2. Write a function that registers all functions within that group. This function should be named `Register<group>Functions`.
+3. Use the `RegisterGroup` function to register the group. You will need to input the following structure:
+   - `Name` - The group's name
+   - `Title` - The group's title
+   - `Summary` - A brief description of the group
+4. Register all functions to the newly created group (refer to the [Adding a New Function](#instructions-for-adding-a-new-function) section for more details).
+5. Include a call to the newly created function in the `Init` function, located in `jsonte/functions/function_definition.go`.
+6. Write tests for all the functions in the new group. These should be placed in a new file named `test/<group>_functions_test.go`.
 
-### Adding a new function
+### Instructions for Adding a New Function
 
-1. Create a new function in `jsonte/functions` directory in file, in which group your function will be e.g. `array_functions.go`.
-2. Make sure, that parameters to this function as well as return value are of following types:
-    - `utils.JsonArray` - array
-    - `utils.JsonObject` - object
-    - `string` - string
-    - `utils.JsonNumber` - number
-    - `bool` - boolean
-    - `utils.JsonLambda` - lambda
-3. The function can also return an additional value of type `error`. If it's not `nil`, the error will be returned to the user.
-4. Register the function by calling `RegisterFunction` function in `Register<group>Functions` with struct of following fields:
-    - `Group` - name of the group
-    - `Name` - name of the function
-    - `Body` - function itself
-    - `IsInstance` - could this function be called on an instance of an object (currently supported only for `array` and `string` types) 
-    - `IsUnsafe` - should this function be marked as unsafe and thus disabled in safe mode (file manipulation, network access, etc.)
-    - `Docs` - The docs for the function
-5. Add a test for your function in `test` directory in file, in which group your function will be e.g. `array_functions_test.go`.
+1. Create a new function within the `jsonte/functions` directory. The appropriate file for this function will be determined by the group your function belongs to, e.g., `array_functions.go`.
+2. Ensure the parameters and the return value of your function conform to the following types:
+   - `utils.JsonArray` - array
+   - `utils.JsonObject` - object
+   - `utils.JsonString` - string
+   - `utils.JsonNumber` - number
+   - `utils.JsonBool` - boolean
+   - `utils.JsonLambda` - lambda
+   - `[]utils.JsonType` - varargs of any type
+3. The function may also return an additional value of the `error` type. If this value is not `nil`, the error will be returned to the user.
+4. Register the function by calling the `RegisterFunction` function within `Register<group>Functions`. You will need to input a structure with the following fields:
+   - `Group` - The group's name
+   - `Name` - The function's name
+   - `Body` - The function itself
+   - `IsInstance` - A flag indicating whether this function can be invoked on an instance of an object (currently only supported for `array` and `string` types)
+   - `IsUnsafe` - A flag indicating whether this function should be marked as unsafe and consequently disabled in safe mode (applicable to file manipulation, network access, etc.)
+   - `Docs` - The function's documentation
+5. Write a test for your new function. This should be placed in the `test` directory, in the file associated with your function's group, e.g., `array_functions_test.go`.
 
-### Making changes to the grammar
+### Instructions for Modifying the Grammar
 
-1. Run script `scripts/setup_env.ps1` to set up the environment (you need to run it only once, it will set it up in `C:\antlr` and add it to the path).
-2. Make changes to `grammar/JsonTemplate.g4` file (refer to the [docs](https://github.com/antlr/antlr4/blob/master/doc/getting-started.md)).
-3. Run script `scripts/compile_antlr.ps1` to generate the parser.
-4. Write code handling the new grammar in `jsonte/expression_visitor.go` file.
-5. When making a new rule, add create an interface implementation in function `Visit<rule>` and add a call to it in `Visit` function in `jsonte/expression_visitor.go` file.
-6. Add tests for your changes in `test/eval_test.go` file.
-7. Run `go test` to make sure, that everything works.
+1. Execute the `scripts/setup_env.ps1` script to configure the environment. This only needs to be done once. The script will establish the environment in `C:\antlr` and add it to the path.
+2. Make necessary changes to the `grammar/JsonTemplate.g4` file (refer to the [official Antlr4 documentation](https://github.com/antlr/antlr4/blob/master/doc/getting-started.md)).
+3. Run the `scripts/compile_antlr.ps1` script to compile the parser.
+4. Implement the new grammar by writing corresponding code in the `jsonte/expression_visitor.go` file.
+5. When creating a new rule, provide an interface implementation in the `Visit<rule>` function and include a call to this function in the `Visit` function, located in the `jsonte/expression_visitor.go` file.
+6. Write tests for your grammar changes. These should be included in the `test/eval_test.go` file.
+7. Execute the `go test` command to verify that all modifications are working as expected.
