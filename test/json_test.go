@@ -2,13 +2,13 @@ package test
 
 import (
 	"fmt"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"math"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -150,6 +150,32 @@ func assertTemplate(t *testing.T, template, expected string) {
 	compareJsonObject(t, exp, process.Get("test"), "#", true)
 }
 
+func assertTemplateError(t *testing.T, template string, error []string) {
+	_, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
+	if err == nil {
+		t.Fatalf("Expected error, got none")
+	}
+	if burrito.IsBurritoError(err) {
+		split := burrito.GetAllMessages(err)
+		if len(split) != len(error) {
+			for i := 0; i < len(split); i++ {
+				t.Logf("Line %d: %s", i, split[i])
+			}
+			t.Fatalf("Error is not correct (expected %d lines, got %d)", len(error), len(split))
+		}
+		for i := 0; i < len(split); i++ {
+			if split[i] != error[i] {
+				for i := 0; i < len(split); i++ {
+					t.Logf("Line %d: %s", i, split[i])
+				}
+				t.Fatalf("Error is not correct (expected %s, got %s)", error[i], split[i])
+			}
+		}
+	} else {
+		t.Fatalf("Error is not a burrito error (%s)", err.Error())
+	}
+}
+
 func assertTemplateMultiple(t *testing.T, template, expected string) {
 	process, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
 	if err != nil {
@@ -181,6 +207,23 @@ func assertStringParse(t *testing.T, template, startToken, endToken, expected st
 	}
 	if process != expected {
 		t.Fatalf("Expected: \n%s\ngot: \n%s", expected, process)
+	}
+}
+
+func assertAssertionError(t *testing.T, err error, expected string) {
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	if burrito.IsBurritoError(err) {
+		split := burrito.GetAllMessages(err)
+		if len(split) != 1 {
+			t.Fatalf("Error is not correct (expected 1 line, got %d)", len(split))
+		}
+		if split[0] != expected {
+			t.Fatalf("Error is not correct (expected %s, got %s)", expected, split[0])
+		}
+	} else {
+		t.Fatalf("Error is not a burrito error (%s)", err.Error())
 	}
 }
 
@@ -1010,7 +1053,8 @@ func TestJsonParser(t *testing.T) {
 			"object": {},
 			"null": null,
 			"true": true,
-			"false": false
+			"false": false,
+			"nestedArrays": [[1, 2, 3], [4, 5, 6]]
 		}
 	}`
 	expected := utils.NewNavigableMap[string, interface{}]()
@@ -1023,6 +1067,7 @@ func TestJsonParser(t *testing.T) {
 	obj.Put("null", nil)
 	obj.Put("true", true)
 	obj.Put("false", false)
+	obj.Put("nestedArrays", []interface{}{[]interface{}{1, 2, 3}, []interface{}{4, 5, 6}})
 	expected.Put("obj", obj)
 
 	object, err := types.ParseJsonObject([]byte(template))
@@ -1031,7 +1076,7 @@ func TestJsonParser(t *testing.T) {
 	}
 	compareJsonObject(t, object, types.Box(expected).(types.JsonObject), "#", true)
 
-	expMini := "{\"obj\":{\"decimal\":0.0,\"integer\":0,\"string\":\"escape chars \\n\\t\\r\\b\\f \\\\ \\\" ሴ\",\"array\":[],\"object\":{},\"null\":null,\"true\":true,\"false\":false}}"
+	expMini := "{\"obj\":{\"decimal\":0.0,\"integer\":0,\"string\":\"escape chars \\n\\t\\r\\b\\f \\\\ \\\" ሴ\",\"array\":[],\"object\":{},\"null\":null,\"true\":true,\"false\":false,\"nestedArrays\":[[1,2,3],[4,5,6]]}}"
 	expPretty := `{
   "obj": {
     "decimal": 0.0,
@@ -1043,7 +1088,19 @@ func TestJsonParser(t *testing.T) {
     },
     "null": null,
     "true": true,
-    "false": false
+    "false": false,
+    "nestedArrays": [
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        4,
+        5,
+        6
+      ]
+    ]
   }
 }`
 	if types.ToString(object) != expMini {
@@ -1075,12 +1132,7 @@ func TestIncorrectAssert(t *testing.T) {
 		}
 	}`
 	_, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
-	if err == nil {
-		t.Fatal("Expected error")
-	}
-	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "Assertion failed for 'false' at $template/$assert" {
-		t.Errorf("Unexpected error: %s", err.Error())
-	}
+	assertAssertionError(t, err, "Assertion failed for 'false' at $template/$assert")
 }
 
 func TestIncorrectAssertDifferentCase(t *testing.T) {
@@ -1090,12 +1142,7 @@ func TestIncorrectAssertDifferentCase(t *testing.T) {
 		}
 	}`
 	_, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
-	if err == nil {
-		t.Fatal("Expected error")
-	}
-	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "Assertion failed for 'false' at $template/$assert" {
-		t.Errorf("Unexpected error: %s", err.Error())
-	}
+	assertAssertionError(t, err, "Assertion failed for 'false' at $template/$assert")
 }
 
 func TestIncorrectAssertWithMessage(t *testing.T) {
@@ -1108,12 +1155,7 @@ func TestIncorrectAssertWithMessage(t *testing.T) {
 		}
 	}`
 	_, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
-	if err == nil {
-		t.Fatal("Expected error")
-	}
-	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "This is a test at $template/$assert" {
-		t.Errorf("Unexpected error: %s", err.Error())
-	}
+	assertAssertionError(t, err, "This is a test at $template/$assert")
 }
 
 func TestIncorrectAssertWithMessageDifferentCase(t *testing.T) {
@@ -1126,12 +1168,7 @@ func TestIncorrectAssertWithMessageDifferentCase(t *testing.T) {
 		}
 	}`
 	_, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
-	if err == nil {
-		t.Fatal("Expected error")
-	}
-	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "This is a test at $template/$assert" {
-		t.Errorf("Unexpected error: %s", err.Error())
-	}
+	assertAssertionError(t, err, "This is a test at $template/$assert")
 }
 
 func TestMultipleAsserts(t *testing.T) {
@@ -1141,12 +1178,7 @@ func TestMultipleAsserts(t *testing.T) {
 		}
 	}`
 	_, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
-	if err == nil {
-		t.Fatal("Expected error")
-	}
-	if strings.Trim(strings.Split(err.Error(), "\n")[0], "\r\n \t") != "Assertion failed for 'false' at $template/$assert[2]" {
-		t.Errorf("Unexpected error: %s", err.Error())
-	}
+	assertAssertionError(t, err, "Assertion failed for 'false' at $template/$assert[2]")
 }
 
 func TestMultiplePredicatesModifyingSameField(t *testing.T) {
@@ -1373,7 +1405,6 @@ func TestModuleReplacingTemplate(t *testing.T) {
 		"example": ["four", "five"]
 	}`
 	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
-	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestObjectLiteralInArrayLiteralTemplate(t *testing.T) {
@@ -1386,7 +1417,6 @@ func TestObjectLiteralInArrayLiteralTemplate(t *testing.T) {
 		"example": [{"index":0,"value":2},{"index":1,"value":4},{"index":2,"value":6},{"index":3,"value":8},{"index":4,"value":10}]
 	}`
 	assertTemplate(t, template, expected)
-	safeio.Resolver = safeio.DefaultIOResolver
 }
 
 func TestStringParse(t *testing.T) {
@@ -1414,5 +1444,58 @@ func TestEscapingSingleQuotes(t *testing.T) {
 		"example": "That's a nice string"
 	}`
 	assertTemplate(t, template, expected)
-	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestIterationInString(t *testing.T) {
+	template := `{
+		"$scope": {
+			"test": [
+				[1,2,3],
+				[4,5,6]
+			]
+		},
+		"$template": {
+			"array": ["{{#test}}"]
+		}
+	}`
+	assertTemplateError(t, template, []string{"Unsupported action Iteration at $template/array[0]"})
+}
+
+func TestNestedArrays(t *testing.T) {
+	template := `{
+		"$scope": {
+			"test": [
+				[1,2,3],
+				[4,5,6]
+			]
+		},
+		"$template": {
+			"array": ["{{=test}}"]
+		}
+	}`
+	expected := `{
+	  "array": [
+		[1,2,3],
+		[4,5,6]
+	  ]
+	}`
+	assertTemplate(t, template, expected)
+}
+
+func TestAddingArrays(t *testing.T) {
+	template := `{
+		"$scope": {
+			"test": [
+				[1,2,3],
+				[4,5,6]
+			]
+		},
+		"$template": {
+			"array": ["{{=test[0]}}", "{{=test[1]}}"]
+		}
+	}`
+	expected := `{
+	  "array": [1, 2, 3, 4, 5, 6]
+	}`
+	assertTemplate(t, template, expected)
 }

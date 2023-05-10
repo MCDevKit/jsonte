@@ -172,7 +172,7 @@ func Process(name, input string, globalScope types.JsonObject, modules map[strin
 			for i, item := range arr.Value {
 				err := checkDeadline(deadline)
 				if err != nil {
-					return result, err
+					return result, burrito.PassError(err)
 				}
 				extra := types.AsObject(map[string]interface{}{
 					"index": types.AsNumber(i),
@@ -653,7 +653,8 @@ func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element type
 	if err != nil {
 		return nil, burrito.PassError(err)
 	}
-	if arr, ok := visit.(types.JsonArray); ok {
+	// If the result is an array, append all elements, but only if they are not equal to the original element
+	if arr, ok := visit.(types.JsonArray); ok && !visit.Equals(element) {
 		array = append(array, arr.Value...)
 	} else {
 		array = append(array, visit)
@@ -683,12 +684,13 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 		if result.Value == nil {
 			return nil, utils.WrappedJsonErrorf(path, "The expression '%s' evaluated to null", match)
 		}
-		if _, ok := result.Value.(types.JsonString); !ok && str == match.EscapedMatch {
-			return result.Value, nil
-		}
 		if result.Action == types.Literal {
 			return result.Value, nil
 		} else if result.Action == types.Value {
+			// Moved this check here to avoid not checking the action
+			if _, ok := result.Value.(types.JsonString); !ok && str == match.EscapedMatch {
+				return result.Value, nil
+			}
 			sb.WriteString(types.ToString(result.Value))
 			lastMatchEnd = match.Start + match.Length + 1
 		} else {
