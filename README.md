@@ -1,9 +1,10 @@
 # jsonte
 
-JSON Templating Engine (jsonte for short) is a simple templating engine for JSON. 
-It is designed to be used in Minecraft Bedrock addons, which require large amounts of JSON, 
-that is often easy to generate with a bit of script. 
-It includes its own query language.
+The JSON Templating Engine (abbreviated as jsonte) is a streamlined 
+templating engine specifically designed for JSON. 
+It is optimized for use in Minecraft Bedrock addons, 
+which frequently demand extensive JSON that can often be conveniently 
+generated using a modest amount of scripting. Notably, jsonte incorporates its own query language.
 
 ### [Online demo](https://mcdevkit.com/json)
 
@@ -16,7 +17,7 @@ It includes its own query language.
 With regolith:
 
 ```powershell
-regolith install json_templating_engine
+regolith install jsonte
 ```
 
 From source (requires [Go v1.18 or later](https://golang.org/)):
@@ -56,5 +57,8 @@ go build github.com/MCDevKit/jsonte
 
 ### Notes
 
-All changes to `grammar/JsonTemplate.g4` must be compiled with `scripts/compile_antlr.ps1` before they can be used.
-Due to the issue with generating the parser in Go, each new rule should be added to method `visit` in `jsonte/expression_visitor.go` manually.
+Before any modifications to `grammar/JsonTemplate.g4` can be made, 
+they must be compiled using the `scripts/compile_antlr.ps1` script. 
+Due to an existing problem with the parser generation in Go, 
+you will need to manually add each new rule to the `visit` method 
+found in the `jsonte/expression_visitor.go` file.
