@@ -14,7 +14,6 @@ import (
 	"github.com/gammazero/deque"
 	"github.com/gobwas/glob"
 	"go.uber.org/zap"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -131,7 +130,7 @@ func main() {
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".modl") {
-						bytes, err := ioutil.ReadFile(file)
+						bytes, err := os.ReadFile(file)
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while reading the module file %s", file)
 						}
@@ -192,7 +191,7 @@ func main() {
 							if err != nil {
 								return burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
 							}
-							err = ioutil.WriteFile(filename, []byte(toString(content)), 0644)
+							err = os.WriteFile(filename, []byte(toString(content)), 0644)
 							if err != nil {
 								return burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
 							}
