@@ -87,6 +87,32 @@ func LoadModule(input string, globalScope types.JsonObject, timeout int64) (Json
 	}, nil
 }
 
+func ProcessAssertionsFile(name, input string, globalScope types.JsonObject, timeout int64) error {
+	// Set up the deadline
+	deadline := time.Now().UnixMilli() + timeout
+	if timeout <= 0 {
+		deadline = MaxInt64
+	}
+
+	// Parse the input
+	root, err := types.ParseJsonArray([]byte(input))
+	if err != nil {
+		return burrito.WrapErrorf(err, "Failed to parse JSON")
+	}
+
+	visitor := TemplateVisitor{
+		scope:       deque.Deque[types.JsonObject]{},
+		globalScope: globalScope,
+		deadline:    deadline,
+	}
+
+	err = visitor.visitAssert(root, name+"#/")
+	if err != nil {
+		return burrito.PassError(err)
+	}
+	return nil
+}
+
 // Process processes a template and returns a map of the processed templates
 func Process(name, input string, globalScope types.JsonObject, modules map[string]JsonModule, timeout int64) (utils.NavigableMap[string, types.JsonObject], error) {
 	// Set up the deadline

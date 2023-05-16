@@ -118,7 +118,7 @@ func main() {
 				}
 				outFile, err = filepath.Abs(out)
 			}
-			object, err := getScope(scope)
+			object, err := getScope(scope, -1)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -159,7 +159,7 @@ func main() {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".templ") {
 						utils.Logger.Infof("Templating file %s", file)
-						bytes, err := ioutil.ReadFile(file)
+						bytes, err := os.ReadFile(file)
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while reading the template file %s", file)
 						}
@@ -210,7 +210,7 @@ func main() {
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".mcfunction") {
-						bytes, err := ioutil.ReadFile(file)
+						bytes, err := os.ReadFile(file)
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file)
 						}
@@ -238,7 +238,7 @@ func main() {
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
 						}
-						err = ioutil.WriteFile(filename, []byte(output), 0644)
+						err = os.WriteFile(filename, []byte(output), 0644)
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
 						}
@@ -249,7 +249,7 @@ func main() {
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".lang") {
-						bytes, err := ioutil.ReadFile(file)
+						bytes, err := os.ReadFile(file)
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file)
 						}
@@ -277,7 +277,7 @@ func main() {
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
 						}
-						err = ioutil.WriteFile(filename, []byte(output), 0644)
+						err = os.WriteFile(filename, []byte(output), 0644)
 						if err != nil {
 							return burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
 						}
@@ -292,7 +292,7 @@ func main() {
 		Usage: "Evaluate a JSON expression or run a REPL",
 		Function: func(args []string) error {
 			functions.SetCacheAll(cacheAll)
-			object, err := getScope(scope)
+			object, err := getScope(scope, -1)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -333,7 +333,7 @@ func main() {
 		Usage: "Start an IPC server",
 		Function: func(args []string) error {
 			functions.SetCacheAll(cacheAll)
-			object, err := getScope(scope)
+			object, err := getScope(scope, -1)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -370,7 +370,8 @@ func main() {
 	}
 }
 
-func getScope(scope []string) (types.JsonObject, error) {
+func getScope(scope []string, timeout int64) (types.JsonObject, error) {
+	assertionFiles := map[string]string{}
 	result := types.NewJsonObject()
 	for _, path := range scope {
 		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
@@ -381,21 +382,37 @@ func getScope(scope []string) (types.JsonObject, error) {
 				}
 				return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
 			}
-			if !info.IsDir() && strings.HasSuffix(path, ".json") {
-				file, err := ioutil.ReadFile(path)
-				if err != nil {
-					return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
+			if !info.IsDir() {
+				if strings.HasSuffix(path, ".json") {
+					file, err := os.ReadFile(path)
+					if err != nil {
+						return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
+					}
+					json, err := types.ParseJsonObject(file)
+					if err != nil {
+						return burrito.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
+					}
+					result = types.MergeObject(result, json, false, "#")
+				} else if strings.HasSuffix(path, ".assert") {
+					file, err := os.ReadFile(path)
+					if err != nil {
+						return burrito.WrapErrorf(err, "An error occurred while reading the assertion file '%s'", path)
+					}
+					assertionFiles[path] = string(file)
+				} else {
+					utils.Logger.Debugf("Skipping non-scope file '%s'", path)
 				}
-				json, err := types.ParseJsonObject(file)
-				if err != nil {
-					return burrito.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
-				}
-				result = types.MergeObject(result, json, false, "#")
 			}
 			return nil
 		})
 		if err != nil {
 			return types.NewJsonObject(), burrito.WrapError(err, "An error occurred while reading the scope files")
+		}
+	}
+	for path, file := range assertionFiles {
+		err := jsonte.ProcessAssertionsFile(path, file, result, timeout)
+		if err != nil {
+			return types.NewJsonObject(), burrito.PassError(err)
 		}
 	}
 	return result, nil

@@ -1523,3 +1523,35 @@ func TestCommentInArray(t *testing.T) {
 	}`
 	assertTemplate(t, template, expected)
 }
+
+func TestAssertionFile(t *testing.T) {
+	errors := []string{
+		"Assertion failed for 'false' at test#/[0]",
+	}
+	template := `[
+		"false"
+	]`
+	err := jsonte.ProcessAssertionsFile("test", template, types.NewJsonObject(), -1)
+	if err == nil {
+		t.Fatalf("Expected error, got none")
+	}
+	if burrito.IsBurritoError(err) {
+		split := burrito.GetAllMessages(err)
+		if len(split) != len(errors) {
+			for i := 0; i < len(split); i++ {
+				t.Logf("Line %d: %s", i, split[i])
+			}
+			t.Fatalf("Error is not correct (expected %d lines, got %d)", len(errors), len(split))
+		}
+		for i := 0; i < len(split); i++ {
+			if split[i] != errors[i] {
+				for i := 0; i < len(split); i++ {
+					t.Logf("Line %d: %s", i, split[i])
+				}
+				t.Fatalf("Error is not correct (expected %s, got %s)", errors[i], split[i])
+			}
+		}
+	} else {
+		t.Fatalf("Error is not a burrito error (%s)", err.Error())
+	}
+}
