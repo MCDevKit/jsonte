@@ -1499,3 +1499,27 @@ func TestAddingArrays(t *testing.T) {
 	}`
 	assertTemplate(t, template, expected)
 }
+
+func TestAssertInArray(t *testing.T) {
+	template := `{
+		"$template": {
+			"array": [{ "$assert": "true" }, 1, 2, 3, 4, 5, 6]
+		}
+	}`
+	expected := `{
+	  "array": [1, 2, 3, 4, 5, 6]
+	}`
+	assertTemplate(t, template, expected)
+}
+
+func TestCommentInArray(t *testing.T) {
+	template := `{
+		"$template": {
+			"array": [{ "$comment": "Test" }, 1, 2, 3, 4, 5, 6]
+		}
+	}`
+	expected := `{
+	  "array": [1, 2, 3, 4, 5, 6]
+	}`
+	assertTemplate(t, template, expected)
+}

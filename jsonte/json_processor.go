@@ -645,6 +645,14 @@ func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element type
 					default:
 						return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", eval.Action.String())
 					}
+				} else if key == "$assert" {
+					err := v.visitAssert(value, path)
+					if err != nil {
+						return nil, burrito.PassError(err)
+					}
+					return nil, nil
+				} else if key == "$comment" {
+					return nil, nil
 				}
 			}
 		}
