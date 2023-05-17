@@ -174,7 +174,9 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			} else {
 				return types.True, nil
 			}
-		} else if context.Question() != nil {
+		}
+		// What is this???
+		/*else if context.Question() != nil {
 			if f1.BoolValue() {
 				f2, err := v.Visit(context.Field(1))
 				if err != nil {
@@ -184,7 +186,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			} else {
 				return types.Null, nil
 			}
-		}
+		}*/
 		f2, err := v.Visit(context.Field(1))
 		if err != nil {
 			return types.Null, err
