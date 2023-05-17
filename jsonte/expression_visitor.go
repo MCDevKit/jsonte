@@ -1,13 +1,16 @@
 package jsonte
 
 import (
+	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"github.com/MCDevKit/jsonte/jsonte/types"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/MCDevKit/jsonte/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/gammazero/deque"
 	"reflect"
+	"strings"
 )
 
 const DefaultName = "value"
@@ -21,28 +24,32 @@ type ExpressionVisitor struct {
 	scope         deque.Deque[types.JsonObject]
 	path          *string
 	usedVariables []string
+	explain       []string
+	explainIndent int
 }
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) {
+	v.Explain("Visiting %s", tree.GetText())
+	v.ExplainIndent()
 	switch val := tree.(type) {
 	case *parser.FieldContext:
-		return v.VisitField(val)
+		return v.ExplainVisit(v.VisitField(val))
 	case *parser.ArrayContext:
-		return v.VisitArray(val)
+		return v.ExplainVisit(v.VisitArray(val))
 	case *parser.ObjectContext:
-		return v.VisitObject(val)
+		return v.ExplainVisit(v.VisitObject(val))
 	case *parser.Object_fieldContext:
-		return v.VisitObject_field(val)
+		return v.ExplainVisit(v.VisitObject_field(val))
 	case *parser.ExpressionContext:
-		return v.VisitExpression(val)
+		return v.ExplainVisit(v.VisitExpression(val))
 	case *parser.Function_paramContext:
-		return v.VisitFunction_param(val)
+		return v.ExplainVisit(v.VisitFunction_param(val))
 	case *parser.LambdaContext:
-		return v.VisitLambda(val)
+		return v.ExplainVisit(v.VisitLambda(val))
 	case *parser.NameContext:
-		return v.VisitName(val)
+		return v.ExplainVisit(v.VisitName(val))
 	case *parser.IndexContext:
-		return v.VisitIndex(val)
+		return v.ExplainVisit(v.VisitIndex(val))
 	}
 	panic("Unknown tree type " + reflect.TypeOf(tree).String())
 }
@@ -74,6 +81,27 @@ func (v *ExpressionVisitor) pushScopePair(key string, value interface{}) {
 // popScope pops the last scope from the stack
 func (v *ExpressionVisitor) popScope() {
 	v.scope.PopBack()
+}
+
+func (v *ExpressionVisitor) Explain(format string, args ...interface{}) {
+	utils.Logger.Debug(strings.Repeat(" ", v.explainIndent) + fmt.Sprintf(format, args...))
+	v.explain = append(v.explain, strings.Repeat(" ", v.explainIndent)+fmt.Sprintf(format, args...))
+}
+
+func (v *ExpressionVisitor) ExplainVisit(result types.JsonType, err error) (types.JsonType, error) {
+	if err == nil {
+		v.Explain("Visiting resulted in %s", result.StringValue())
+	}
+	v.ExplainUnindent()
+	return result, err
+}
+
+func (v *ExpressionVisitor) ExplainIndent() {
+	v.explainIndent += 2
+}
+
+func (v *ExpressionVisitor) ExplainUnindent() {
+	v.explainIndent -= 2
 }
 
 func isError(v interface{}) bool {
@@ -145,6 +173,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if err != nil {
 			return types.Null, err
 		}
+		v.Explain("Negating %s resulted in %v", context.Field(0).GetText(), !visit.BoolValue())
 		return types.AsBool(!visit.BoolValue()), nil
 	}
 	// process field composed of two other fields
@@ -162,6 +191,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				}
 				return types.AsBool(f2.BoolValue()), nil
 			} else {
+				v.Explain("Short-circuiting AND, because %s is false", context.Field(0).GetText())
 				return types.False, nil
 			}
 		} else if context.Or() != nil {
@@ -172,6 +202,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				}
 				return types.AsBool(f2.BoolValue()), nil
 			} else {
+				v.Explain("Short-circuiting OR, because %s is true", context.Field(0).GetText())
 				return types.True, nil
 			}
 		} else if context.Question() != nil {
@@ -191,8 +222,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		}
 		if context.NullCoalescing() != nil {
 			if f1 == types.Null {
+				v.Explain("Returning %s because %s is null", context.Field(1).GetText(), context.Field(0).GetText())
 				return f2, nil
 			} else {
+				v.Explain("Returning %s because it is not null", context.Field(0).GetText())
 				return f1, nil
 			}
 		} else if context.Add() != nil {
@@ -229,8 +262,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			n1 := types.AsNumber(f1)
 			n2 := types.AsNumber(f2)
 			if context.Range() != nil {
+				v.Explain("Returning range from %d to %d", n1.IntValue(), n2.IntValue())
 				return types.CreateRange(n1.IntValue(), n2.IntValue()), nil
 			} else if n1.Decimal || n2.Decimal {
+				v.Explain("Either %s or %s is decimal, so performing decimal operations", context.Field(0).GetText(), context.Field(1).GetText())
 				if context.Subtract() != nil {
 					return types.JsonNumber{
 						Value:   n1.FloatValue() - n2.FloatValue(),
@@ -248,6 +283,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 					}, nil
 				}
 			} else {
+				v.Explain("Neither %s nor %s is decimal, so performing integer operations", context.Field(0).GetText(), context.Field(1).GetText())
 				if context.Subtract() != nil {
 					return types.JsonNumber{
 						Value:   float64(n1.IntValue() - n2.IntValue()),
@@ -276,8 +312,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				return types.Null, err
 			}
 			if types.AsBool(f1).BoolValue() {
+				v.Explain("Returning %s because %s is true", context.Field(1).GetText(), context.Field(0).GetText())
 				return v.Visit(context.Field(1))
 			} else {
+				v.Explain("Returning %s because %s is false", context.Field(2).GetText(), context.Field(0).GetText())
 				return v.Visit(context.Field(2))
 			}
 		}
@@ -285,6 +323,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	// if the field is another field in parentheses, return the value of that field
 	// we need to also check if the first element is not a field, because if it is, it will be a function call
 	if context.LeftParen() != nil && len(context.AllField()) == 1 && context.GetChild(0) != context.Field(0) {
+		v.Explain("Unpacking %s from parentheses", context.Field(0).GetText())
 		return v.Visit(context.Field(0))
 	} else if context.LeftParen() != nil && len(context.AllField()) == 1 && context.GetChild(0) == context.Field(0) {
 		lambda, err := v.Visit(context.Field(0))
@@ -340,6 +379,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			if err != nil {
 				return types.Null, burrito.WrapErrorf(err, "Error calling function '%s'", *methodName)
 			}
+			v.Explain("Calling function %s resulted in %s", *methodName, function.StringValue())
 			return function, nil
 		}
 	}
@@ -357,6 +397,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 					if err != nil {
 						return types.Null, burrito.WrapErrorf(err, "Error calling function '%s' on %s", text, object.StringValue())
 					}
+					v.Explain("Calling function %s on %s resulted in %s", text, object.StringValue(), function.StringValue())
 					return function, nil
 				},
 				text,
@@ -418,6 +459,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if err != nil {
 			return types.Null, err
 		}
+		v.Explain("Negating %s", f.StringValue())
 		return f.Negate(), nil
 	}
 	return types.Null, burrito.WrappedErrorf("Failed to resolve '%s'", context.GetText())
