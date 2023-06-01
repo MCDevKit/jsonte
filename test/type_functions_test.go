@@ -200,7 +200,7 @@ func TestParseArray2(t *testing.T) {
 }
 
 func TestArrayObject3(t *testing.T) {
-	assertError(t, `parseArray('asd')`, []string{"Error calling function 'parseArray'", "Failed to parse string as a valid JSON", "Unexpected token 'a' at line 1, column 0 at #"})
+	assertError(t, `parseArray('asd')`, []string{"Error calling function 'parseArray'", "Failed to parse string as a valid JSON", "Unexpected token 'a' (U+0061) at line 1, column 0 at #"})
 }
 
 func TestParseObject(t *testing.T) {
@@ -213,5 +213,5 @@ func TestParseObject2(t *testing.T) {
 }
 
 func TestParseObject3(t *testing.T) {
-	assertError(t, `parseObject('asd')`, []string{"Error calling function 'parseObject'", "Failed to parse string as a valid JSON", "Unexpected token 'a' at line 1, column 0 at #"})
+	assertError(t, `parseObject('asd')`, []string{"Error calling function 'parseObject'", "Failed to parse string as a valid JSON", "Unexpected token 'a' (U+0061) at line 1, column 0 at #"})
 }
