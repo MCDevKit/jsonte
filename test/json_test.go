@@ -1555,3 +1555,15 @@ func TestAssertionFile(t *testing.T) {
 		t.Fatalf("Error is not a burrito error (%s)", err.Error())
 	}
 }
+
+func TestExtraKeysAndIterationInArray(t *testing.T) {
+	template := `{
+		"$template": {
+			"array": [{ "$comment": "Test", "$assert": "true", "{{#1..6}}": "{{=value}}" }]
+		}
+	}`
+	expected := `{
+	  "array": [1, 2, 3, 4, 5, 6]
+	}`
+	assertTemplate(t, template, expected)
+}

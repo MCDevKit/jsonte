@@ -623,7 +623,13 @@ func (v *TemplateVisitor) visitArray(arr types.JsonArray, path string) (types.Js
 // Special visitor for cases when the array element is an object, that generates multiple values
 func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element types.JsonType, path string) ([]types.JsonType, error) {
 	if obj, ok := element.(types.JsonObject); ok {
-		if obj.Size() == 1 {
+		filteredKeys := make([]string, 0)
+		for _, key := range obj.Keys() {
+			if key != "$assert" && key != "$comment" {
+				filteredKeys = append(filteredKeys, key)
+			}
+		}
+		if len(filteredKeys) == 1 || obj.Size() == 1 {
 			for _, key := range obj.Keys() {
 				value := obj.Get(key)
 				if actionPattern.MatchString(key) {
