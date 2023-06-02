@@ -100,8 +100,11 @@ func ProcessAssertionsFile(name, input string, globalScope types.JsonObject, tim
 		return burrito.WrapErrorf(err, "Failed to parse JSON")
 	}
 
+	scope := deque.Deque[types.JsonObject]{}
+	scope.PushBack(globalScope)
+
 	visitor := TemplateVisitor{
-		scope:       deque.Deque[types.JsonObject]{},
+		scope:       scope,
 		globalScope: globalScope,
 		deadline:    deadline,
 	}
