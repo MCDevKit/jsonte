@@ -31,7 +31,7 @@ const (
 	TokenTab            = '\t'
 	TokenFormFeed       = '\f'
 	TokenBackspace      = '\b'
-	TokenEof            = 0
+	TokenEof            = 4
 )
 
 type StringReader struct {
@@ -75,7 +75,10 @@ func UnmarshallJSONC(str []byte) (interface{}, error) {
 		return nil, burrito.PassError(err)
 	}
 	reader := NewStringReader(str)
-	skipWhitespace(reader)
+	err = skipWhitespace(reader)
+	if err != nil {
+		return nil, err
+	}
 	token := reader.Peek()
 	var object interface{}
 	if token == TokenOpenObject {
@@ -99,7 +102,10 @@ func UnmarshallJSONC(str []byte) (interface{}, error) {
 			return nil, err
 		}
 	}
-	skipWhitespace(reader)
+	err = skipWhitespace(reader)
+	if err != nil {
+		return nil, err
+	}
 	if reader.Peek() != TokenEof {
 		return object, utils.WrappedJsonErrorf("#", ExpectedEofError, reader.line, reader.column)
 	}
@@ -314,7 +320,7 @@ func isWhitespace(token byte) bool {
 	return token == TokenSpace || token == TokenTab || token == TokenNewline || token == TokenCarriageReturn
 }
 
-func skipWhitespace(str *StringReader) {
+func skipWhitespace(str *StringReader) error {
 	canStartComment := false
 	for {
 		token := str.Peek()
@@ -327,9 +333,12 @@ func skipWhitespace(str *StringReader) {
 		} else if token == TokenAsterisk {
 			canStartComment = parseComment(str, canStartComment)
 			continue
+		} else if canStartComment && token != TokenSlash && token != TokenAsterisk {
+			return burrito.WrappedErrorf(UnexpectedTokenExpectedError, token, TokenSlash, str.line, str.column)
 		}
 		break
 	}
+	return nil
 }
 
 func parseObject(str *StringReader, p string) (utils.NavigableMap[string, interface{}], error) {
@@ -353,6 +362,8 @@ func parseObject(str *StringReader, p string) (utils.NavigableMap[string, interf
 			canStartComment = parseComment(str, canStartComment)
 		} else if token == TokenAsterisk {
 			canStartComment = parseComment(str, canStartComment)
+		} else if canStartComment && token != TokenSlash && token != TokenAsterisk {
+			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenExpectedError, token, TokenSlash, str.line, str.column)
 		} else if token == TokenDoubleQuote && (comma || open) {
 			comma = false
 			open = false
@@ -360,11 +371,17 @@ func parseObject(str *StringReader, p string) (utils.NavigableMap[string, interf
 			if err != nil {
 				return result, err
 			}
-			skipWhitespace(str)
+			err = skipWhitespace(str)
+			if err != nil {
+				return result, err
+			}
 			if str.Read() != TokenColon {
 				return result, utils.WrappedJsonErrorf(p, ExpectedTokenError, TokenColon, str.line, str.column)
 			}
-			skipWhitespace(str)
+			err = skipWhitespace(str)
+			if err != nil {
+				return result, err
+			}
 			peekToken := str.Peek()
 			if peekToken == TokenOpenObject {
 				value, err := parseObject(str, p+"/"+key)
@@ -441,8 +458,8 @@ func parseComment(str *StringReader, canStartComment bool) bool {
 
 func parsePrimitive(str *StringReader, p string) (interface{}, error) {
 	token := str.Peek()
-	if token >= '0' && token <= '9' || token == '-' {
-		return parseNumber(str), nil
+	if token >= '0' && token <= '9' || token == '-' || token == '+' || token == '.' {
+		return parseNumber(str)
 	} else if token == 't' {
 		return parseTrue(str, p)
 	} else if token == 'f' {
@@ -476,17 +493,104 @@ func parseNull(str *StringReader, p string) (interface{}, error) {
 	return nil, parseConstant(str, p, "null")
 }
 
-func parseNumber(str *StringReader) json.Number {
+func parseNumber(str *StringReader) (json.Number, error) {
 	start := str.marker
+
+	state := 0
+	dot := false
+	exp := false
+	sign := false
+	expSign := false
+
 	for {
-		token := str.Peek()
-		if token >= '0' && token <= '9' || token == '.' || token == 'e' || token == 'E' || token == '-' || token == '+' {
-			str.Read()
-		} else {
-			break
+		c := str.Peek()
+		switch state {
+		case 0: // Initial state
+			if c >= '0' && c <= '9' {
+				state = 1
+			} else if c == '-' || c == '+' {
+				state = 1
+				sign = true
+				str.Read()
+			} else {
+				return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, c, str.line, str.column)
+			}
+		case 1: // Reading digits before dot
+			if c >= '0' && c <= '9' {
+				str.Read()
+			} else if c == '.' {
+				if dot {
+					return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, c, str.line, str.column)
+				}
+				dot = true
+				state = 2
+				str.Read()
+			} else if c == 'e' || c == 'E' {
+				if exp {
+					return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, c, str.line, str.column)
+				}
+				exp = true
+				state = 3
+				str.Read()
+			} else if c == '-' || c == '+' {
+				return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, c, str.line, str.column)
+			} else {
+				if str.marker-start == 1 && sign {
+					return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, c, str.line, str.column)
+				}
+				state = 4
+			}
+		case 2: // Reading digits after dot
+			if c >= '0' && c <= '9' {
+				str.Read()
+			} else if c == 'e' || c == 'E' {
+				if exp {
+					return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, c, str.line, str.column)
+				}
+				exp = true
+				state = 3
+				str.Read()
+			} else if c == '.' || c == '-' || c == '+' {
+				return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, c, str.line, str.column)
+			} else {
+				state = 4
+			}
+		case 3: // Reading digits of exponent
+			if c >= '0' && c <= '9' {
+				str.Read()
+			} else if c == '-' || c == '+' {
+				if expSign {
+					return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, c, str.line, str.column)
+				}
+				expSign = true
+				str.Read()
+			} else {
+				if str.str[str.marker-1] == 'e' || str.str[str.marker-1] == 'E' || str.str[str.marker-1] == '-' || str.str[str.marker-1] == '+' {
+					return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, c, str.line, str.column)
+				}
+				state = 4
+			}
+		case 4: // End state
+			return json.Number(str.str[start:str.marker]), nil
 		}
 	}
-	return json.Number(str.str[start:str.marker])
+	//hadDecimalPoint := false
+	//hadSign := false
+	//for {
+	//	token := str.Peek()
+	//	if token >= '0' && token <= '9' || token == '.' || token == 'e' || token == 'E' || token == '-' || token == '+' {
+	//		if token == '.' {
+	//			if hadDecimalPoint {
+	//				return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, token, str.line, str.column)
+	//			}
+	//			hadDecimalPoint = true
+	//		}
+	//		str.Read()
+	//	} else {
+	//		break
+	//	}
+	//}
+	//return json.Number(str.str[start:str.marker]), nil
 }
 
 func parseArray(str *StringReader, p string) ([]interface{}, error) {
@@ -510,6 +614,8 @@ func parseArray(str *StringReader, p string) ([]interface{}, error) {
 			canStartComment = parseComment(str, canStartComment)
 		} else if token == TokenAsterisk {
 			canStartComment = parseComment(str, canStartComment)
+		} else if canStartComment && token != TokenSlash && token != TokenAsterisk {
+			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenExpectedError, token, TokenSlash, str.line, str.column)
 		} else if token == TokenOpenArray && (comma || open) {
 			value, err := parseArray(str, fmt.Sprintf("%s[%d]", p, len(result)))
 			if err != nil {

@@ -7,3 +7,5 @@ docs/
 /wasm
 *.jsonl
 *txt
+/test_parsing
+/test/parser_test.go
