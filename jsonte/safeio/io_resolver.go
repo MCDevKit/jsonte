@@ -18,7 +18,7 @@ type IOResolver struct {
 	OpenDirRecursive func(path string) ([]string, error)
 	MkdirAll         func(path string) error
 	Remove           func(path string) error
-	HttpGet          func(url string) (io.ReadCloser, error)
+	HttpGet          func(url string) (io.ReadCloser, http.Header, error)
 	Create           func(path string) (io.ReadWriteCloser, error)
 	Stat             func(path string) (fs.FileInfo, error)
 	ExecCommand      func(name string, arg ...string) ([]byte, error)
@@ -70,12 +70,12 @@ var DefaultIOResolver = IOResolver{
 	Remove: func(path string) error {
 		return os.RemoveAll(path)
 	},
-	HttpGet: func(url string) (io.ReadCloser, error) {
+	HttpGet: func(url string) (io.ReadCloser, http.Header, error) {
 		open, err := http.Get(url)
 		if err != nil {
-			return nil, burrito.WrapErrorf(err, "Failed to open url %s", url)
+			return nil, nil, burrito.WrapErrorf(err, "Failed to open url %s", url)
 		}
-		return open.Body, nil
+		return open.Body, open.Header, nil
 	},
 	Create: func(path string) (io.ReadWriteCloser, error) {
 		return os.Create(path)
@@ -102,8 +102,8 @@ var NoIOResolver = IOResolver{
 	Remove: func(path string) error {
 		return burrito.WrappedErrorf("IO is disabled")
 	},
-	HttpGet: func(url string) (io.ReadCloser, error) {
-		return nil, burrito.WrappedErrorf("IO is disabled")
+	HttpGet: func(url string) (io.ReadCloser, http.Header, error) {
+		return nil, nil, burrito.WrappedErrorf("IO is disabled")
 	},
 	Create: func(path string) (io.ReadWriteCloser, error) {
 		return nil, burrito.WrappedErrorf("IO is disabled")
@@ -172,11 +172,11 @@ func CreateFakeFS(fs map[string]interface{}, withNetwork bool) IOResolver {
 			delete(files, path)
 			return nil
 		},
-		HttpGet: func(url string) (io.ReadCloser, error) {
+		HttpGet: func(url string) (io.ReadCloser, http.Header, error) {
 			if withNetwork {
 				return DefaultIOResolver.HttpGet(url)
 			}
-			return nil, burrito.WrappedErrorf("Network is disabled")
+			return nil, nil, burrito.WrappedErrorf("Network is disabled")
 		},
 		Create: func(path string) (io.ReadWriteCloser, error) {
 			path = filepath.Clean(path)

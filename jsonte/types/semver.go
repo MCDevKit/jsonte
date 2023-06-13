@@ -29,6 +29,12 @@ var patchAliases = []string{
 	"z",
 }
 
+var EmptySemver = Semver{
+	Major: 0,
+	Minor: 0,
+	Patch: 0,
+}
+
 // CompareTo compares two semantic versions. Returns 0 if they are equal, -1 if
 // the receiver is less than the argument, and 1 if the receiver is greater than
 // the argument.
@@ -100,6 +106,10 @@ func (s Semver) Index(i JsonType) (JsonType, error) {
 
 func (s Semver) Add(i JsonType) JsonType {
 	return NewString(s.StringValue() + i.StringValue())
+}
+
+func (s Semver) IsEmpty() bool {
+	return s.Major == 0 && s.Minor == 0 && s.Patch == 0
 }
 
 // ParseSemverString parses a string representation of a semantic version

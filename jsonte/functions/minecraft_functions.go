@@ -10,7 +10,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/paul-mannino/go-fuzzywuzzy"
 	"io"
-	"io/ioutil"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 )
+
+var releases []map[string]interface{}
 
 func RegisterMinecraftFunctions() {
 	const group = "minecraft"
@@ -47,7 +49,7 @@ func RegisterMinecraftFunctions() {
 	RegisterFunction(JsonFunction{
 		Group:    group,
 		Name:     "getLatestBPFile",
-		Body:     getLatestBPFileOrFail,
+		Body:     getLatestBPFile,
 		IsUnsafe: true,
 		Docs: Docs{
 			Summary: "Returns a path to the latest behavior pack file.",
@@ -76,13 +78,52 @@ func RegisterMinecraftFunctions() {
 	RegisterFunction(JsonFunction{
 		Group:    group,
 		Name:     "getLatestBPFile",
-		Body:     getLatestBPFile,
+		Body:     getLatestBPFileOrFail,
+		IsUnsafe: true,
+	})
+	RegisterFunction(JsonFunction{
+		Group:    group,
+		Name:     "getBPFile",
+		Body:     getBPFile,
+		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Returns a path to the latest behavior pack file.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file inside behavior pack.",
+				},
+				{
+					Name:    "version",
+					Summary: "The version of Minecraft vanilla files to search for. If not specified, the latest version will be used.",
+				},
+				{
+					Name:     "shouldFail",
+					Optional: true,
+					Summary:  "Whether to throw an error and stop compilation or return null when the file is not found.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe\data\behavior_packs\vanilla_1.18.10\entities\axolotl.json'",
+    "test": "{{getLatestBPFile('entities/axolotl.json', semver('1.18.10'))}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group:    group,
+		Name:     "getBPFile",
+		Body:     getBPFileOrFail,
 		IsUnsafe: true,
 	})
 	RegisterFunction(JsonFunction{
 		Group:    group,
 		Name:     "getLatestRPFile",
-		Body:     getLatestRPFileOrFail,
+		Body:     getLatestRPFile,
 		IsUnsafe: true,
 		Docs: Docs{
 			Summary: "Returns a path to the latest resource pack file.",
@@ -111,7 +152,46 @@ func RegisterMinecraftFunctions() {
 	RegisterFunction(JsonFunction{
 		Group:    group,
 		Name:     "getLatestRPFile",
-		Body:     getLatestRPFile,
+		Body:     getLatestRPFileOrFail,
+		IsUnsafe: true,
+	})
+	RegisterFunction(JsonFunction{
+		Group:    group,
+		Name:     "getRPFile",
+		Body:     getRPFile,
+		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Returns a path to the latest resource pack file.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file inside resource pack.",
+				},
+				{
+					Name:    "version",
+					Summary: "The version of Minecraft vanilla files to search for.",
+				},
+				{
+					Name:     "shouldFail",
+					Optional: true,
+					Summary:  "Whether to throw an error and stop compilation or return null when the file is not found.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe\data\resource_packs\vanilla_1.18.10\textures\entity\axolotl\axolotl_wild.png'",
+    "test": "{{getLatestRPFile('textures/entity/axolotl/axolotl_wild.png', semver('1.18.10'))}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group:    group,
+		Name:     "getRPFile",
+		Body:     getRPFileOrFail,
 		IsUnsafe: true,
 	})
 	RegisterFunction(JsonFunction{
@@ -153,6 +233,58 @@ func RegisterMinecraftFunctions() {
 {
   "$template": {
     "test": "{{listLatestBPFiles('entities')}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "listRPFiles",
+		Body:  listRPFiles,
+		Docs: Docs{
+			Summary: "Returns an array of paths to the latest files in resource pack within given path.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the directory inside resource pack.",
+				},
+				{
+					Name:    "version",
+					Summary: "The version of Minecraft vanilla files to search for.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "test": "{{listRPFiles('entity', semver('1.17.30'))}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "listBPFiles",
+		Body:  listBPFiles,
+		Docs: Docs{
+			Summary: "Returns an array of paths to the latest files in behavior pack within given path.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the directory inside behavior pack.",
+				},
+				{
+					Name:    "version",
+					Summary: "The version of Minecraft vanilla files to search for.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "test": "{{listBPFiles('entities', semver('1.17.30'))}}"
   }
 }
 </code>`,
@@ -289,18 +421,26 @@ func getMinecraftInstallDir() (types.JsonString, error) {
 }
 
 func getLatestBPFileOrFail(p types.JsonString) (types.JsonType, error) {
-	return getLatestBPFile(p, types.True)
+	return getBPFile(p, types.EmptySemver, types.True)
 }
 
 func getLatestBPFile(p types.JsonString, shouldFail types.JsonBool) (types.JsonType, error) {
+	return getBPFile(p, types.EmptySemver, shouldFail)
+}
+
+func getBPFileOrFail(p types.JsonString, version types.Semver) (types.JsonType, error) {
+	return getBPFile(p, version, types.True)
+}
+
+func getBPFile(p types.JsonString, version types.Semver, shouldFail types.JsonBool) (types.JsonType, error) {
 	if bpFiles.IsEmpty() {
-		bp, err := findPackVersions(true, VanillaBpUUID)
+		bp, err := findPackVersions(true, VanillaBpUUID, version)
 		if err != nil {
 			return types.EmptyString, burrito.WrapErrorf(err, "An error occurred while reading behavior packs")
 		}
 		bpFiles = bp
 	}
-	file, err := getLatestFile(p.StringValue(), bpFiles)
+	file, err := getLatestFile(p.StringValue(), bpFiles, version)
 	if !shouldFail.BoolValue() && err != nil && burrito.AsBurritoError(err).HasTag(os.ErrNotExist.Error()) {
 		return types.Null, nil
 	}
@@ -308,18 +448,26 @@ func getLatestBPFile(p types.JsonString, shouldFail types.JsonBool) (types.JsonT
 }
 
 func getLatestRPFileOrFail(p types.JsonString) (types.JsonType, error) {
-	return getLatestRPFile(p, types.True)
+	return getRPFile(p, types.EmptySemver, types.True)
 }
 
 func getLatestRPFile(p types.JsonString, shouldFail types.JsonBool) (types.JsonType, error) {
+	return getRPFile(p, types.EmptySemver, shouldFail)
+}
+
+func getRPFileOrFail(p types.JsonString, version types.Semver) (types.JsonType, error) {
+	return getRPFile(p, version, types.True)
+}
+
+func getRPFile(p types.JsonString, version types.Semver, shouldFail types.JsonBool) (types.JsonType, error) {
 	if rpFiles.IsEmpty() {
-		rp, err := findPackVersions(false, VanillaRpUUID)
+		rp, err := findPackVersions(false, VanillaRpUUID, version)
 		if err != nil {
 			return types.EmptyString, burrito.WrapErrorf(err, "An error occurred while reading resource packs")
 		}
 		rpFiles = rp
 	}
-	file, err := getLatestFile(p.StringValue(), rpFiles)
+	file, err := getLatestFile(p.StringValue(), rpFiles, version)
 	if !shouldFail.BoolValue() && err != nil && burrito.AsBurritoError(err).HasTag(os.ErrNotExist.Error()) {
 		return types.Null, nil
 	}
@@ -327,31 +475,49 @@ func getLatestRPFile(p types.JsonString, shouldFail types.JsonBool) (types.JsonT
 }
 
 func listLatestRPFiles(p types.JsonString) (types.JsonArray, error) {
+	return listRPFiles(p, types.EmptySemver)
+}
+
+func listRPFiles(p types.JsonString, version types.Semver) (types.JsonArray, error) {
 	if rpFiles.IsEmpty() {
-		rp, err := findPackVersions(false, VanillaRpUUID)
+		rp, err := findPackVersions(false, VanillaRpUUID, version)
 		if err != nil {
 			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while reading resource packs")
 		}
 		rpFiles = rp
 	}
-	return listLatestFiles(p.StringValue(), rpFiles)
+	return listLatestFiles(p.StringValue(), rpFiles, version)
 }
 
 func listLatestBPFiles(p types.JsonString) (types.JsonArray, error) {
+	return listBPFiles(p, types.EmptySemver)
+}
+
+func listBPFiles(p types.JsonString, version types.Semver) (types.JsonArray, error) {
 	if bpFiles.IsEmpty() {
-		bp, err := findPackVersions(true, VanillaBpUUID)
+		bp, err := findPackVersions(true, VanillaBpUUID, version)
 		if err != nil {
 			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while reading behavior packs")
 		}
 		bpFiles = bp
 	}
-	return listLatestFiles(p.StringValue(), bpFiles)
+	return listLatestFiles(p.StringValue(), bpFiles, version)
 }
 
-func listLatestFiles(p string, m utils.NavigableMap[string, string]) (types.JsonArray, error) {
+func listLatestFiles(p string, m utils.NavigableMap[string, string], version types.Semver) (types.JsonArray, error) {
 	result := map[string]string{}
 	keys := m.Keys()
 	for i := len(keys) - 1; i >= 0; i-- {
+		if !version.IsEmpty() {
+			ver, err := types.ParseSemverString(keys[i])
+			if err != nil {
+				continue
+			}
+			than, _ := ver.LessThan(version)
+			if !than && !ver.Equals(version) {
+				continue
+			}
+		}
 		s := path.Join(m.Get(keys[i]), p)
 		_, err := safeio.Resolver.Stat(s)
 		if err != nil {
@@ -385,9 +551,19 @@ func listLatestFiles(p string, m utils.NavigableMap[string, string]) (types.Json
 	return types.JsonArray{Value: arr}, nil
 }
 
-func getLatestFile(p string, m utils.NavigableMap[string, string]) (types.JsonString, error) {
+func getLatestFile(p string, m utils.NavigableMap[string, string], version types.Semver) (types.JsonString, error) {
 	keys := m.Keys()
 	for i := len(keys) - 1; i >= 0; i-- {
+		if !version.IsEmpty() {
+			ver, err := types.ParseSemverString(keys[i])
+			if err != nil {
+				continue
+			}
+			than, _ := ver.LessThan(version)
+			if !than && !ver.Equals(version) {
+				continue
+			}
+		}
 		s := path.Join(m.Get(keys[i]), p)
 		_, err := safeio.Resolver.Stat(s)
 		if err != nil {
@@ -495,11 +671,10 @@ func unzip(src, dest string) error {
 	return nil
 }
 
-func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string], error) {
+func findPackVersions(isBp bool, uuid string, version types.Semver) (utils.NavigableMap[string, string], error) {
 	versions := utils.NewNavigableMap[string, string]()
 	installDir, err := getMinecraftInstallDir()
 	if err != nil {
-		url := "https://api.github.com/repos/Mojang/bedrock-samples/releases/latest"
 		outName := "packs.zip"
 		dirName := "RP"
 		if isBp {
@@ -511,43 +686,162 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 			base = json2.CacheDir
 		}
 
-		stat, err := safeio.Resolver.Stat(path.Join(base, dirName))
+		stat, err := safeio.Resolver.Stat(base)
 		if err == nil && stat.IsDir() {
-			versions.Put("1.0.0", path.Join(base, dirName))
-			return versions, nil
+			// list folders in base
+			dir, err := safeio.Resolver.OpenDir(base)
+			if err != nil {
+				return versions, burrito.WrapErrorf(err, "An error occurred while opening directory %s", base)
+			}
+			for _, d := range dir {
+				stat, err = safeio.Resolver.Stat(path.Join(base, d))
+				if err == nil && stat.IsDir() {
+					stat, err = safeio.Resolver.Stat(path.Join(base, d, dirName))
+					if err == nil && stat.IsDir() {
+						_, err = types.ParseSemverString(d)
+						if err != nil {
+							continue
+						}
+						versions.Put(d, path.Join(base, d, dirName))
+					}
+				}
+			}
+			if !versions.IsEmpty() && (version.IsEmpty() || versions.ContainsMatchingKey(func(s string) bool {
+				ver, err2 := types.ParseSemverString(s)
+				if err2 != nil {
+					return false
+				}
+				return ver.Major == version.Major && ver.Minor == version.Minor
+			})) {
+				return versions, nil
+			}
 		}
-		utils.Logger.Infof("Resolving %s", url)
-		resp, err := safeio.Resolver.HttpGet(url)
-		if err != nil {
-			return versions, burrito.WrapErrorf(err, "An error occurred while resolving %s", url)
-		}
+
 		var release map[string]interface{}
-		err = json.NewDecoder(resp).Decode(&release)
-		if err != nil {
-			return versions, burrito.WrapErrorf(err, "An error occurred while parsing %s", url)
+		if version.IsEmpty() {
+			url := "https://api.github.com/repos/Mojang/bedrock-samples/releases/latest"
+			utils.Logger.Infof("Resolving %s", url)
+			resp, _, err := safeio.Resolver.HttpGet(url)
+			if err != nil {
+				return versions, burrito.WrapErrorf(err, "An error occurred while resolving %s", url)
+			}
+			err = json.NewDecoder(resp).Decode(&release)
+			if err != nil {
+				return versions, burrito.WrapErrorf(err, "An error occurred while parsing %s", url)
+			}
+			err = resp.Close()
+			if err != nil {
+				return versions, burrito.WrapErrorf(err, "An error occurred while closing %s", url)
+			}
+		} else {
+			url := "https://api.github.com/repos/Mojang/bedrock-samples/releases"
+			if len(releases) == 0 {
+				for {
+					utils.Logger.Infof("Resolving %s", url)
+					resp, header, err := safeio.Resolver.HttpGet(url)
+					if err != nil {
+						return versions, burrito.WrapErrorf(err, "An error occurred while resolving %s", url)
+					}
+					err = json.NewDecoder(resp).Decode(&releases)
+					if err != nil {
+						return versions, burrito.WrapErrorf(err, "An error occurred while parsing %s", url)
+					}
+					err = resp.Close()
+					if err != nil {
+						return versions, burrito.WrapErrorf(err, "An error occurred while closing %s", url)
+					}
+					if header.Get("link") == "" {
+						break
+					}
+					link := header.Get("link")
+					if strings.Contains(link, `rel="next"`) {
+						url = strings.Trim(strings.Split(strings.Split(link, `rel="next"`)[0], ";")[0], "<> ")
+					} else {
+						break
+					}
+				}
+			}
+			closest := types.Semver{Major: 0, Minor: 0, Patch: 0}
+			vs := utils.NewNavigableMap[string, types.Semver]()
+			vs1 := utils.NewNavigableMap[string, map[string]interface{}]()
+			for _, r := range releases {
+				if r["tag_name"] == nil {
+					return versions, burrito.WrapErrorf(err, "Couldn't find tag_name in %s", url)
+				}
+				tag, ok := r["tag_name"].(string)
+				if !ok {
+					return versions, burrito.WrapErrorf(err, "tag_name is not a string in %s", url)
+				}
+				ver, err := types.ParseSemverString(strings.TrimPrefix(strings.Split(tag, "-")[0], "v"))
+				if err != nil {
+					return versions, burrito.WrapErrorf(err, "tag_name %s is not a valid semver", tag)
+				}
+				vs.Put(tag, ver)
+				vs1.Put(tag, r)
+			}
+			for _, tag := range vs.Keys() {
+				ver := vs.Get(tag)
+				if ver.Major != version.Major {
+					continue
+				}
+				if ver.Minor == version.Minor {
+					closest = ver
+					release = vs1.Get(tag)
+					break
+				}
+				if closest.IsEmpty() || math.Abs(float64(ver.Minor-version.Minor)) < math.Abs(float64(closest.Minor-version.Minor)) {
+					closest = ver
+					release = vs1.Get(tag)
+				}
+			}
+			for _, tag := range vs.Keys() {
+				ver := vs.Get(tag)
+				if ver.Major != version.Major {
+					continue
+				}
+				if ver.Minor != closest.Minor {
+					continue
+				}
+				if ver.Patch == version.Patch {
+					closest = ver
+					release = vs1.Get(tag)
+					break
+				}
+				if math.Abs(float64(ver.Patch-version.Patch)) < math.Abs(float64(closest.Patch-version.Patch)) {
+					closest = ver
+					release = vs1.Get(tag)
+				}
+			}
+			if release == nil {
+				return versions, burrito.WrapErrorf(err, "Couldn't find a release for %s", version.StringValue())
+			}
 		}
 		if release["zipball_url"] == nil {
-			return versions, burrito.WrapErrorf(err, "Couldn't find zipball_url in %s", url)
+			return versions, burrito.WrapErrorf(err, "Couldn't find zipball_url")
 		}
 		url, ok := release["zipball_url"].(string)
 		if !ok {
 			return versions, burrito.WrapErrorf(err, "zipball_url is not a string in %s", url)
 		}
-		err = resp.Close()
-		if err != nil {
-			return versions, burrito.WrapErrorf(err, "An error occurred while closing %s", url)
-		}
 
-		err = safeio.Resolver.MkdirAll(base)
+		if release["tag_name"] == nil {
+			return versions, burrito.WrapErrorf(err, "Couldn't find tag_name in %s", url)
+		}
+		tag, ok := release["tag_name"].(string)
+		if !ok {
+			return versions, burrito.WrapErrorf(err, "tag_name is not a string in %s", url)
+		}
+		cleanVer := strings.TrimPrefix(strings.Split(tag, "-")[0], "v")
+		err = safeio.Resolver.MkdirAll(path.Join(base, cleanVer))
 		if err != nil && !os.IsExist(err) {
 			return versions, burrito.WrapErrorf(err, "An error occurred while creating cache directory")
 		}
-		out, err := safeio.Resolver.Create(path.Join(base, outName))
+		out, err := safeio.Resolver.Create(path.Join(base, cleanVer, outName))
 		if err != nil {
 			return versions, burrito.WrapErrorf(err, "An error occurred while creating file %s", outName)
 		}
 		utils.Logger.Infof("Downloading %s", url)
-		resp, err = safeio.Resolver.HttpGet(url)
+		resp, _, err := safeio.Resolver.HttpGet(url)
 		if err != nil {
 			return versions, burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
@@ -564,16 +858,16 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 			return versions, burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
 
-		err = unzip(path.Join(base, outName), base)
+		err = unzip(path.Join(base, cleanVer, outName), filepath.Join(base, cleanVer))
 		if err != nil {
 			return versions, burrito.WrapErrorf(err, "An error occurred while extracting %s", outName)
 		}
-		err = safeio.Resolver.Remove(path.Join(base, outName))
+		err = safeio.Resolver.Remove(path.Join(base, cleanVer, outName))
 		if err != nil {
 			return versions, burrito.WrapErrorf(err, "An error occurred while removing %s", outName)
 		}
 
-		versions.Put("1.0.0", path.Join(base, dirName))
+		versions.Put(cleanVer, path.Join(base, cleanVer, dirName))
 		return versions, err
 	}
 	packDir := path.Join(installDir.StringValue(), "data", "behavior_packs")
@@ -587,7 +881,7 @@ func findPackVersions(isBp bool, uuid string) (utils.NavigableMap[string, string
 	for _, d := range dir {
 		p := path.Join(packDir, d.Name())
 		if d.IsDir() {
-			f, err := ioutil.ReadFile(path.Join(p, "manifest.json"))
+			f, err := os.ReadFile(path.Join(p, "manifest.json"))
 			if err != nil {
 				if os.IsNotExist(err) {
 					continue
@@ -737,7 +1031,7 @@ func fetchItemInfos() error {
 			return burrito.WrapErrorf(err, "An error occurred while creating file %s", outName)
 		}
 		utils.Logger.Infof("Downloading %s", url)
-		resp, err := safeio.Resolver.HttpGet(url)
+		resp, _, err := safeio.Resolver.HttpGet(url)
 		if err != nil {
 			return burrito.WrapErrorf(err, "An error occurred while downloading %s", url)
 		}
@@ -758,7 +1052,7 @@ func fetchItemInfos() error {
 	if err != nil {
 		return burrito.WrapErrorf(err, "An error occurred while opening %s", outName)
 	}
-	readAll, err := ioutil.ReadAll(open)
+	readAll, err := io.ReadAll(open)
 	if err != nil {
 		return burrito.WrapErrorf(err, "An error occurred while reading %s", outName)
 	}
@@ -781,11 +1075,11 @@ func fetchItemInfos() error {
 }
 
 func FetchCache() error {
-	_, err := findPackVersions(true, VanillaBpUUID)
+	_, err := findPackVersions(true, VanillaBpUUID, types.EmptySemver)
 	if err != nil {
 		return burrito.WrapErrorf(err, "Failed to cache vanilla behavior pack")
 	}
-	_, err = findPackVersions(false, VanillaRpUUID)
+	_, err = findPackVersions(false, VanillaRpUUID, types.EmptySemver)
 	if err != nil {
 		return burrito.WrapErrorf(err, "Failed to cache vanilla resource pack")
 	}

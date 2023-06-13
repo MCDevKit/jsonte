@@ -74,6 +74,16 @@ func (m *NavigableMap[K, V]) ContainsKey(key K) bool {
 	return false
 }
 
+// ContainsMatchingKey returns true if the matching key exists.
+func (m *NavigableMap[K, V]) ContainsMatchingKey(matchFunc func(K) bool) bool {
+	for _, k := range m.keys {
+		if matchFunc(k) {
+			return true
+		}
+	}
+	return false
+}
+
 // Keys returns the keys in order.
 func (m *NavigableMap[K, V]) Keys() []K {
 	return m.keys
