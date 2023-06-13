@@ -108,7 +108,7 @@ func RegisterMinecraftFunctions() {
 {
   "$template": {
     "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe\data\behavior_packs\vanilla_1.18.10\entities\axolotl.json'",
-    "test": "{{getLatestBPFile('entities/axolotl.json', semver('1.18.10'))}}"
+    "test": "{{getBPFile('entities/axolotl.json', semver('1.18.10'))}}"
   }
 }
 </code>`,
@@ -182,7 +182,7 @@ func RegisterMinecraftFunctions() {
 {
   "$template": {
     "$comment": "The field below will most likely be 'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_<Minecraft version>__8wekyb3d8bbwe\data\resource_packs\vanilla_1.18.10\textures\entity\axolotl\axolotl_wild.png'",
-    "test": "{{getLatestRPFile('textures/entity/axolotl/axolotl_wild.png', semver('1.18.10'))}}"
+    "test": "{{getRPFile('textures/entity/axolotl/axolotl_wild.png', semver('1.18.10'))}}"
   }
 }
 </code>`,
