@@ -98,7 +98,7 @@ func TestGetOldRPFile(t *testing.T) {
   }
 }`
 	eval := evaluate(t, `getRPFile('entity/wither.entity.json', semver('1.19.50'))`)
-	assertString(t, eval, "packs/1.19.50.25/RP/entity/wither.entity.json")
+	assertString(t, eval, "packs/1.19.50.2/RP/entity/wither.entity.json")
 	open, err := safeio.Resolver.Open(eval.Value.StringValue())
 	if err != nil {
 		t.Fatal(err)
