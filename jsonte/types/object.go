@@ -186,7 +186,15 @@ func IsEqualObject(a, b utils.NavigableMap[string, JsonType]) bool {
 		return false
 	}
 	for _, k := range a.Keys() {
+		if !b.ContainsKey(k) {
+			return false
+		}
 		if !b.Get(k).Equals(a.Get(k)) {
+			return false
+		}
+	}
+	for _, k := range b.Keys() {
+		if !a.ContainsKey(k) {
 			return false
 		}
 	}
