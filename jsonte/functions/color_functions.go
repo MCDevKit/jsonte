@@ -128,20 +128,19 @@ func arrayToHex(array types.JsonArray) (types.JsonString, error) {
 		return types.EmptyString, burrito.WrappedErrorf("Expected array of length 3 or 4, got %d", len(array.Value))
 	}
 	var r, g, b byte
-	if len(array.Value) == 3 {
-		if !types.IsNumber(array.Value[0]) {
-			return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[0].StringValue())
-		}
-		if !types.IsNumber(array.Value[1]) {
-			return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[1].StringValue())
-		}
-		if !types.IsNumber(array.Value[2]) {
-			return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[2].StringValue())
-		}
-		r = byte(types.AsNumber(array.Value[0]).FloatValue() * 255)
-		g = byte(types.AsNumber(array.Value[1]).FloatValue() * 255)
-		b = byte(types.AsNumber(array.Value[2]).FloatValue() * 255)
-	} else {
+	if !types.IsNumber(array.Value[0]) {
+		return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[0].StringValue())
+	}
+	if !types.IsNumber(array.Value[1]) {
+		return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[1].StringValue())
+	}
+	if !types.IsNumber(array.Value[2]) {
+		return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[2].StringValue())
+	}
+	r = byte(types.AsNumber(array.Value[0]).FloatValue() * 255)
+	g = byte(types.AsNumber(array.Value[1]).FloatValue() * 255)
+	b = byte(types.AsNumber(array.Value[2]).FloatValue() * 255)
+	if len(array.Value) == 4 {
 		if !types.IsNumber(array.Value[3]) {
 			return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[3].StringValue())
 		}
