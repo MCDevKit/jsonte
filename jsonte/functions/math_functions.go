@@ -1,10 +1,13 @@
 package functions
 
 import (
+	"fmt"
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"math"
 	"math/rand"
+	"strconv"
 )
 
 func RegisterMathFunctions() {
@@ -749,6 +752,62 @@ func RegisterMathFunctions() {
 		Name:  "wrap",
 		Body:  wrapShort,
 	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "toHex",
+		Body:  toHexFixed,
+		Docs: Docs{
+			Summary: "Returns the given number as a hexadecimal string.",
+			Arguments: []Argument{
+				{
+					Name:    "number",
+					Summary: "The number to convert to a hexadecimal string.",
+				},
+				{
+					Name:     "digits",
+					Summary:  "The number of digits to pad the hexadecimal string with.",
+					Optional: true,
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 007b",
+    "test": "{{toHex(123, 4)}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "toHex",
+		Body:  toHex,
+	})
+	RegisterFunction(JsonFunction{
+		Group: group,
+		Name:  "fromHex",
+		Body:  fromHex,
+		Docs: Docs{
+			Summary: "Returns the given hexadecimal string as a number.",
+			Arguments: []Argument{
+				{
+					Name:    "string",
+					Summary: "The hexadecimal string to convert to a number.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be 123",
+    "test": "{{fromHex('7b')}}"
+  }
+}
+</code>`,
+		},
+	})
 }
 
 func wrapFull(value, start, end types.JsonNumber) types.JsonNumber {
@@ -971,4 +1030,24 @@ func pow(a, b types.JsonNumber) types.JsonNumber {
 		Value:   math.Pow(a.FloatValue(), b.FloatValue()),
 		Decimal: a.Decimal || b.Decimal,
 	}
+}
+
+func toHex(a types.JsonNumber) types.JsonString {
+	return types.JsonString{
+		Value: fmt.Sprintf("%x", int64(a.IntValue())),
+	}
+}
+
+func toHexFixed(a types.JsonNumber, digits types.JsonNumber) types.JsonString {
+	return types.JsonString{
+		Value: fmt.Sprintf("%0"+strconv.Itoa(int(digits.IntValue()))+"x", int64(a.IntValue())),
+	}
+}
+
+func fromHex(a types.JsonString) (types.JsonNumber, error) {
+	i, err := strconv.ParseInt(a.Value, 16, 64)
+	if err != nil {
+		return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to parse hex string %s", a.Value)
+	}
+	return types.AsNumber(i), nil
 }
