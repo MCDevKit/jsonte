@@ -910,16 +910,22 @@ func sort_(arr types.JsonArray) types.JsonArray {
 }
 
 func sortMap(arr types.JsonArray, predicate types.JsonLambda) (types.JsonArray, error) {
-	mapped, err := map_(arr, predicate)
-	if err != nil {
-		return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while mapping the values for sorting the array")
+	mapped := make([][]interface{}, len(arr.Value))
+	for i, v := range arr.Value {
+		a, err := predicate.Value(&predicate, paramsForLambda([]interface{}{v, i}))
+		if err != nil {
+			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while mapping the values for sorting the array")
+		}
+		mapped[i] = []interface{}{i, a}
 	}
 	result := make([]types.JsonType, len(arr.Value))
-	copy(result, arr.Value)
-	sort.SliceStable(result, func(i, j int) bool {
-		than, _ := mapped.Value[i].LessThan(mapped.Value[j])
+	sort.SliceStable(mapped, func(i, j int) bool {
+		than, _ := mapped[i][1].(types.JsonType).LessThan(mapped[j][1].(types.JsonType))
 		return than
 	})
+	for i, v := range mapped {
+		result[i] = arr.Value[v[0].(int)]
+	}
 	return types.JsonArray{Value: result}, nil
 }
 
