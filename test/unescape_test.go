@@ -83,7 +83,7 @@ func TestCustomEndString(t *testing.T) {
 	expectedEscaped := "Hello\\'World!"
 	var sb strings.Builder
 	i := 0
-	ended, escaped := jsonte.UnescapeStringToBuffer(`Hello\'World!'asd`, &sb, &i, '\'')
+	ended, escaped := jsonte.UnescapeStringToBuffer([]rune(`Hello\'World!'asd`), &sb, &i, '\'')
 	actual := sb.String()
 	if actual != expected {
 		t.Fatalf("Expected: %s, got: %s", expected, actual)

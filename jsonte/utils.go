@@ -61,20 +61,21 @@ func toCamelCase(s ...string) string {
 }
 
 func UnescapeString(text string) string {
+	runes := []rune(text)
 	var sb strings.Builder
 	i := 0
-	UnescapeStringToBuffer(text, &sb, &i, 0)
+	UnescapeStringToBuffer(runes, &sb, &i, 0)
 	return sb.String()
 }
 
 // UnescapeStringToBuffer unescapes a string to a buffer. If end is not 0, the unescaping will stop when the end rune is found.
 // Returns true if the end rune is found and false otherwise.
 // Also returns the escaped string for debugging purposes.
-func UnescapeStringToBuffer(text string, sb *strings.Builder, i *int, end rune) (bool, string) {
+func UnescapeStringToBuffer(text []rune, sb *strings.Builder, i *int, end rune) (bool, string) {
 	var debugBuilder strings.Builder
 	escape := false
 	for ; *i < len(text); *i++ {
-		c := rune(text[*i])
+		c := text[*i]
 		if escape {
 			debugBuilder.WriteRune(c)
 			escape = false
@@ -102,7 +103,7 @@ func UnescapeStringToBuffer(text string, sb *strings.Builder, i *int, end rune) 
 					sb.WriteRune(c)
 					continue
 				}
-				r, err := strconv.ParseInt(text[*i+1:*i+5], 16, 32)
+				r, err := strconv.ParseInt(string(text[*i+1:*i+5]), 16, 32)
 				if err != nil {
 					utils.Logger.Warnf("Failed to parse unicode escape sequence: %s", err)
 					sb.WriteRune(c)

@@ -76,7 +76,7 @@ type TemplateMatch struct {
 	Match        string
 	EscapedMatch string
 	Start        int
-	Length         int
+	Length       int
 }
 
 // FindTemplateMatches processes a string replacing all the jsonte expressions with their values
@@ -114,7 +114,7 @@ outerFor:
 				currentMatch.WriteRune(char)
 				debugMatch.WriteRune(char)
 				i++
-				ended, debug := UnescapeStringToBuffer(input, &currentMatch, &i, char)
+				ended, debug := UnescapeStringToBuffer([]rune(input), &currentMatch, &i, char)
 				if !ended {
 					return matches, burrito.WrappedErrorf("The string '%s' is not closed.", debug)
 				}

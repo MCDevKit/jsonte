@@ -533,6 +533,11 @@ func TestCaseSensitivity(t *testing.T) {
 	assertNumber(t, eval, 10)
 }
 
+func TestEncoding(t *testing.T) {
+	eval := evaluateWithScope(t, `test()`, utils.ToNavigableMap("test", types.NewString("() => '§'")))
+	assertString(t, eval, "§")
+}
+
 func TestLambdaInfo(t *testing.T) {
 	testCases := []struct {
 		name          string
