@@ -81,9 +81,12 @@ type TemplateMatch struct {
 
 // FindTemplateMatches processes a string replacing all the jsonte expressions with their values
 func FindTemplateMatches(input, startToken, endToken string) ([]TemplateMatch, error) {
-	inputLen := len(input)
-	startLen := len(startToken)
-	endLen := len(endToken)
+	inputRunes := []rune(input)
+	startTokenRunes := []rune(startToken)
+	endTokenRunes := []rune(endToken)
+	inputLen := len(inputRunes)
+	startLen := len(startTokenRunes)
+	endLen := len(endTokenRunes)
 
 	matches := make([]TemplateMatch, 0)
 	started := false
@@ -93,11 +96,11 @@ func FindTemplateMatches(input, startToken, endToken string) ([]TemplateMatch, e
 	var debugMatch strings.Builder
 outerFor:
 	for i := 0; i < inputLen; i++ {
-		char := rune(input[i])
+		char := inputRunes[i]
 		if !started {
-			if i+startLen < inputLen && input[i+startLen] == '{' {
+			if i+startLen < inputLen && inputRunes[i+startLen] == '{' {
 				for j := 0; j < startLen; j++ {
-					if input[i+j] != startToken[j] {
+					if inputRunes[i+j] != startTokenRunes[j] {
 						continue outerFor
 					}
 				}
@@ -114,7 +117,7 @@ outerFor:
 				currentMatch.WriteRune(char)
 				debugMatch.WriteRune(char)
 				i++
-				ended, debug := UnescapeStringToBuffer([]rune(input), &currentMatch, &i, char)
+				ended, debug := UnescapeStringToBuffer(inputRunes, &currentMatch, &i, char)
 				if !ended {
 					return matches, burrito.WrappedErrorf("The string '%s' is not closed.", debug)
 				}
@@ -129,7 +132,7 @@ outerFor:
 				bracketCount--
 				if bracketCount == 0 && i+endLen < inputLen {
 					for j := 0; j < endLen; j++ {
-						if input[i+j] != endToken[j] {
+						if inputRunes[i+j] != endTokenRunes[j] {
 							return matches, burrito.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
 						}
 					}

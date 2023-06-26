@@ -716,9 +716,10 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 	}
 	var sb strings.Builder
 	lastMatchEnd := 0
+	strRunes := []rune(str)
 	for _, match := range matches {
 		if match.Start > lastMatchEnd {
-			sb.WriteString(str[lastMatchEnd:match.Start])
+			sb.WriteString(string(strRunes[lastMatchEnd:match.Start]))
 		}
 		result, err := Eval(match.EscapedMatch, v.scope, path)
 		if err != nil {
@@ -740,8 +741,8 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 			return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())
 		}
 	}
-	if lastMatchEnd < len(str) {
-		sb.WriteString(str[lastMatchEnd:])
+	if lastMatchEnd < len(strRunes) {
+		sb.WriteString(string(strRunes[lastMatchEnd:]))
 	}
 	return types.NewString(sb.String()), nil
 }

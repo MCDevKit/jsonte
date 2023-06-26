@@ -1567,3 +1567,19 @@ func TestExtraKeysAndIterationInArray(t *testing.T) {
 	}`
 	assertTemplate(t, template, expected)
 }
+
+func TestParsingString(t *testing.T) {
+	template := `{
+		"$scope": {
+			"color_code": "4",
+			"give": "diamond_sword"
+		},
+		"$template": {
+			"test": "§{{color_code}}{{Title(Replace(give,'_',' '))}} test"
+		}
+	}`
+	expected := `{
+	  "test": "§4Diamond Sword test"
+	}`
+	assertTemplate(t, template, expected)
+}
