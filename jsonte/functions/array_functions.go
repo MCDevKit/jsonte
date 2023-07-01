@@ -159,7 +159,7 @@ the result will be
 				},
 				{
 					Name:     "selector(element, index)",
-					Summary:  "The selector to apply to each element before summing",
+					Summary:  "The selector to apply to each element before sorting",
 					Optional: true,
 				},
 			},
