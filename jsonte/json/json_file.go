@@ -112,7 +112,7 @@ func UnmarshallJSONC(str []byte) (interface{}, error) {
 	return object, nil
 }
 
-func MarshalJSONC(object interface{}, pretty bool) ([]byte, error) {
+func MarshalJSONC(object interface{}, pretty bool) ([]rune, error) {
 	switch object.(type) {
 	case utils.NavigableMap[string, interface{}]:
 		return writeObject(object.(utils.NavigableMap[string, interface{}]), pretty, 0)
@@ -125,28 +125,28 @@ func MarshalJSONC(object interface{}, pretty bool) ([]byte, error) {
 	case float64:
 		// If the float doesn't have a decimal point, force `.0` to be appended
 		if object.(float64) == float64(int64(object.(float64))) {
-			return []byte(strconv.FormatFloat(object.(float64), 'f', 1, 64)), nil
+			return []rune(strconv.FormatFloat(object.(float64), 'f', 1, 64)), nil
 		}
-		return []byte(strconv.FormatFloat(object.(float64), 'f', -1, 64)), nil
+		return []rune(strconv.FormatFloat(object.(float64), 'f', -1, 64)), nil
 	case int:
-		return []byte(strconv.FormatInt(int64(object.(int)), 10)), nil
+		return []rune(strconv.FormatInt(int64(object.(int)), 10)), nil
 	case int64:
-		return []byte(strconv.FormatInt(object.(int64), 10)), nil
+		return []rune(strconv.FormatInt(object.(int64), 10)), nil
 	case bool:
 		if object.(bool) {
-			return []byte("true"), nil
+			return []rune("true"), nil
 		} else {
-			return []byte("false"), nil
+			return []rune("false"), nil
 		}
 	case nil:
-		return []byte("null"), nil
+		return []rune("null"), nil
 	default:
 		return nil, burrito.WrappedErrorf("Unsupported type %T", object)
 	}
 }
 
-func writeObject(object utils.NavigableMap[string, interface{}], pretty bool, indent int) ([]byte, error) {
-	var result []byte
+func writeObject(object utils.NavigableMap[string, interface{}], pretty bool, indent int) ([]rune, error) {
+	var result []rune
 	result = append(result, TokenOpenObject)
 	if pretty {
 		result = append(result, TokenNewline)
@@ -184,18 +184,18 @@ func writeObject(object utils.NavigableMap[string, interface{}], pretty bool, in
 		case float64:
 			// If the float doesn't have a decimal point, force `.0` to be appended
 			if value.(float64) == float64(int64(value.(float64))) {
-				result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', 1, 64))...)
+				result = append(result, []rune(strconv.FormatFloat(value.(float64), 'f', 1, 64))...)
 			} else {
-				result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', -1, 64))...)
+				result = append(result, []rune(strconv.FormatFloat(value.(float64), 'f', -1, 64))...)
 			}
 		case int:
-			result = append(result, []byte(strconv.FormatInt(int64(value.(int)), 10))...)
+			result = append(result, []rune(strconv.FormatInt(int64(value.(int)), 10))...)
 		case int32:
-			result = append(result, []byte(strconv.FormatInt(int64(value.(int32)), 10))...)
+			result = append(result, []rune(strconv.FormatInt(int64(value.(int32)), 10))...)
 		case bool:
-			result = append(result, []byte(strconv.FormatBool(value.(bool)))...)
+			result = append(result, []rune(strconv.FormatBool(value.(bool)))...)
 		case nil:
-			result = append(result, []byte("null")...)
+			result = append(result, []rune("null")...)
 		default:
 			return result, burrito.WrappedErrorf("Unsupported type %T", value)
 		}
@@ -214,8 +214,8 @@ func writeObject(object utils.NavigableMap[string, interface{}], pretty bool, in
 	return result, nil
 }
 
-func writeArray(arr []interface{}, pretty bool, indent int) ([]byte, error) {
-	var result []byte
+func writeArray(arr []interface{}, pretty bool, indent int) ([]rune, error) {
+	var result []rune
 	result = append(result, TokenOpenArray)
 	if pretty {
 		result = append(result, TokenNewline)
@@ -245,18 +245,18 @@ func writeArray(arr []interface{}, pretty bool, indent int) ([]byte, error) {
 		case float64:
 			// If the float doesn't have a decimal point, force `.0` to be appended
 			if value.(float64) == float64(int64(value.(float64))) {
-				result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', 1, 64))...)
+				result = append(result, []rune(strconv.FormatFloat(value.(float64), 'f', 1, 64))...)
 			} else {
-				result = append(result, []byte(strconv.FormatFloat(value.(float64), 'f', -1, 64))...)
+				result = append(result, []rune(strconv.FormatFloat(value.(float64), 'f', -1, 64))...)
 			}
 		case int:
-			result = append(result, []byte(strconv.FormatInt(int64(value.(int)), 10))...)
+			result = append(result, []rune(strconv.FormatInt(int64(value.(int)), 10))...)
 		case int32:
-			result = append(result, []byte(strconv.FormatInt(int64(value.(int32)), 10))...)
+			result = append(result, []rune(strconv.FormatInt(int64(value.(int32)), 10))...)
 		case bool:
-			result = append(result, []byte(strconv.FormatBool(value.(bool)))...)
+			result = append(result, []rune(strconv.FormatBool(value.(bool)))...)
 		case nil:
-			result = append(result, []byte("null")...)
+			result = append(result, []rune("null")...)
 		default:
 			return result, burrito.WrappedErrorf("Unsupported type %T", value)
 		}
@@ -275,10 +275,11 @@ func writeArray(arr []interface{}, pretty bool, indent int) ([]byte, error) {
 	return result, nil
 }
 
-func writeString(s string) []byte {
-	var result []byte
-	for i := 0; i < len(s); i++ {
-		c := s[i]
+func writeString(s string) []rune {
+	var result []rune
+	runes := []rune(s)
+	for i := 0; i < len(runes); i++ {
+		c := runes[i]
 		switch c {
 		case TokenBackslash:
 			result = append(result, TokenBackslash)
@@ -308,8 +309,8 @@ func writeString(s string) []byte {
 	return result
 }
 
-func indentBytes(indent int) []byte {
-	var result []byte
+func indentBytes(indent int) []rune {
+	var result []rune
 	for i := 0; i < indent*2; i++ {
 		result = append(result, TokenSpace)
 	}
