@@ -713,7 +713,7 @@ func regexReplace(str, pattern, repl types.JsonString) (types.JsonString, error)
 }
 
 func chars(str types.JsonString) types.JsonArray {
-	arr := make([]types.JsonType, len(str.StringValue()))
+	arr := make([]types.JsonType, len([]rune(str.StringValue())))
 	for i, c := range str.StringValue() {
 		arr[i] = types.NewString(string(c))
 	}
@@ -721,7 +721,7 @@ func chars(str types.JsonString) types.JsonArray {
 }
 
 func length(str types.JsonString) types.JsonNumber {
-	return types.AsNumber(len(str.StringValue()))
+	return types.AsNumber(len([]rune(str.StringValue())))
 }
 
 func trim(str types.JsonString) types.JsonString {
