@@ -65,8 +65,9 @@ func ProcessString(input string, scope types.JsonObject, startToken, endToken st
 			return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", match.EscapedMatch)
 		}
 	}
-	if lastMatchEnd < len(input) {
-		sb.WriteString(input[lastMatchEnd:])
+	runes := []rune(input)
+	if lastMatchEnd < len(runes) {
+		sb.WriteString(string(runes[lastMatchEnd:]))
 	}
 
 	return sb.String(), nil

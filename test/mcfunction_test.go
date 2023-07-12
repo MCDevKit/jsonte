@@ -72,3 +72,9 @@ func TestMCFunctionNormalComment(t *testing.T) {
 	f := `# Just a comment\n#Another comment\nsay hello`
 	assertMCFunction(t, f, f)
 }
+
+func TestMCFunctionEmoji(t *testing.T) {
+	f := `#{'emoji:🤣'}`
+	expected := `emoji:🤣`
+	assertMCFunction(t, f, expected)
+}
