@@ -534,9 +534,10 @@ func (v *ExpressionVisitor) VisitFunction_param(ctx *parser.Function_paramContex
 
 // unescapeString removes quotes and unescapes a string.
 func unescapeString(str string) string {
-	if len(str) < 3 {
+	runes := []rune(str)
+	if len(runes) < 3 {
 		return ""
 	}
-	str = str[1 : len(str)-1]
+	str = string(runes[1 : len(runes)-1])
 	return UnescapeString(str)
 }
