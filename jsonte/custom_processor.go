@@ -39,6 +39,7 @@ func ProcessMCFunction(input string, scope types.JsonObject) (string, error) {
 
 // ProcessString processes a string replacing all the jsonte expressions with their values
 func ProcessString(input string, scope types.JsonObject, startToken, endToken string) (string, error) {
+	runes := []rune(input)
 	templateMatches, err := FindTemplateMatches(input, startToken, endToken)
 	if err != nil {
 		return "", burrito.PassError(err)
@@ -49,7 +50,7 @@ func ProcessString(input string, scope types.JsonObject, startToken, endToken st
 	lastMatchEnd := 0
 	for _, match := range templateMatches {
 		if match.Start > lastMatchEnd {
-			sb.WriteString(input[lastMatchEnd:match.Start])
+			sb.WriteString(string(runes[lastMatchEnd:match.Start]))
 		}
 		result, err := Eval(match.Match, globalScope, "#")
 		if err != nil {
@@ -65,7 +66,6 @@ func ProcessString(input string, scope types.JsonObject, startToken, endToken st
 			return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", match.EscapedMatch)
 		}
 	}
-	runes := []rune(input)
 	if lastMatchEnd < len(runes) {
 		sb.WriteString(string(runes[lastMatchEnd:]))
 	}

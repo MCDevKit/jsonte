@@ -74,7 +74,9 @@ func TestMCFunctionNormalComment(t *testing.T) {
 }
 
 func TestMCFunctionEmoji(t *testing.T) {
-	f := `#{'emoji:🤣'}`
-	expected := `emoji:🤣`
+	f := `# 🔥
+#{'emoji:🤣'}`
+	expected := `# 🔥
+emoji:🤣`
 	assertMCFunction(t, f, expected)
 }
