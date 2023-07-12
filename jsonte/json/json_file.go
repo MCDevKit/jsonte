@@ -35,7 +35,7 @@ const (
 )
 
 type StringReader struct {
-	str    []byte
+	str    []rune
 	marker int
 	column int
 	line   int
@@ -43,21 +43,21 @@ type StringReader struct {
 
 func NewStringReader(str []byte) *StringReader {
 	return &StringReader{
-		str:    str,
+		str:    []rune(string(str)),
 		marker: 0,
 		column: 0,
 		line:   1,
 	}
 }
 
-func (sr *StringReader) Peek() byte {
+func (sr *StringReader) Peek() rune {
 	if sr.marker >= len(sr.str) {
 		return TokenEof
 	}
 	return sr.str[sr.marker]
 }
 
-func (sr *StringReader) Read() byte {
+func (sr *StringReader) Read() rune {
 	c := sr.Peek()
 	if c == TokenNewline {
 		sr.line++
@@ -316,7 +316,7 @@ func indentBytes(indent int) []byte {
 	return result
 }
 
-func isWhitespace(token byte) bool {
+func isWhitespace(token rune) bool {
 	return token == TokenSpace || token == TokenTab || token == TokenNewline || token == TokenCarriageReturn
 }
 
@@ -472,9 +472,10 @@ func parsePrimitive(str *StringReader, p string) (interface{}, error) {
 }
 
 func parseConstant(str *StringReader, p string, constant string) error {
-	for i := 0; i < len(constant); i++ {
+	runes := []rune(constant)
+	for i := 0; i < len(runes); i++ {
 		token := str.Read()
-		if token != constant[i] {
+		if token != runes[i] {
 			return utils.WrappedJsonErrorf(p, UnexpectedTokenExpectedError, token, constant[i], str.line, str.column)
 		}
 	}
@@ -661,7 +662,7 @@ func parseArray(str *StringReader, p string) ([]interface{}, error) {
 }
 
 func parseString(str *StringReader, p string) (string, error) {
-	var result []byte
+	var result []rune
 	str.Read()
 	for {
 		token := str.Read()
@@ -696,7 +697,7 @@ func parseString(str *StringReader, p string) (string, error) {
 			case 't':
 				result = append(result, '\t')
 			case 'u':
-				var hex []byte
+				var hex []rune
 				for i := 0; i < 4; i++ {
 					hex = append(hex, str.Read())
 				}
@@ -704,7 +705,7 @@ func parseString(str *StringReader, p string) (string, error) {
 				if err != nil {
 					return "", utils.WrappedJsonErrorf(p, "Invalid unicode escape sequence at line %d, column %d", str.line, str.column)
 				}
-				result = append(result, []byte(string(rune(unicode)))...)
+				result = append(result, []rune(string(rune(unicode)))...)
 			default:
 				return "", utils.WrappedJsonErrorf(p, "Invalid escape sequence at line %d, column %d", str.line, str.column)
 			}
