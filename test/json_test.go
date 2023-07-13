@@ -1583,3 +1583,15 @@ func TestParsingString(t *testing.T) {
 	}`
 	assertTemplate(t, template, expected)
 }
+
+func TestEscapeSingleQuote(t *testing.T) {
+	template := `{
+    "$template": {
+        "test": "{{[1,2,3].map(x => 'q.property(\'example:test\')')}}"
+    }
+}`
+	expected := `{
+	  "test": ["q.property('example:test')","q.property('example:test')","q.property('example:test')"]
+	}`
+	assertTemplate(t, template, expected)
+}

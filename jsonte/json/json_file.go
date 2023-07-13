@@ -685,8 +685,6 @@ func parseString(str *StringReader, p string) (string, error) {
 				result = append(result, '\\')
 			case TokenSlash:
 				result = append(result, '/')
-			case TokenAsterisk:
-				result = append(result, '*')
 			case 'b':
 				result = append(result, '\b')
 			case 'f':
@@ -708,7 +706,8 @@ func parseString(str *StringReader, p string) (string, error) {
 				}
 				result = append(result, []rune(string(rune(unicode)))...)
 			default:
-				return "", utils.WrappedJsonErrorf(p, "Invalid escape sequence at line %d, column %d", str.line, str.column)
+				result = append(result, '\\')
+				result = append(result, token)
 			}
 		} else {
 			result = append(result, token)
