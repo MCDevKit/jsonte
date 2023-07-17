@@ -8,6 +8,14 @@ type BaseJsonTemplateVisitor struct {
 	*antlr.BaseParseTreeVisitor
 }
 
+func (v *BaseJsonTemplateVisitor) VisitScript(ctx *ScriptContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseJsonTemplateVisitor) VisitStatement(ctx *StatementContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseJsonTemplateVisitor) VisitExpression(ctx *ExpressionContext) interface{} {
 	return v.VisitChildren(ctx)
 }

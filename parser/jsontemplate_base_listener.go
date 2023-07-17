@@ -21,6 +21,18 @@ func (s *BaseJsonTemplateListener) EnterEveryRule(ctx antlr.ParserRuleContext) {
 // ExitEveryRule is called when any rule is exited.
 func (s *BaseJsonTemplateListener) ExitEveryRule(ctx antlr.ParserRuleContext) {}
 
+// EnterScript is called when production script is entered.
+func (s *BaseJsonTemplateListener) EnterScript(ctx *ScriptContext) {}
+
+// ExitScript is called when production script is exited.
+func (s *BaseJsonTemplateListener) ExitScript(ctx *ScriptContext) {}
+
+// EnterStatement is called when production statement is entered.
+func (s *BaseJsonTemplateListener) EnterStatement(ctx *StatementContext) {}
+
+// ExitStatement is called when production statement is exited.
+func (s *BaseJsonTemplateListener) ExitStatement(ctx *StatementContext) {}
+
 // EnterExpression is called when production expression is entered.
 func (s *BaseJsonTemplateListener) EnterExpression(ctx *ExpressionContext) {}
 
