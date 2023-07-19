@@ -120,20 +120,22 @@ func compareJsonArray(t *testing.T, expected types.JsonArray, actual types.JsonA
 	}
 }
 
-func assertTemplateWithModule(t *testing.T, template, module, expected string, globalScope types.JsonObject) {
-	mod, err := jsonte.LoadModule(module, globalScope, -1)
-	if err != nil {
-		t.Fatal(err)
+func assertTemplateWithModule(t *testing.T, template, expected string, globalScope types.JsonObject, modules ...string) {
+	moduleMap := map[string]jsonte.JsonModule{}
+	for _, m := range modules {
+		mod, err := jsonte.LoadModule(m, globalScope, -1)
+		if err != nil {
+			t.Fatal(burrito.WrapErrorf(err, "Failed to load module %s", m))
+		}
+		moduleMap[mod.Name.StringValue()] = mod
 	}
-	process, err := jsonte.Process("test", template, globalScope, map[string]jsonte.JsonModule{
-		mod.Name.StringValue(): mod,
-	}, -1)
+	process, err := jsonte.Process("test", template, globalScope, moduleMap, -1)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(burrito.WrapErrorf(err, "Failed to process template"))
 	}
 	exp, err := types.ParseJsonObject([]byte(expected))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(burrito.WrapErrorf(err, "Failed to parse expected result"))
 	}
 	compareJsonObject(t, exp, process.Get("test"), "#", true)
 }
@@ -141,11 +143,11 @@ func assertTemplateWithModule(t *testing.T, template, module, expected string, g
 func assertTemplate(t *testing.T, template, expected string) {
 	process, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(burrito.WrapErrorf(err, "Failed to process template"))
 	}
 	exp, err := types.ParseJsonObject([]byte(expected))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(burrito.WrapErrorf(err, "Failed to parse expected result"))
 	}
 	compareJsonObject(t, exp, process.Get("test"), "#", true)
 }
@@ -179,11 +181,11 @@ func assertTemplateError(t *testing.T, template string, error []string) {
 func assertTemplateMultiple(t *testing.T, template, expected string) {
 	process, err := jsonte.Process("test", template, types.NewJsonObject(), map[string]jsonte.JsonModule{}, -1)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(burrito.WrapErrorf(err, "Failed to process template"))
 	}
 	exp, err := types.ParseJsonObject([]byte(expected))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(burrito.WrapErrorf(err, "Failed to parse expected result"))
 	}
 	for _, key := range exp.Keys() {
 		value := exp.Get(key)
@@ -203,7 +205,7 @@ func assertTemplateMultiple(t *testing.T, template, expected string) {
 func assertStringParse(t *testing.T, template, startToken, endToken, expected string) {
 	process, err := jsonte.ProcessString(template, types.NewJsonObject(), startToken, endToken)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(burrito.WrapErrorf(err, "Failed to process template"))
 	}
 	if process != expected {
 		t.Fatalf("Expected: \n%s\ngot: \n%s", expected, process)
@@ -487,7 +489,7 @@ func TestSimpleModule(t *testing.T) {
 			6
 		]
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 }
 
 func TestSimpleModuleDifferentCase(t *testing.T) {
@@ -511,7 +513,7 @@ func TestSimpleModuleDifferentCase(t *testing.T) {
 		"asd": 123,
 		"overrideMe": 1
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 }
 
 func TestResolveModule(t *testing.T) {
@@ -563,7 +565,7 @@ func TestResolveModule(t *testing.T) {
 			6
 		]
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 }
 
 func TestSimpleCopy(t *testing.T) {
@@ -877,7 +879,7 @@ func TestCopyAndExtend(t *testing.T) {
 		"asd": 123,
 		"overrideMe": 1
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
@@ -906,7 +908,7 @@ func TestReplaceInTemplate(t *testing.T) {
 	expected := `{
 		"example": ["two", "three"]
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
@@ -1039,7 +1041,7 @@ func TestModuleOverride(t *testing.T) {
 			}
 		}
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 }
 
 func TestJsonParser(t *testing.T) {
@@ -1277,11 +1279,12 @@ func TestTemplateModuleScope(t *testing.T) {
 		}
 	}`
 	expected := `{
-		"asd": 5
+		"asd": 5,
+		"qwe": 5
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.AsObject(map[string]interface{}{
+	assertTemplateWithModule(t, template, expected, types.AsObject(map[string]interface{}{
 		"globalData": 5,
-	}))
+	}), module)
 }
 
 func TestArrayMergeAndOverride(t *testing.T) {
@@ -1314,7 +1317,7 @@ func TestArrayMergeAndOverride(t *testing.T) {
 		"arr4": [1, 2, 3, 4, 5, 6],
 		"arr5": [1, 2, 3, 4, 5, 6]
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 }
 
 func TestOverrideNestedFields(t *testing.T) {
@@ -1384,7 +1387,7 @@ func TestConditionalReplaceArray(t *testing.T) {
 	expected := `{
 		"example": ["two", "three"]
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
 
@@ -1404,7 +1407,7 @@ func TestModuleReplacingTemplate(t *testing.T) {
 	expected := `{
 		"example": ["four", "five"]
 	}`
-	assertTemplateWithModule(t, template, module, expected, types.NewJsonObject())
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 }
 
 func TestObjectLiteralInArrayLiteralTemplate(t *testing.T) {
@@ -1594,4 +1597,43 @@ func TestEscapeSingleQuote(t *testing.T) {
 	  "test": ["q.property('example:test')","q.property('example:test')","q.property('example:test')"]
 	}`
 	assertTemplate(t, template, expected)
+}
+
+func TestScopeInheritance(t *testing.T) {
+	dataModule := `{
+		"$module": "data",
+		"$scope": {
+			"test": "Does it work?",
+			"override": "No"
+		}
+	}`
+	dataModule2 := `{
+		"$module": "data2",
+		"$scope": {
+			"override": "Yes"
+		}
+	}`
+	templateModule := `{
+		"$module": "tmpl",
+		"$template": {
+			"test": "{{test}} {{override}}"
+		}
+	}`
+
+	template := `{
+		"$template": {
+			"test2": "{{test}} {{override}}"
+		},
+		"$scope": {
+			"test": "Does it work here as well?"
+		},
+		"$extend": ["data", "data2", "tmpl"]
+	}`
+
+	expected := `{
+	  "test": "Does it work here as well? Yes",
+	  "test2": "Does it work here as well? Yes"
+	}`
+
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), dataModule, dataModule2, templateModule)
 }

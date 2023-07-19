@@ -295,7 +295,7 @@ func (s *ExpressionContext) Iteration() antlr.TerminalNode {
 }
 
 func (s *ExpressionContext) Field() IFieldContext {
-	var t antlr.RuleContext
+ 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IFieldContext); ok {
 			t = ctx.(antlr.RuleContext)

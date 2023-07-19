@@ -25,8 +25,8 @@ type ExpressionVisitor struct {
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) {
 	switch val := tree.(type) {
-	case *parser.FieldContext:
-		return v.VisitField(val)
+ 	case *parser.FieldContext:
+ 		return v.VisitField(val)
 	case *parser.ArrayContext:
 		return v.VisitArray(val)
 	case *parser.ObjectContext:
@@ -125,7 +125,7 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) (type
 			indexName = ctx.Name(1).GetText()
 		}
 	}
-	v.name = &name
+ 	v.name = &name
 	v.indexName = &indexName
 	return v.Visit(ctx.Field())
 }
@@ -134,13 +134,13 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	if context.Null() != nil {
 		return types.Null, nil
 	}
-	if context.True() != nil {
+ 	if context.True() != nil {
 		return types.True, nil
 	}
-	if context.False() != nil {
+ 	if context.False() != nil {
 		return types.False, nil
 	}
-	if context.Not() != nil {
+ 	if context.Not() != nil {
 		visit, err := v.Visit(context.Field(0))
 		if err != nil {
 			return types.Null, err
@@ -425,7 +425,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	return types.Null, burrito.WrappedErrorf("Failed to resolve '%s'", context.GetText())
 }
 
-func (v *ExpressionVisitor) VisitName(context *parser.NameContext) (types.JsonType, error) {
+ func (v *ExpressionVisitor) VisitName(context *parser.NameContext) (types.JsonType, error) {
 	text := context.GetText()
 	newScope := v.ResolveScope(text)
 
