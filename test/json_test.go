@@ -1605,12 +1605,16 @@ func TestScopeInheritance(t *testing.T) {
 		"$scope": {
 			"test": "Does it work?",
 			"override": "No"
+		},
+		"$template": {
+			"access_to_future": "{{future ?? 'No'}}"
 		}
 	}`
 	dataModule2 := `{
 		"$module": "data2",
 		"$scope": {
-			"override": "Yes"
+			"override": "Yes",
+			"future": "Yes"
 		}
 	}`
 	templateModule := `{
@@ -1631,6 +1635,7 @@ func TestScopeInheritance(t *testing.T) {
 	}`
 
 	expected := `{
+	  "access_to_future": "No",
 	  "test": "Does it work here as well? Yes",
 	  "test2": "Does it work here as well? Yes"
 	}`
