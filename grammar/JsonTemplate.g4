@@ -58,34 +58,34 @@ function_param
     ;
 
 field
-   : LeftParen field RightParen
-   | True
-   | False
-   | Null
-   | NUMBER
-   | ESCAPED_STRING
-   | array
-   | object
-   | name
-   | field (Question? '.' name)
-   | field (Question? LeftBracket index RightBracket)
-   | field LeftParen (function_param (Comma function_param)*)? RightParen
-   | Subtract field
-   | Not field
-   | field (Divide | Multiply) field
-   | field (Add | Subtract) field
-   | field Range field
-   | field NullCoalescing field
-   | field Equal field
-   | field Less field
-   | field LessOrEqual field
-   | field Greater field
-   | field GreaterOrEqual field
-   | field NotEqual field
-   | field And field
-   | field Or field
-   | field Question field (':' field)?
-   ;
+    : LeftParen field RightParen
+    | True
+    | False
+    | Null
+    | NUMBER
+    | ESCAPED_STRING
+    | array
+    | object
+    | name
+    | field (Question? '.' name)
+    | field (Question? LeftBracket index RightBracket)
+    | field LeftParen (function_param (Comma function_param)*)? RightParen
+    | Subtract field
+    | Not field
+    | field (Divide | Multiply) field
+    | field (Add | Subtract) field
+    | field Range field
+    | field NullCoalescing field
+    | field Equal field
+    | field Less field
+    | field LessOrEqual field
+    | field Greater field
+    | field GreaterOrEqual field
+    | field NotEqual field
+    | field And field
+    | field Or field
+    | field Question field (':' field)?
+    ;
 
 array
     : LeftBracket (field (Comma field)*)? RightBracket
@@ -101,25 +101,25 @@ object_field
     ;
 
 name
-   : STRING
-   ;
+    : STRING
+    ;
 
 index
-   : field
-   | NUMBER
-   | ESCAPED_STRING
-   ;
+    : field
+    | NUMBER
+    | ESCAPED_STRING
+    ;
 
 ESCAPED_STRING : ('"' ('\\' . | ~["\\])* '"') | ('\'' ('\\' . | ~['\\])* '\'');
 
 STRING
-   : [a-zA-Z_$][a-zA-Z0-9_$]*
-   ;
+    : [a-zA-Z_$][a-zA-Z0-9_$]*
+    ;
 
 NUMBER
-   : [0-9]+('.'[0-9]+)?
-   ;
+    : [0-9]+('.'[0-9]+)?
+    ;
 
 WS
-   : [ \r\n\t] -> channel(HIDDEN)
-   ;
+    : [ \r\n\t] -> channel(HIDDEN)
+    ;
