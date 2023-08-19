@@ -54,10 +54,10 @@ func RegisterJsonPathFunctions() {
 	})
 }
 
-func parseJsonPath(str types.JsonString) (types.JsonPath, error) {
+func parseJsonPath(str *types.JsonString) (*types.JsonPath, error) {
 	return types.ParseJsonPath(str.StringValue())
 }
 
-func pathParent(path types.JsonPath) types.JsonPath {
+func pathParent(path *types.JsonPath) *types.JsonPath {
 	return path.Parent()
 }

@@ -55,18 +55,18 @@ func RegisterSemverFunctions() {
 	})
 }
 
-func semverString(str types.JsonString) (types.Semver, error) {
+func semverString(str *types.JsonString) (*types.Semver, error) {
 	return types.ParseSemverString(str.StringValue())
 }
 
-func semverArray(arr types.JsonArray) (types.Semver, error) {
+func semverArray(arr *types.JsonArray) (*types.Semver, error) {
 	return types.ParseSemverArray(arr.Unbox().([]interface{}))
 }
 
-func semver(major, minor, patch types.JsonNumber) (types.Semver, error) {
-	return types.Semver{Major: int(major.IntValue()), Minor: int(minor.IntValue()), Patch: int(patch.IntValue())}, nil
+func semver(major, minor, patch *types.JsonNumber) (*types.Semver, error) {
+	return &types.Semver{Major: int(major.IntValue()), Minor: int(minor.IntValue()), Patch: int(patch.IntValue())}, nil
 }
 
-func semverSemver(ver types.Semver) types.Semver {
+func semverSemver(ver *types.Semver) *types.Semver {
 	return ver
 }

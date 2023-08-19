@@ -618,11 +618,11 @@ func RegisterStringFunctions() {
 	})
 }
 
-func replace(str, old, new types.JsonString) types.JsonString {
+func replace(str, old, new *types.JsonString) *types.JsonString {
 	return types.NewString(strings.Replace(str.StringValue(), old.StringValue(), new.StringValue(), -1))
 }
 
-func join(strs types.JsonArray, sep types.JsonString) types.JsonString {
+func join(strs *types.JsonArray, sep *types.JsonString) *types.JsonString {
 	arr := make([]string, len(strs.Value))
 	for i, s := range strs.Value {
 		arr[i] = types.ToString(s)
@@ -630,28 +630,28 @@ func join(strs types.JsonArray, sep types.JsonString) types.JsonString {
 	return types.NewString(strings.Join(arr, sep.StringValue()))
 }
 
-func stringContains(str, substr types.JsonString) types.JsonBool {
+func stringContains(str, substr *types.JsonString) *types.JsonBool {
 	return types.AsBool(strings.Contains(str.StringValue(), substr.StringValue()))
 }
 
-func split(str, sep types.JsonString) types.JsonArray {
+func split(str, sep *types.JsonString) *types.JsonArray {
 	strs := strings.Split(str.StringValue(), sep.StringValue())
 	arr := make([]types.JsonType, len(strs))
 	for i, s := range strs {
 		arr[i] = types.NewString(s)
 	}
-	return types.JsonArray{Value: arr}
+	return &types.JsonArray{Value: arr}
 }
 
-func stringIndexOf(str, substr types.JsonString) types.JsonNumber {
+func stringIndexOf(str, substr *types.JsonString) *types.JsonNumber {
 	return types.AsNumber(strings.Index(str.StringValue(), substr.StringValue()))
 }
 
-func stringLastIndexOf(str, substr types.JsonString) types.JsonNumber {
+func stringLastIndexOf(str, substr *types.JsonString) *types.JsonNumber {
 	return types.AsNumber(strings.LastIndex(str.StringValue(), substr.StringValue()))
 }
 
-func hash(str types.JsonString) (types.JsonNumber, error) {
+func hash(str *types.JsonString) (*types.JsonNumber, error) {
 	a := fnv.New32a()
 	_, err := a.Write([]byte(str.StringValue()))
 	if err != nil {
@@ -660,31 +660,31 @@ func hash(str types.JsonString) (types.JsonNumber, error) {
 	return types.AsNumber(a.Sum32()), nil
 }
 
-func toUpperCase(str types.JsonString) types.JsonString {
+func toUpperCase(str *types.JsonString) *types.JsonString {
 	return types.NewString(cases.Upper(language.Und).String(str.StringValue()))
 }
 
-func toLowerCase(str types.JsonString) types.JsonString {
+func toLowerCase(str *types.JsonString) *types.JsonString {
 	return types.NewString(cases.Lower(language.Und).String(str.StringValue()))
 }
 
-func substring(str types.JsonString, start, end types.JsonNumber) types.JsonString {
+func substring(str *types.JsonString, start, end *types.JsonNumber) *types.JsonString {
 	return types.NewString(str.StringValue()[start.IntValue():end.IntValue()])
 }
 
-func substringFrom(str types.JsonString, start types.JsonNumber) types.JsonString {
+func substringFrom(str *types.JsonString, start *types.JsonNumber) *types.JsonString {
 	return types.NewString(str.StringValue()[start.IntValue():])
 }
 
-func captialize(str types.JsonString) types.JsonString {
+func captialize(str *types.JsonString) *types.JsonString {
 	return types.NewString(cases.Upper(language.Und).String(str.StringValue()[:1]) + cases.Lower(language.Und).String(str.StringValue()[1:]))
 }
 
-func title(str types.JsonString) types.JsonString {
+func title(str *types.JsonString) *types.JsonString {
 	return types.NewString(cases.Title(language.Und).String(str.StringValue()))
 }
 
-func swapCase(s types.JsonString) types.JsonString {
+func swapCase(s *types.JsonString) *types.JsonString {
 	str := s.StringValue()
 	for i, c := range str {
 		if unicode.IsUpper(c) {
@@ -696,41 +696,41 @@ func swapCase(s types.JsonString) types.JsonString {
 	return types.NewString(str)
 }
 
-func startsWith(str, substr types.JsonString) types.JsonBool {
+func startsWith(str, substr *types.JsonString) *types.JsonBool {
 	return types.AsBool(strings.HasPrefix(str.StringValue(), substr.StringValue()))
 }
 
-func endsWith(str, substr types.JsonString) types.JsonBool {
+func endsWith(str, substr *types.JsonString) *types.JsonBool {
 	return types.AsBool(strings.HasSuffix(str.StringValue(), substr.StringValue()))
 }
 
-func regexReplace(str, pattern, repl types.JsonString) (types.JsonString, error) {
+func regexReplace(str, pattern, repl *types.JsonString) (*types.JsonString, error) {
 	compile, err := regexp.Compile(pattern.StringValue())
 	if err != nil {
-		return types.EmptyString, burrito.WrapErrorf(err, "Failed to compile regex pattern")
+		return nil, burrito.WrapErrorf(err, "Failed to compile regex pattern")
 	}
 	return types.NewString(compile.ReplaceAllString(str.StringValue(), repl.StringValue())), nil
 }
 
-func chars(str types.JsonString) types.JsonArray {
+func chars(str *types.JsonString) *types.JsonArray {
 	arr := make([]types.JsonType, len([]rune(str.StringValue())))
 	for i, c := range str.StringValue() {
 		arr[i] = types.NewString(string(c))
 	}
-	return types.JsonArray{Value: arr}
+	return &types.JsonArray{Value: arr}
 }
 
-func length(str types.JsonString) types.JsonNumber {
+func length(str *types.JsonString) *types.JsonNumber {
 	return types.AsNumber(len([]rune(str.StringValue())))
 }
 
-func trim(str types.JsonString) types.JsonString {
+func trim(str *types.JsonString) *types.JsonString {
 	return types.NewString(strings.Trim(str.StringValue(), " \t\n\r"))
 }
 
 var floatPattern = regexp.MustCompile(`^[+-]?([0-9]+([.][0-9]+)?)$`)
 
-func number(str types.JsonString) (types.JsonNumber, error) {
+func number(str *types.JsonString) (*types.JsonNumber, error) {
 	if str.StringValue() == "" {
 		return types.AsNumber(0), nil
 	}
@@ -740,16 +740,16 @@ func number(str types.JsonString) (types.JsonNumber, error) {
 	return types.AsNumber(str.StringValue()), nil
 }
 
-func formatString(str types.JsonString, args ...types.JsonType) (types.JsonString, error) {
+func formatString(str *types.JsonString, args ...types.JsonType) (*types.JsonString, error) {
 	if len(args) == 0 {
 		return str, nil
 	}
 	fmtArgs := make([]interface{}, len(args))
 	for i, arg := range args {
 		switch arg.(type) {
-		case types.JsonNumber:
-			fmtArgs[i] = arg.(types.JsonNumber).FloatValue()
-		case types.JsonBool:
+		case *types.JsonNumber:
+			fmtArgs[i] = arg.(*types.JsonNumber).FloatValue()
+		case *types.JsonBool:
 			fmtArgs[i] = arg.BoolValue()
 		default:
 			fmtArgs[i] = arg.StringValue()
@@ -759,7 +759,7 @@ func formatString(str types.JsonString, args ...types.JsonType) (types.JsonStrin
 	return types.NewString(fmt.Sprintf(str.StringValue(), fmtArgs...)), nil
 }
 
-func regexMatch(str, pattern types.JsonString) (types.JsonArray, error) {
+func regexMatch(str, pattern *types.JsonString) (*types.JsonArray, error) {
 	compile, err := regexp.Compile(pattern.StringValue())
 	if err != nil {
 		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile regex pattern")

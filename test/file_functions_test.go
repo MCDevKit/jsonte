@@ -27,7 +27,7 @@ func assertFileList(t *testing.T, eval jsonte.Result, expected []interface{}) {
 	for i, i2 := range expected {
 		expected[i] = filepath.Clean(i2.(string))
 	}
-	assertArray(t, eval, types.Box(expected).(types.JsonArray))
+	assertArray(t, eval, types.Box(expected).(*types.JsonArray))
 }
 
 func TestFileList(t *testing.T) {

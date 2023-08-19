@@ -17,7 +17,7 @@ func assertAction(t *testing.T, eval jsonte.Result, action types.JsonAction) {
 	}
 }
 
-func assertArray(t *testing.T, eval jsonte.Result, expected types.JsonArray) {
+func assertArray(t *testing.T, eval jsonte.Result, expected *types.JsonArray) {
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -25,7 +25,7 @@ func assertArray(t *testing.T, eval jsonte.Result, expected types.JsonArray) {
 	if !types.IsArray(eval.Value) {
 		t.Fatalf("Result is not an array (%s)", reflect.TypeOf(eval.Value).Name())
 	}
-	array, ok := eval.Value.(types.JsonArray)
+	array, ok := eval.Value.(*types.JsonArray)
 	if !ok {
 		t.Fatalf("Result is not a JSON array (%s)", reflect.TypeOf(eval.Value).Name())
 	}
@@ -44,7 +44,7 @@ func assertArray(t *testing.T, eval jsonte.Result, expected types.JsonArray) {
 			if !types.IsObject(array.Value[i]) {
 				t.Fatalf("Array element %d is not an object (%s)", i, reflect.TypeOf(array.Value[i]).Name())
 			}
-			compareJsonObject(t, expected.Value[i].(types.JsonObject), array.Value[i].(types.JsonObject), fmt.Sprintf("#[%d]", i), true)
+			compareJsonObject(t, expected.Value[i].(*types.JsonObject), array.Value[i].(*types.JsonObject), fmt.Sprintf("#[%d]", i), true)
 		} else if types.IsArray(expected.Value[i]) {
 			if array.Value[i] == nil {
 				t.Fatalf("Array element %d is null", i)
@@ -52,14 +52,14 @@ func assertArray(t *testing.T, eval jsonte.Result, expected types.JsonArray) {
 			if !types.IsArray(array.Value[i]) {
 				t.Fatalf("Array element %d is not an array (%s)", i, reflect.TypeOf(array.Value[i]).Name())
 			}
-			compareJsonArray(t, expected.Value[i].(types.JsonArray), array.Value[i].(types.JsonArray), fmt.Sprintf("#[%d]", i))
+			compareJsonArray(t, expected.Value[i].(*types.JsonArray), array.Value[i].(*types.JsonArray), fmt.Sprintf("#[%d]", i))
 		} else if !array.Value[i].Equals(expected.Value[i]) {
 			t.Errorf("Array element %d is not correct (expected %s, got %s)", i, types.ToString(expected.Value[i]), types.ToString(array.Value[i]))
 		}
 	}
 }
 
-func assertObject(t *testing.T, eval jsonte.Result, expected types.JsonObject) {
+func assertObject(t *testing.T, eval jsonte.Result, expected *types.JsonObject) {
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -67,14 +67,14 @@ func assertObject(t *testing.T, eval jsonte.Result, expected types.JsonObject) {
 	if !types.IsObject(eval.Value) {
 		t.Fatalf("Result is not an object (%s)", reflect.TypeOf(eval.Value).Name())
 	}
-	obj, ok := eval.Value.(types.JsonObject)
+	obj, ok := eval.Value.(*types.JsonObject)
 	if !ok {
 		t.Fatalf("Result is not a JSON object (%s)", reflect.TypeOf(eval.Value).Name())
 	}
 	compareJsonObject(t, expected, obj, "#", true)
 }
 
-func assertObjectContains(t *testing.T, eval jsonte.Result, expected types.JsonObject) {
+func assertObjectContains(t *testing.T, eval jsonte.Result, expected *types.JsonObject) {
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
@@ -82,7 +82,7 @@ func assertObjectContains(t *testing.T, eval jsonte.Result, expected types.JsonO
 	if !types.IsObject(eval.Value) {
 		t.Fatalf("Result is not an object (%s)", reflect.TypeOf(eval.Value).Name())
 	}
-	obj, ok := eval.Value.(types.JsonObject)
+	obj, ok := eval.Value.(*types.JsonObject)
 	if !ok {
 		t.Fatalf("Result is not a JSON object (%s)", reflect.TypeOf(eval.Value).Name())
 	}
@@ -97,7 +97,7 @@ func assertNumber(t *testing.T, eval jsonte.Result, expected float64) {
 	if !types.IsNumber(eval.Value) {
 		t.Fatalf("Result is not a number (%s)", reflect.TypeOf(eval.Value).Name())
 	}
-	number, ok := eval.Value.(types.JsonNumber)
+	number, ok := eval.Value.(*types.JsonNumber)
 	if !ok {
 		t.Fatalf("Result is not a JSON number (%s)", reflect.TypeOf(eval.Value).Name())
 	}
@@ -139,10 +139,10 @@ func assertBool(t *testing.T, eval jsonte.Result, expected bool) {
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
 	}
-	if _, ok := eval.Value.(types.JsonBool); !ok {
+	if _, ok := eval.Value.(*types.JsonBool); !ok {
 		t.Fatalf("Result is not a boolean (%s)", reflect.TypeOf(eval.Value).Name())
 	}
-	if eval.Value.(types.JsonBool).BoolValue() != expected {
+	if eval.Value.(*types.JsonBool).BoolValue() != expected {
 		t.Fatalf("Result is not correct (expected %t, got %s)", expected, eval.Value.StringValue())
 	}
 }
@@ -152,10 +152,10 @@ func assertString(t *testing.T, eval jsonte.Result, expected string) {
 	if eval.Value == nil {
 		t.Fatalf("Result is null")
 	}
-	if _, ok := eval.Value.(types.JsonString); !ok {
+	if _, ok := eval.Value.(*types.JsonString); !ok {
 		t.Fatalf("Result is not a string (%s)", reflect.TypeOf(eval.Value).Name())
 	}
-	if eval.Value.(types.JsonString).StringValue() != expected {
+	if eval.Value.(*types.JsonString).StringValue() != expected {
 		t.Fatalf("Result is not correct (expected %s, got %s)", expected, eval.Value.StringValue())
 	}
 }
@@ -203,7 +203,7 @@ func evaluate(t *testing.T, text string) jsonte.Result {
 }
 
 func evaluateWithScope(t *testing.T, text string, scope utils.NavigableMap[string, interface{}]) jsonte.Result {
-	s := deque.Deque[types.JsonObject]{}
+	s := deque.Deque[*types.JsonObject]{}
 	s.PushBack(types.AsObject(scope))
 	eval, err := jsonte.Eval(text, s, "#")
 	if err != nil {
@@ -214,7 +214,7 @@ func evaluateWithScope(t *testing.T, text string, scope utils.NavigableMap[strin
 
 func TestRangeOperator(t *testing.T) {
 	eval := evaluate(t, "1..10")
-	assertArray(t, eval, types.Box([]interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}).(types.JsonArray))
+	assertArray(t, eval, types.Box([]interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}).(*types.JsonArray))
 }
 
 func TestAddition(t *testing.T) {

@@ -299,7 +299,7 @@ func main() {
 				repl(object)
 			} else {
 				expression := strings.Join(args, " ")
-				s := deque.Deque[types.JsonObject]{}
+				s := deque.Deque[*types.JsonObject]{}
 				s.PushBack(object)
 				value, err := jsonte.Eval(expression, s, "#")
 				if err != nil {
@@ -369,7 +369,7 @@ func main() {
 	}
 }
 
-func getScope(scope []string, timeout int64) (types.JsonObject, error) {
+func getScope(scope []string, timeout int64) (*types.JsonObject, error) {
 	assertionFiles := map[string]string{}
 	result := types.NewJsonObject()
 	for _, path := range scope {
@@ -482,7 +482,7 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 	return result, nil
 }
 
-func repl(scope types.JsonObject) {
+func repl(scope *types.JsonObject) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("> ")
 	for true {
@@ -492,7 +492,7 @@ func repl(scope types.JsonObject) {
 			break
 		}
 
-		s := deque.Deque[types.JsonObject]{}
+		s := deque.Deque[*types.JsonObject]{}
 		s.PushBack(scope)
 		eval, err := jsonte.Eval(text, s, "#/")
 		if err != nil {

@@ -8,13 +8,10 @@ import (
 
 // JsonString is a struct that represents a number, that can be either integer or decimal.
 type JsonString struct {
-	JsonType
 	Value string
 }
 
-var EmptyString = JsonString{Value: ""}
-
-func (n JsonString) LessThan(other JsonType) (bool, error) {
+func (n *JsonString) LessThan(other JsonType) (bool, error) {
 	if other == nil || other == Null {
 		return false, nil
 	}
@@ -25,15 +22,15 @@ func (n JsonString) LessThan(other JsonType) (bool, error) {
 	return false, incompatibleTypesError(n, other)
 }
 
-func (n JsonString) BoolValue() bool {
+func (n *JsonString) BoolValue() bool {
 	return strings.Trim(n.StringValue(), "\n\r") != ""
 }
 
-func (n JsonString) StringValue() string {
+func (n *JsonString) StringValue() string {
 	return n.Value
 }
 
-func (n JsonString) Equals(value JsonType) bool {
+func (n *JsonString) Equals(value JsonType) bool {
 	if value == Null {
 		return false
 	}
@@ -43,19 +40,19 @@ func (n JsonString) Equals(value JsonType) bool {
 	return false
 }
 
-func (n JsonString) Unbox() interface{} {
+func (n *JsonString) Unbox() interface{} {
 	return n.StringValue()
 }
 
-func (n JsonString) Add(i JsonType) JsonType {
+func (n *JsonString) Add(i JsonType) JsonType {
 	return NewString(n.StringValue() + i.StringValue())
 }
 
-func (n JsonString) Negate() JsonType {
+func (n *JsonString) Negate() JsonType {
 	return AsBool(!n.BoolValue())
 }
 
-func (n JsonString) Index(index JsonType) (JsonType, error) {
+func (n *JsonString) Index(index JsonType) (JsonType, error) {
 	if IsNumber(index) {
 		i := int(AsNumber(index).IntValue())
 		runes := []rune(n.StringValue())
@@ -72,11 +69,11 @@ func (n JsonString) Index(index JsonType) (JsonType, error) {
 }
 
 // AsString converts an interface to a string.
-func AsString(obj interface{}) JsonString {
+func AsString(obj interface{}) *JsonString {
 	if obj == nil {
-		return EmptyString
+		return NewString("")
 	}
-	if b, ok := obj.(JsonString); ok {
+	if b, ok := obj.(*JsonString); ok {
 		return b
 	}
 	if b, ok := obj.(bool); ok {
@@ -101,7 +98,7 @@ func AsString(obj interface{}) JsonString {
 		return NewString(b.StringValue())
 	}
 	//TODO: add more types
-	return EmptyString
+	return NewString("")
 }
 
 // IsString returns true if the given interface is a string.
@@ -112,15 +109,12 @@ func IsString(obj interface{}) bool {
 	if _, ok := obj.(string); ok {
 		return true
 	}
-	if _, ok := obj.(JsonString); ok {
+	if _, ok := obj.(*JsonString); ok {
 		return true
 	}
 	return false
 }
 
-func NewString(value string) JsonString {
-	if value == "" {
-		return EmptyString
-	}
-	return JsonString{Value: value}
+func NewString(value string) *JsonString {
+	return &JsonString{Value: value}
 }

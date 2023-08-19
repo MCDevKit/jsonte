@@ -406,37 +406,37 @@ var bpFiles = utils.NavigableMap[string, string]{}
 var itemInfos = utils.NavigableMap[string, map[int]interface{}]{}
 var itemInfosByName = utils.NavigableMap[string, interface{}]{}
 
-func getMinecraftInstallDir() (types.JsonString, error) {
+func getMinecraftInstallDir() (*types.JsonString, error) {
 	if runtime.GOOS != "windows" {
-		return types.EmptyString, burrito.WrappedErrorf("This function works only on Windows")
+		return nil, burrito.WrappedErrorf("This function works only on Windows")
 	}
 	if installDir == "" {
 		output, err := safeio.Resolver.ExecCommand("powershell", "(Get-AppxPackage -Name Microsoft.MinecraftUWP).InstallLocation")
 		if err != nil {
-			return types.EmptyString, burrito.WrapErrorf(err, "An error occurred while getting Minecraft install directory")
+			return nil, burrito.WrapErrorf(err, "An error occurred while getting Minecraft install directory")
 		}
 		installDir = strings.Trim(string(output), "\r\n \t")
 	}
 	return types.NewString(installDir), nil
 }
 
-func getLatestBPFileOrFail(p types.JsonString) (types.JsonType, error) {
-	return getBPFile(p, types.EmptySemver, types.True)
+func getLatestBPFileOrFail(p *types.JsonString) (types.JsonType, error) {
+	return getBPFile(p, nil, types.True())
 }
 
-func getLatestBPFile(p types.JsonString, shouldFail types.JsonBool) (types.JsonType, error) {
-	return getBPFile(p, types.EmptySemver, shouldFail)
+func getLatestBPFile(p *types.JsonString, shouldFail *types.JsonBool) (types.JsonType, error) {
+	return getBPFile(p, nil, shouldFail)
 }
 
-func getBPFileOrFail(p types.JsonString, version types.Semver) (types.JsonType, error) {
-	return getBPFile(p, version, types.True)
+func getBPFileOrFail(p *types.JsonString, version *types.Semver) (types.JsonType, error) {
+	return getBPFile(p, version, types.True())
 }
 
-func getBPFile(p types.JsonString, version types.Semver, shouldFail types.JsonBool) (types.JsonType, error) {
+func getBPFile(p *types.JsonString, version *types.Semver, shouldFail *types.JsonBool) (types.JsonType, error) {
 	if bpFiles.IsEmpty() {
 		bp, err := findPackVersions(true, VanillaBpUUID, version)
 		if err != nil {
-			return types.EmptyString, burrito.WrapErrorf(err, "An error occurred while reading behavior packs")
+			return nil, burrito.WrapErrorf(err, "An error occurred while reading behavior packs")
 		}
 		bpFiles = bp
 	}
@@ -447,23 +447,23 @@ func getBPFile(p types.JsonString, version types.Semver, shouldFail types.JsonBo
 	return file, err
 }
 
-func getLatestRPFileOrFail(p types.JsonString) (types.JsonType, error) {
-	return getRPFile(p, types.EmptySemver, types.True)
+func getLatestRPFileOrFail(p *types.JsonString) (types.JsonType, error) {
+	return getRPFile(p, nil, types.True())
 }
 
-func getLatestRPFile(p types.JsonString, shouldFail types.JsonBool) (types.JsonType, error) {
-	return getRPFile(p, types.EmptySemver, shouldFail)
+func getLatestRPFile(p *types.JsonString, shouldFail *types.JsonBool) (types.JsonType, error) {
+	return getRPFile(p, nil, shouldFail)
 }
 
-func getRPFileOrFail(p types.JsonString, version types.Semver) (types.JsonType, error) {
-	return getRPFile(p, version, types.True)
+func getRPFileOrFail(p *types.JsonString, version *types.Semver) (types.JsonType, error) {
+	return getRPFile(p, version, types.True())
 }
 
-func getRPFile(p types.JsonString, version types.Semver, shouldFail types.JsonBool) (types.JsonType, error) {
+func getRPFile(p *types.JsonString, version *types.Semver, shouldFail *types.JsonBool) (types.JsonType, error) {
 	if rpFiles.IsEmpty() {
 		rp, err := findPackVersions(false, VanillaRpUUID, version)
 		if err != nil {
-			return types.EmptyString, burrito.WrapErrorf(err, "An error occurred while reading resource packs")
+			return nil, burrito.WrapErrorf(err, "An error occurred while reading resource packs")
 		}
 		rpFiles = rp
 	}
@@ -474,11 +474,11 @@ func getRPFile(p types.JsonString, version types.Semver, shouldFail types.JsonBo
 	return file, err
 }
 
-func listLatestRPFiles(p types.JsonString) (types.JsonArray, error) {
-	return listRPFiles(p, types.EmptySemver)
+func listLatestRPFiles(p *types.JsonString) (*types.JsonArray, error) {
+	return listRPFiles(p, nil)
 }
 
-func listRPFiles(p types.JsonString, version types.Semver) (types.JsonArray, error) {
+func listRPFiles(p *types.JsonString, version *types.Semver) (*types.JsonArray, error) {
 	if rpFiles.IsEmpty() {
 		rp, err := findPackVersions(false, VanillaRpUUID, version)
 		if err != nil {
@@ -489,11 +489,11 @@ func listRPFiles(p types.JsonString, version types.Semver) (types.JsonArray, err
 	return listLatestFiles(p.StringValue(), rpFiles, version)
 }
 
-func listLatestBPFiles(p types.JsonString) (types.JsonArray, error) {
-	return listBPFiles(p, types.EmptySemver)
+func listLatestBPFiles(p *types.JsonString) (*types.JsonArray, error) {
+	return listBPFiles(p, nil)
 }
 
-func listBPFiles(p types.JsonString, version types.Semver) (types.JsonArray, error) {
+func listBPFiles(p *types.JsonString, version *types.Semver) (*types.JsonArray, error) {
 	if bpFiles.IsEmpty() {
 		bp, err := findPackVersions(true, VanillaBpUUID, version)
 		if err != nil {
@@ -504,7 +504,7 @@ func listBPFiles(p types.JsonString, version types.Semver) (types.JsonArray, err
 	return listLatestFiles(p.StringValue(), bpFiles, version)
 }
 
-func listLatestFiles(p string, m utils.NavigableMap[string, string], version types.Semver) (types.JsonArray, error) {
+func listLatestFiles(p string, m utils.NavigableMap[string, string], version *types.Semver) (*types.JsonArray, error) {
 	result := map[string]string{}
 	keys := m.Keys()
 	for i := len(keys) - 1; i >= 0; i-- {
@@ -548,13 +548,13 @@ func listLatestFiles(p string, m utils.NavigableMap[string, string], version typ
 		arr[i] = types.NewString(v)
 		i++
 	}
-	return types.JsonArray{Value: arr}, nil
+	return &types.JsonArray{Value: arr}, nil
 }
 
-func getLatestFile(p string, m utils.NavigableMap[string, string], version types.Semver) (types.JsonString, error) {
+func getLatestFile(p string, m utils.NavigableMap[string, string], version *types.Semver) (*types.JsonString, error) {
 	keys := m.Keys()
 	for i := len(keys) - 1; i >= 0; i-- {
-		if !version.IsEmpty() {
+		if version != nil && !version.IsEmpty() {
 			ver, err := types.ParseSemverString(keys[i])
 			if err != nil {
 				continue
@@ -570,14 +570,14 @@ func getLatestFile(p string, m utils.NavigableMap[string, string], version types
 			if os.IsNotExist(err) {
 				continue
 			} else {
-				return types.EmptyString, burrito.WrapErrorf(err, "An error occurred while reading file %s", p)
+				return nil, burrito.WrapErrorf(err, "An error occurred while reading file %s", p)
 			}
 		}
 		return types.NewString(s), nil
 	}
 	err := burrito.AsBurritoError(burrito.WrapErrorf(os.ErrNotExist, "File '%s' does not exist", p))
 	err.AddTag(os.ErrNotExist.Error())
-	return types.EmptyString, err
+	return nil, err
 }
 
 // From https://stackoverflow.com/a/24792688/6459649
@@ -671,7 +671,7 @@ func unzip(src, dest string) error {
 	return nil
 }
 
-func findPackVersions(isBp bool, uuid string, version types.Semver) (utils.NavigableMap[string, string], error) {
+func findPackVersions(isBp bool, uuid string, version *types.Semver) (utils.NavigableMap[string, string], error) {
 	versions := utils.NewNavigableMap[string, string]()
 	installDir, err := getMinecraftInstallDir()
 	if err != nil {
@@ -706,7 +706,7 @@ func findPackVersions(isBp bool, uuid string, version types.Semver) (utils.Navig
 					}
 				}
 			}
-			if !versions.IsEmpty() && (version.IsEmpty() || versions.ContainsMatchingKey(func(s string) bool {
+			if !versions.IsEmpty() && (version == nil || version.IsEmpty() || versions.ContainsMatchingKey(func(s string) bool {
 				ver, err2 := types.ParseSemverString(s)
 				if err2 != nil {
 					return false
@@ -718,7 +718,7 @@ func findPackVersions(isBp bool, uuid string, version types.Semver) (utils.Navig
 		}
 
 		var release map[string]interface{}
-		if version.IsEmpty() {
+		if version == nil || version.IsEmpty() {
 			url := "https://api.github.com/repos/Mojang/bedrock-samples/releases/latest"
 			utils.Logger.Infof("Resolving %s", url)
 			resp, _, err := safeio.Resolver.HttpGet(url)
@@ -761,8 +761,8 @@ func findPackVersions(isBp bool, uuid string, version types.Semver) (utils.Navig
 					}
 				}
 			}
-			closest := types.Semver{Major: 0, Minor: 0, Patch: 0}
-			vs := utils.NewNavigableMap[string, types.Semver]()
+			var closest *types.Semver = nil
+			vs := utils.NewNavigableMap[string, *types.Semver]()
 			vs1 := utils.NewNavigableMap[string, map[string]interface{}]()
 			for _, r := range releases {
 				if r["tag_name"] == nil {
@@ -789,7 +789,7 @@ func findPackVersions(isBp bool, uuid string, version types.Semver) (utils.Navig
 					release = vs1.Get(tag)
 					break
 				}
-				if closest.IsEmpty() || math.Abs(float64(ver.Minor-version.Minor)) < math.Abs(float64(closest.Minor-version.Minor)) {
+				if closest == nil || closest.IsEmpty() || math.Abs(float64(ver.Minor-version.Minor)) < math.Abs(float64(closest.Minor-version.Minor)) {
 					closest = ver
 					release = vs1.Get(tag)
 				}
@@ -888,13 +888,13 @@ func findPackVersions(isBp bool, uuid string, version types.Semver) (utils.Navig
 				}
 				return versions, burrito.WrapErrorf(err, "Failed to read manifest.json in %s", p)
 			}
-			var manifest types.JsonObject
+			var manifest *types.JsonObject
 			manifest, err = types.ParseJsonObject(f)
 			if err != nil {
 				return versions, burrito.WrapErrorf(err, "Failed to parse manifest.json in %s", p)
 			}
 			if manifest.ContainsKey("header") {
-				header := manifest.Get("header").(types.JsonObject)
+				header := manifest.Get("header").(*types.JsonObject)
 				if header.Get("uuid").StringValue() != uuid {
 					continue
 				}
@@ -923,7 +923,7 @@ func findPackVersions(isBp bool, uuid string, version types.Semver) (utils.Navig
 	return versions, nil
 }
 
-func getItemInfo(id types.JsonString, metadata types.JsonNumber) (types.JsonObject, error) {
+func getItemInfo(id *types.JsonString, metadata *types.JsonNumber) (*types.JsonObject, error) {
 	if id.StringValue() == "" {
 		return types.NewJsonObject(), nil
 	}
@@ -940,11 +940,11 @@ func getItemInfo(id types.JsonString, metadata types.JsonNumber) (types.JsonObje
 	return types.AsObject(item[int(metadata.IntValue())]), nil
 }
 
-func getItemInfo1(id types.JsonString) (types.JsonObject, error) {
-	return getItemInfo(id, types.JsonNumber{Value: 0})
+func getItemInfo1(id *types.JsonString) (*types.JsonObject, error) {
+	return getItemInfo(id, &types.JsonNumber{Value: 0})
 }
 
-func getAllItems() types.JsonArray {
+func getAllItems() *types.JsonArray {
 	if itemInfos.IsEmpty() {
 		err := fetchItemInfos()
 		if err != nil {
@@ -952,14 +952,14 @@ func getAllItems() types.JsonArray {
 			return types.NewJsonArray()
 		}
 	}
-	var items = make([]types.JsonObject, 0)
+	var items = make([]*types.JsonObject, 0)
 	for _, item := range itemInfosByName.Values() {
 		items = append(items, types.AsObject(item))
 	}
 	return types.AsArray(items)
 }
 
-func findItemInfoById(id types.JsonString, metadata types.JsonNumber) (types.JsonObject, error) {
+func findItemInfoById(id *types.JsonString, metadata *types.JsonNumber) (*types.JsonObject, error) {
 	if id.StringValue() == "" {
 		return types.NewJsonObject(), nil
 	}
@@ -983,11 +983,11 @@ func findItemInfoById(id types.JsonString, metadata types.JsonNumber) (types.Jso
 	}
 }
 
-func findItemInfoById1(id types.JsonString) (types.JsonObject, error) {
-	return findItemInfoById(id, types.JsonNumber{Value: 0})
+func findItemInfoById1(id *types.JsonString) (*types.JsonObject, error) {
+	return findItemInfoById(id, &types.JsonNumber{Value: 0})
 }
 
-func findItemInfoByName(name types.JsonString) (types.JsonObject, error) {
+func findItemInfoByName(name *types.JsonString) (*types.JsonObject, error) {
 	if name.StringValue() == "" {
 		return types.NewJsonObject(), nil
 	}
@@ -1063,23 +1063,23 @@ func fetchItemInfos() error {
 	itemInfos = utils.NewNavigableMap[string, map[int]interface{}]()
 	itemInfosByName = utils.NewNavigableMap[string, interface{}]()
 	for _, v := range arr.Value {
-		item := v.(types.JsonObject)
+		item := v.(*types.JsonObject)
 		id := strings.TrimPrefix(item.Get("id").StringValue(), "minecraft:")
 		if !itemInfos.ContainsKey(id) {
 			itemInfos.Put(id, make(map[int]interface{}))
 		}
-		itemInfos.Get(id)[int((item.Get("metadata").(types.JsonNumber)).IntValue())] = item
+		itemInfos.Get(id)[int((item.Get("metadata").(*types.JsonNumber)).IntValue())] = item
 		itemInfosByName.Put(item.Get("langName").StringValue(), item)
 	}
 	return nil
 }
 
 func FetchCache() error {
-	_, err := findPackVersions(true, VanillaBpUUID, types.EmptySemver)
+	_, err := findPackVersions(true, VanillaBpUUID, nil)
 	if err != nil {
 		return burrito.WrapErrorf(err, "Failed to cache vanilla behavior pack")
 	}
-	_, err = findPackVersions(false, VanillaRpUUID, types.EmptySemver)
+	_, err = findPackVersions(false, VanillaRpUUID, nil)
 	if err != nil {
 		return burrito.WrapErrorf(err, "Failed to cache vanilla resource pack")
 	}

@@ -36,7 +36,9 @@ type TypeDescriptor struct {
 
 var TypeDescriptors []TypeDescriptor
 
-var NaN = JsonString{Value: "NaN"}
+func NaN() JsonType {
+	return &JsonString{Value: "NaN"}
+}
 
 func Init() {
 	TypeDescriptors = []TypeDescriptor{
@@ -91,9 +93,9 @@ func Init() {
 		{
 			Type:   reflect.TypeOf(JsonLambda{}),
 			Name:   "lambda",
-			IsType: func(i interface{}) bool { _, ok := i.(JsonLambda); return ok },
+			IsType: func(i interface{}) bool { _, ok := i.(*JsonLambda); return ok },
 			AsType: func(i interface{}) JsonType {
-				if b, ok := i.(JsonLambda); ok {
+				if b, ok := i.(*JsonLambda); ok {
 					return b
 				}
 				panic("Not a lambda")
@@ -127,7 +129,7 @@ func TypeName(obj interface{}) string {
 	if IsJsonPath(obj) {
 		return "path"
 	}
-	if _, ok := obj.(JsonLambda); ok {
+	if _, ok := obj.(*JsonLambda); ok {
 		return "lambda"
 	}
 	return fmt.Sprintf("native<%s>", reflect.TypeOf(obj).String())
@@ -258,7 +260,7 @@ func IndexOf(array interface{}, value interface{}) int {
 }
 
 // CreateRange creates a range of numbers from start to end as a JSON array.
-func CreateRange(start, end int32) JsonArray {
+func CreateRange(start, end int32) *JsonArray {
 	var result []JsonType
 	if start > end {
 		return NewJsonArray()
@@ -266,11 +268,11 @@ func CreateRange(start, end int32) JsonArray {
 	for i := start; i <= end; i++ {
 		result = append(result, AsNumber(i))
 	}
-	return JsonArray{Value: result}
+	return &JsonArray{Value: result}
 }
 
 // DeleteNulls removes all keys with null values from the given JSON object.
-func DeleteNulls(object JsonObject) JsonObject {
+func DeleteNulls(object *JsonObject) *JsonObject {
 	keys := make([]string, len(object.Keys()))
 	copy(keys, object.Keys())
 	for _, k := range keys {
@@ -287,7 +289,7 @@ func DeleteNulls(object JsonObject) JsonObject {
 }
 
 // DeleteNullsFromArray removes all keys inside elements of JSON object type with null values from the given JSON array.
-func DeleteNullsFromArray(array JsonArray) JsonArray {
+func DeleteNullsFromArray(array *JsonArray) *JsonArray {
 	for i, v := range array.Value {
 		if IsObject(v) {
 			array.Value[i] = DeleteNulls(AsObject(v))
@@ -299,7 +301,7 @@ func DeleteNullsFromArray(array JsonArray) JsonArray {
 }
 
 // ParseJsonObject parses a JSON string into a JSON object. It includes support for comments and detects common syntax errors.
-func ParseJsonObject(str []byte) (JsonObject, error) {
+func ParseJsonObject(str []byte) (*JsonObject, error) {
 	dat, err := json.UnmarshallJSONC(str)
 	if err != nil {
 		return NewJsonObject(), err
@@ -311,7 +313,7 @@ func ParseJsonObject(str []byte) (JsonObject, error) {
 }
 
 // ParseJsonArray parses a JSON string into a JSON array. It includes support for comments and detects common syntax errors.
-func ParseJsonArray(str []byte) (JsonArray, error) {
+func ParseJsonArray(str []byte) (*JsonArray, error) {
 	dat, err := json.UnmarshallJSONC(str)
 	if err != nil {
 		return NewJsonArray(), err

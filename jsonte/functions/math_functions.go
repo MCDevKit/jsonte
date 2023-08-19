@@ -810,48 +810,48 @@ func RegisterMathFunctions() {
 	})
 }
 
-func wrapFull(value, start, end types.JsonNumber) types.JsonNumber {
+func wrapFull(value, start, end *types.JsonNumber) *types.JsonNumber {
 	return types.AsNumber(utils.WrapRange(int(value.IntValue()), int(start.IntValue()), int(end.IntValue())))
 }
 
-func wrapShort(value, end types.JsonNumber) types.JsonNumber {
+func wrapShort(value, end *types.JsonNumber) *types.JsonNumber {
 	return types.AsNumber(utils.WrapRange(int(value.IntValue()), 0, int(end.IntValue())))
 }
 
-func randomNumber() types.JsonNumber {
+func randomNumber() *types.JsonNumber {
 	return types.AsNumber(rand.Float64())
 }
 
-func randomInt(a, b types.JsonNumber) (types.JsonNumber, error) {
+func randomInt(a, b *types.JsonNumber) (*types.JsonNumber, error) {
 	if a.IntValue() > b.IntValue() {
 		a, b = b, a
 	}
 	return types.AsNumber(rand.Intn(int(b.IntValue()-a.IntValue())) + int(a.IntValue())), nil
 }
 
-func floor(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func floor(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Floor(a.FloatValue()),
 		Decimal: false,
 	}
 }
 
-func ceil(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func ceil(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Ceil(a.FloatValue()),
 		Decimal: false,
 	}
 }
 
-func round(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func round(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Round(a.FloatValue()),
 		Decimal: false,
 	}
 }
 
-func roundPrecision(a types.JsonNumber, precision types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func roundPrecision(a *types.JsonNumber, precision *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Round(a.FloatValue()*math.Pow(10, float64(precision.IntValue()))) / math.Pow(10, float64(precision.IntValue())),
 		Decimal: true,
 	}
@@ -865,84 +865,84 @@ func fromRadians(a float64) float64 {
 	return a * 180.0 / math.Pi
 }
 
-func sin(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func sin(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Sin(toRadians(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
-func cos(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func cos(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Cos(toRadians(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
-func tan(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func tan(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Tan(toRadians(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
-func asin(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func asin(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   fromRadians(math.Asin(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
-func acos(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func acos(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   fromRadians(math.Acos(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
-func atan(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func atan(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   fromRadians(math.Atan(a.FloatValue())),
 		Decimal: true,
 	}
 }
 
-func atan2(a, b types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func atan2(a, b *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   fromRadians(math.Atan2(a.FloatValue(), b.FloatValue())),
 		Decimal: true,
 	}
 }
 
-func sqrt(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func sqrt(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Sqrt(a.FloatValue()),
 		Decimal: a.Decimal,
 	}
 }
 
-func abs(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func abs(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Abs(a.FloatValue()),
 		Decimal: a.Decimal,
 	}
 }
 
-func min(a, b types.JsonNumber) types.JsonNumber {
+func min(a, b *types.JsonNumber) *types.JsonNumber {
 	if a.FloatValue() < b.FloatValue() {
 		return a
 	}
 	return b
 }
 
-func max(a, b types.JsonNumber) types.JsonNumber {
+func max(a, b *types.JsonNumber) *types.JsonNumber {
 	if a.FloatValue() > b.FloatValue() {
 		return a
 	}
 	return b
 }
 
-func clamp(a, min, max types.JsonNumber) types.JsonNumber {
+func clamp(a, min, max *types.JsonNumber) *types.JsonNumber {
 	if a.FloatValue() < min.FloatValue() {
 		return min
 	}
@@ -952,99 +952,99 @@ func clamp(a, min, max types.JsonNumber) types.JsonNumber {
 	return a
 }
 
-func mod(a, b types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func mod(a, b *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Mod(a.FloatValue(), b.FloatValue()),
 		Decimal: a.Decimal || b.Decimal,
 	}
 }
 
-func pi() types.JsonNumber {
-	return types.JsonNumber{
+func pi() *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Pi,
 		Decimal: true,
 	}
 }
 
-func rotationToNormal(xRot, yRot types.JsonNumber) types.JsonArray {
+func rotationToNormal(xRot, yRot *types.JsonNumber) *types.JsonArray {
 	x := roundPrecision(types.AsNumber(cos(xRot).FloatValue()*sin(yRot).FloatValue()), types.AsNumber(5))
 	y := roundPrecision(types.AsNumber(-sin(xRot).FloatValue()), types.AsNumber(5))
 	z := roundPrecision(types.AsNumber(cos(yRot).FloatValue()*cos(xRot).FloatValue()), types.AsNumber(5))
-	return types.JsonArray{Value: []types.JsonType{x, y, z}}
+	return &types.JsonArray{Value: []types.JsonType{x, y, z}}
 }
 
-func bitwiseAnd(a, b types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func bitwiseAnd(a, b *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   float64(a.IntValue() & b.IntValue()),
 		Decimal: false,
 	}
 }
 
-func bitwiseOr(a, b types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func bitwiseOr(a, b *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   float64(a.IntValue() | b.IntValue()),
 		Decimal: false,
 	}
 }
 
-func bitwiseXor(a, b types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func bitwiseXor(a, b *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   float64(a.IntValue() ^ b.IntValue()),
 		Decimal: false,
 	}
 }
 
-func bitwiseNot(a types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func bitwiseNot(a *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   float64(^a.IntValue()),
 		Decimal: false,
 	}
 }
 
-func bitshiftLeft(a, b types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func bitshiftLeft(a, b *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   float64(a.IntValue() << b.IntValue()),
 		Decimal: false,
 	}
 }
 
-func bitshiftRight(a, b types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func bitshiftRight(a, b *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   float64(a.IntValue() >> b.IntValue()),
 		Decimal: false,
 	}
 }
 
-func numberOfDigits(a types.JsonNumber) types.JsonNumber {
+func numberOfDigits(a *types.JsonNumber) *types.JsonNumber {
 	if a.IntValue() == 0 {
 		return types.AsNumber(1)
 	}
-	return types.JsonNumber{
+	return &types.JsonNumber{
 		Value:   math.Log10(a.FloatValue()) + 1,
 		Decimal: false,
 	}
 }
 
-func pow(a, b types.JsonNumber) types.JsonNumber {
-	return types.JsonNumber{
+func pow(a, b *types.JsonNumber) *types.JsonNumber {
+	return &types.JsonNumber{
 		Value:   math.Pow(a.FloatValue(), b.FloatValue()),
 		Decimal: a.Decimal || b.Decimal,
 	}
 }
 
-func toHex(a types.JsonNumber) types.JsonString {
-	return types.JsonString{
+func toHex(a *types.JsonNumber) *types.JsonString {
+	return &types.JsonString{
 		Value: fmt.Sprintf("%x", int64(a.IntValue())),
 	}
 }
 
-func toHexFixed(a types.JsonNumber, digits types.JsonNumber) types.JsonString {
-	return types.JsonString{
+func toHexFixed(a *types.JsonNumber, digits *types.JsonNumber) *types.JsonString {
+	return &types.JsonString{
 		Value: fmt.Sprintf("%0"+strconv.Itoa(int(digits.IntValue()))+"x", int64(a.IntValue())),
 	}
 }
 
-func fromHex(a types.JsonString) (types.JsonNumber, error) {
+func fromHex(a *types.JsonString) (*types.JsonNumber, error) {
 	i, err := strconv.ParseInt(a.Value, 16, 64)
 	if err != nil {
 		return types.AsNumber(0), burrito.WrapErrorf(err, "Failed to parse hex string %s", a.Value)

@@ -266,7 +266,7 @@ func RegisterFileFunctions() {
 	})
 }
 
-func fileExists(s types.JsonString) (types.JsonBool, error) {
+func fileExists(s *types.JsonString) (*types.JsonBool, error) {
 	_, err := safeio.Resolver.Stat(s.StringValue())
 	if err != nil {
 		return types.NewBool(false), nil
@@ -274,10 +274,10 @@ func fileExists(s types.JsonString) (types.JsonBool, error) {
 	return types.NewBool(true), nil
 }
 
-func load(s types.JsonString) (types.JsonObject, error) {
+func load(s *types.JsonString) (*types.JsonObject, error) {
 	cache := utils.GetCache(fileCache, s.StringValue())
 	if cache != nil {
-		return (*cache).(types.JsonObject), nil
+		return (*cache).(*types.JsonObject), nil
 	} else {
 		resolver, err := safeio.Resolver.Open(s.StringValue())
 		if err != nil {
@@ -299,7 +299,7 @@ func load(s types.JsonString) (types.JsonObject, error) {
 	}
 }
 
-func fileList(s types.JsonString) (types.JsonArray, error) {
+func fileList(s *types.JsonString) (*types.JsonArray, error) {
 	resolved, err := safeio.Resolver.OpenDir(s.StringValue())
 	if err != nil {
 		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
@@ -308,10 +308,10 @@ func fileList(s types.JsonString) (types.JsonArray, error) {
 	for i, file := range resolved {
 		result[i] = types.NewString(file)
 	}
-	return types.JsonArray{Value: result}, nil
+	return &types.JsonArray{Value: result}, nil
 }
 
-func fileListFilter(s types.JsonString, filter types.JsonString) (types.JsonArray, error) {
+func fileListFilter(s *types.JsonString, filter *types.JsonString) (*types.JsonArray, error) {
 	compile, err := glob.Compile(filter.StringValue())
 	if err != nil {
 		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile glob %s", filter.StringValue())
@@ -326,10 +326,10 @@ func fileListFilter(s types.JsonString, filter types.JsonString) (types.JsonArra
 			result = append(result, types.NewString(file))
 		}
 	}
-	return types.JsonArray{Value: result}, nil
+	return &types.JsonArray{Value: result}, nil
 }
 
-func fileListRecurse(s types.JsonString) (types.JsonArray, error) {
+func fileListRecurse(s *types.JsonString) (*types.JsonArray, error) {
 	resolved, err := safeio.Resolver.OpenDirRecursive(s.StringValue())
 	if err != nil {
 		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
@@ -338,10 +338,10 @@ func fileListRecurse(s types.JsonString) (types.JsonArray, error) {
 	for i, file := range resolved {
 		result[i] = types.NewString(file)
 	}
-	return types.JsonArray{Value: result}, nil
+	return &types.JsonArray{Value: result}, nil
 }
 
-func fileListRecurseFilter(s types.JsonString, filter types.JsonString) (types.JsonArray, error) {
+func fileListRecurseFilter(s *types.JsonString, filter *types.JsonString) (*types.JsonArray, error) {
 	compile, err := glob.Compile(filter.StringValue())
 	if err != nil {
 		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to compile glob %s", filter.StringValue())
@@ -356,36 +356,36 @@ func fileListRecurseFilter(s types.JsonString, filter types.JsonString) (types.J
 			result = append(result, types.NewString(file))
 		}
 	}
-	return types.JsonArray{Value: result}, nil
+	return &types.JsonArray{Value: result}, nil
 }
 
-func fileExtension(s types.JsonString) types.JsonString {
+func fileExtension(s *types.JsonString) *types.JsonString {
 	return types.NewString(filepath.Ext(s.StringValue()))
 }
 
-func fileName(s types.JsonString) types.JsonString {
+func fileName(s *types.JsonString) *types.JsonString {
 	return types.NewString(filepath.Base(s.StringValue()))
 }
 
-func fileBaseName(s types.JsonString) types.JsonString {
+func fileBaseName(s *types.JsonString) *types.JsonString {
 	return types.NewString(strings.TrimSuffix(filepath.Base(s.StringValue()), filepath.Ext(s.StringValue())))
 }
 
-func filePath(s types.JsonString) types.JsonString {
+func filePath(s *types.JsonString) *types.JsonString {
 	return types.NewString(filepath.Dir(s.StringValue()))
 }
 
-func filePathSeparator(s, separator types.JsonString) types.JsonString {
+func filePathSeparator(s, separator *types.JsonString) *types.JsonString {
 	return types.NewString(strings.ReplaceAll(filepath.Dir(s.StringValue()), string(filepath.Separator), separator.Value))
 }
 
-func isDir(s types.JsonString) (types.JsonBool, error) {
+func isDir(s *types.JsonString) (*types.JsonBool, error) {
 	stat, err := safeio.Resolver.Stat(s.StringValue())
 	if err != nil {
 		if os.IsNotExist(err) {
-			return types.False, nil
+			return types.False(), nil
 		}
-		return types.False, burrito.WrapErrorf(err, "Failed to stat path %s", s.StringValue())
+		return types.False(), burrito.WrapErrorf(err, "Failed to stat path %s", s.StringValue())
 	}
 	return types.AsBool(stat.IsDir()), nil
 }

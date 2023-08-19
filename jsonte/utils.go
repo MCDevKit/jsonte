@@ -13,7 +13,7 @@ import (
 const WrongTypeErrTag = "wrong_type"
 
 // FindAnyCase returns the first key that matches the given key, ignoring case.
-func FindAnyCase[T types.JsonType](o types.JsonObject, key ...string) (*T, error) {
+func FindAnyCase[T types.JsonType](o *types.JsonObject, key ...string) (*T, error) {
 	if key == nil || len(key) == 0 {
 		return nil, burrito.WrappedError("The key is nil or empty")
 	}

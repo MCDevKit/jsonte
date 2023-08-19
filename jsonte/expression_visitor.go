@@ -18,15 +18,15 @@ type ExpressionVisitor struct {
 	action        types.JsonAction
 	name          *string
 	indexName     *string
-	scope         deque.Deque[types.JsonObject]
+	scope         deque.Deque[*types.JsonObject]
 	path          *string
 	usedVariables []string
 }
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) {
 	switch val := tree.(type) {
- 	case *parser.FieldContext:
- 		return v.VisitField(val)
+	case *parser.FieldContext:
+		return v.VisitField(val)
 	case *parser.ArrayContext:
 		return v.VisitArray(val)
 	case *parser.ObjectContext:
@@ -125,7 +125,7 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) (type
 			indexName = ctx.Name(1).GetText()
 		}
 	}
- 	v.name = &name
+	v.name = &name
 	v.indexName = &indexName
 	return v.Visit(ctx.Field())
 }
@@ -134,13 +134,13 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	if context.Null() != nil {
 		return types.Null, nil
 	}
- 	if context.True() != nil {
-		return types.True, nil
+	if context.True() != nil {
+		return types.True(), nil
 	}
- 	if context.False() != nil {
-		return types.False, nil
+	if context.False() != nil {
+		return types.False(), nil
 	}
- 	if context.Not() != nil {
+	if context.Not() != nil {
 		visit, err := v.Visit(context.Field(0))
 		if err != nil {
 			return types.Null, err
@@ -162,7 +162,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				}
 				return types.AsBool(f2.BoolValue()), nil
 			} else {
-				return types.False, nil
+				return types.False(), nil
 			}
 		} else if context.Or() != nil {
 			if !f1.BoolValue() {
@@ -172,7 +172,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				}
 				return types.AsBool(f2.BoolValue()), nil
 			} else {
-				return types.True, nil
+				return types.True(), nil
 			}
 		}
 		// What is this???
@@ -234,41 +234,41 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				return types.CreateRange(n1.IntValue(), n2.IntValue()), nil
 			} else if n1.Decimal || n2.Decimal {
 				if context.Subtract() != nil {
-					return types.JsonNumber{
+					return &types.JsonNumber{
 						Value:   n1.FloatValue() - n2.FloatValue(),
 						Decimal: true,
 					}, nil
 				} else if context.Divide() != nil {
-					return types.JsonNumber{
+					return &types.JsonNumber{
 						Value:   n1.FloatValue() / n2.FloatValue(),
 						Decimal: true,
 					}, nil
 				} else if context.Multiply() != nil {
-					return types.JsonNumber{
+					return &types.JsonNumber{
 						Value:   n1.FloatValue() * n2.FloatValue(),
 						Decimal: true,
 					}, nil
 				}
 			} else {
 				if context.Subtract() != nil {
-					return types.JsonNumber{
+					return &types.JsonNumber{
 						Value:   float64(n1.IntValue() - n2.IntValue()),
 						Decimal: false,
 					}, nil
 				} else if context.Divide() != nil {
-					return types.JsonNumber{
+					return &types.JsonNumber{
 						Value:   float64(n1.IntValue() / n2.IntValue()),
 						Decimal: false,
 					}, nil
 				} else if context.Multiply() != nil {
-					return types.JsonNumber{
+					return &types.JsonNumber{
 						Value:   float64(n1.IntValue() * n2.IntValue()),
 						Decimal: false,
 					}, nil
 				}
 			}
 		} else {
-			return types.NaN, nil
+			return types.NaN(), nil
 		}
 	} else if len(context.AllField()) == 3 {
 		// handle ternary operator
@@ -301,14 +301,14 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			}
 			params[i] = p
 		}
-		if _, ok := lambda.(types.JsonString); ok {
+		if _, ok := lambda.(*types.JsonString); ok {
 			lambdaContext := v.resolveLambdaTree(lambda.StringValue())
 			fun, err := v.Visit(lambdaContext)
 			if err != nil {
 				return types.Null, err
 			}
-			if f, ok := fun.(types.JsonLambda); ok {
-				i, err := f.Value(&f, params)
+			if f, ok := fun.(*types.JsonLambda); ok {
+				i, err := f.Value(f, params)
 				if err != nil {
 					return types.Null, err
 				}
@@ -316,8 +316,8 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			} else {
 				return types.Null, burrito.WrappedErrorf("%s is not a function", lambda.StringValue())
 			}
-		} else if l, ok := lambda.(types.JsonLambda); ok {
-			i, err := l.Value(&l, params)
+		} else if l, ok := lambda.(*types.JsonLambda); ok {
+			i, err := l.Value(l, params)
 			if err != nil {
 				return types.Null, err
 			}
@@ -425,7 +425,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	return types.Null, burrito.WrappedErrorf("Failed to resolve '%s'", context.GetText())
 }
 
- func (v *ExpressionVisitor) VisitName(context *parser.NameContext) (types.JsonType, error) {
+func (v *ExpressionVisitor) VisitName(context *parser.NameContext) (types.JsonType, error) {
 	text := context.GetText()
 	newScope := v.ResolveScope(text)
 
@@ -462,7 +462,7 @@ func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) (types.Json
 		}
 		result[i] = r
 	}
-	return types.JsonArray{Value: result}, nil
+	return &types.JsonArray{Value: result}, nil
 }
 
 func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) (types.JsonType, error) {
@@ -472,7 +472,7 @@ func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) (types.Js
 		if err != nil {
 			return types.Null, err
 		}
-		u := obj.(types.JsonObject)
+		u := obj.(*types.JsonObject)
 		for _, key := range u.Keys() {
 			result.Put(key, u.Get(key))
 		}

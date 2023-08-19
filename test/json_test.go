@@ -16,29 +16,33 @@ func safeTypeName(v interface{}) string {
 	if v == nil {
 		return "nil"
 	}
-	return reflect.TypeOf(v).Name()
+	n := reflect.TypeOf(v).Name()
+	if n == "" {
+		return reflect.TypeOf(v).Elem().Name()
+	}
+	return n
 }
 
-func compareJsonObject(t *testing.T, expected types.JsonObject, actual types.JsonObject, path string, checkExtra bool) {
+func compareJsonObject(t *testing.T, expected *types.JsonObject, actual *types.JsonObject, path string, checkExtra bool) {
 	for _, key := range expected.Keys() {
 		value1 := expected.Get(key)
 		if actual.ContainsKey(key) {
 			value2 := actual.Get(key)
 			newPath := fmt.Sprintf("%s/%s", path, key)
-			if v1, ok := value1.(types.JsonObject); ok {
-				if v2, ok := value2.(types.JsonObject); ok {
+			if v1, ok := value1.(*types.JsonObject); ok {
+				if v2, ok := value2.(*types.JsonObject); ok {
 					compareJsonObject(t, v1, v2, newPath, true)
 				} else {
 					t.Errorf("Field %s is not an object (expected %s, got %s)", newPath, types.ToString(v1), types.ToString(value2))
 				}
-			} else if v1, ok := value1.(types.JsonArray); ok {
-				if v2, ok := value2.(types.JsonArray); ok {
+			} else if v1, ok := value1.(*types.JsonArray); ok {
+				if v2, ok := value2.(*types.JsonArray); ok {
 					compareJsonArray(t, v1, v2, newPath)
 				} else {
 					t.Errorf("Field %s is not an array (expected %s, got %s)", newPath, types.ToString(v1), types.ToString(value2))
 				}
-			} else if v1, ok := value1.(types.JsonNumber); ok {
-				if v2, ok := value2.(types.JsonNumber); ok {
+			} else if v1, ok := value1.(*types.JsonNumber); ok {
+				if v2, ok := value2.(*types.JsonNumber); ok {
 					if v1.FloatValue() != v2.FloatValue() {
 						t.Errorf("Field %s is not equal (expected %s, got %s)", newPath, types.ToString(v1), types.ToString(v2))
 					}
@@ -50,7 +54,7 @@ func compareJsonObject(t *testing.T, expected types.JsonObject, actual types.Jso
 					t.Errorf("Field %s is not equal (expected %s (%s), got %s (%s))", newPath, types.ToString(value1), safeTypeName(value1), types.ToString(value2), safeTypeName(value2))
 				}
 			} else {
-				if value1 != value2 {
+				if !value1.Equals(value2) {
 					t.Errorf("Field %s is not equal (expected %s (%s), got %s (%s))", newPath, types.ToString(value1), safeTypeName(value1), types.ToString(value2), safeTypeName(value2))
 				}
 			}
@@ -78,25 +82,25 @@ func compareJsonObject(t *testing.T, expected types.JsonObject, actual types.Jso
 	}
 }
 
-func compareJsonArray(t *testing.T, expected types.JsonArray, actual types.JsonArray, path string) {
+func compareJsonArray(t *testing.T, expected *types.JsonArray, actual *types.JsonArray, path string) {
 	for i := 0; i < int(math.Min(float64(len(expected.Value)), float64(len(actual.Value)))); i++ {
 		newPath := fmt.Sprintf("%s[%d]", path, i)
 		value1 := expected.Value[i]
 		value2 := actual.Value[i]
-		if v1, ok := value1.(types.JsonObject); ok {
-			if v2, ok := value2.(types.JsonObject); ok {
+		if v1, ok := value1.(*types.JsonObject); ok {
+			if v2, ok := value2.(*types.JsonObject); ok {
 				compareJsonObject(t, v1, v2, newPath, true)
 			} else {
 				t.Errorf("Element %s is not an object (expected %s, got %s)", newPath, types.ToString(v1), types.ToString(value2))
 			}
-		} else if v1, ok := value1.(types.JsonArray); ok {
-			if v2, ok := value2.(types.JsonArray); ok {
+		} else if v1, ok := value1.(*types.JsonArray); ok {
+			if v2, ok := value2.(*types.JsonArray); ok {
 				compareJsonArray(t, v1, v2, newPath)
 			} else {
 				t.Errorf("Element %s is not an array (expected %s, got %s)", newPath, types.ToString(v1), types.ToString(value2))
 			}
-		} else if v1, ok := value1.(types.JsonNumber); ok {
-			if v2, ok := value2.(types.JsonNumber); ok {
+		} else if v1, ok := value1.(*types.JsonNumber); ok {
+			if v2, ok := value2.(*types.JsonNumber); ok {
 				if v1.FloatValue() != v2.FloatValue() {
 					t.Errorf("Element %s is not equal (expected %s, got %s)", newPath, types.ToString(v1), types.ToString(v2))
 				}
@@ -108,7 +112,7 @@ func compareJsonArray(t *testing.T, expected types.JsonArray, actual types.JsonA
 				t.Errorf("Element %s is not equal (expected %s (%s), got %s (%s))", newPath, types.ToString(value1), safeTypeName(value1), types.ToString(value2), safeTypeName(value2))
 			}
 		} else {
-			if value1 != value2 {
+			if !value1.Equals(value2) {
 				t.Errorf("Element %s is not equal (expected %s (%s), got %s (%s))", newPath, types.ToString(value1), safeTypeName(value1), types.ToString(value2), safeTypeName(value2))
 			}
 		}
@@ -120,7 +124,7 @@ func compareJsonArray(t *testing.T, expected types.JsonArray, actual types.JsonA
 	}
 }
 
-func assertTemplateWithModule(t *testing.T, template, expected string, globalScope types.JsonObject, modules ...string) {
+func assertTemplateWithModule(t *testing.T, template, expected string, globalScope *types.JsonObject, modules ...string) {
 	moduleMap := map[string]jsonte.JsonModule{}
 	for _, m := range modules {
 		mod, err := jsonte.LoadModule(m, globalScope, -1)
@@ -193,7 +197,7 @@ func assertTemplateMultiple(t *testing.T, template, expected string) {
 			t.Errorf("Missing file %s", key)
 			continue
 		}
-		compareJsonObject(t, value.(types.JsonObject), process.Get(key), fmt.Sprintf("%s#", key), true)
+		compareJsonObject(t, value.(*types.JsonObject), process.Get(key), fmt.Sprintf("%s#", key), true)
 	}
 	for _, key := range process.Keys() {
 		if !exp.ContainsKey(key) {
@@ -1076,7 +1080,7 @@ func TestJsonParser(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	compareJsonObject(t, object, types.Box(expected).(types.JsonObject), "#", true)
+	compareJsonObject(t, object, types.Box(expected).(*types.JsonObject), "#", true)
 
 	expMini := "{\"obj\":{\"decimal\":0.0,\"integer\":0,\"string\":\"escape chars \\n\\t\\r\\b\\f \\\\ \\\" ሴ\",\"array\":[],\"object\":{},\"null\":null,\"true\":true,\"false\":false,\"nestedArrays\":[[1,2,3],[4,5,6]]}}"
 	expPretty := `{

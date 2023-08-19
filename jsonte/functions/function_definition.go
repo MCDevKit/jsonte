@@ -96,9 +96,13 @@ func RegisterFunction(fn JsonFunction) {
 }
 
 func typeSanityCheck(in reflect.Type) {
-	if in.AssignableTo(reflect.TypeOf((*types.JsonType)(nil)).Elem()) {
+	test := reflect.TypeOf((*types.JsonType)(nil))
+	if in.AssignableTo(test.Elem()) {
 		return
 	}
+	//if in.Elem().AssignableTo(test.Elem()) {
+	//	return
+	//}
 	if in.AssignableTo(reflect.TypeOf((*types.JsonLambda)(nil)).Elem()) {
 		return
 	}
@@ -210,12 +214,12 @@ func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType, re
 		if cacheAll {
 			keyObject := types.AsObject(utils.ToNavigableMap(
 				"f", fn.Name,
-				"args", types.JsonArray{Value: args},
+				"args", &types.JsonArray{Value: args},
 			))
 			// Need to take care of lambdas, that use outside variables
 			scope := types.NewJsonObject()
 			for _, arg := range args {
-				if lambda, ok := arg.(types.JsonLambda); ok && len(lambda.UsedVariables) > 0 {
+				if lambda, ok := arg.(*types.JsonLambda); ok && len(lambda.UsedVariables) > 0 {
 				outer:
 					for _, variable := range lambda.UsedVariables {
 						if lambda.Arguments != nil {
@@ -296,47 +300,30 @@ func typeToString(t reflect.Type) string {
 	if t == nil {
 		return "null"
 	}
-	if t.AssignableTo(reflect.TypeOf(types.JsonNumber{})) {
+	if t.AssignableTo(reflect.TypeOf(&types.JsonNumber{})) {
 		return "number"
 	}
-	if t.AssignableTo(reflect.TypeOf(types.JsonString{})) {
+	if t.AssignableTo(reflect.TypeOf(&types.JsonString{})) {
 		return "string"
 	}
-	if t.AssignableTo(reflect.TypeOf(types.JsonBool{})) {
+	if t.AssignableTo(reflect.TypeOf(&types.JsonBool{})) {
 		return "bool"
 	}
-	if t.AssignableTo(reflect.TypeOf(types.JsonArray{})) {
+	if t.AssignableTo(reflect.TypeOf(&types.JsonArray{})) {
 		return "array"
 	}
-	if t.AssignableTo(reflect.TypeOf(types.JsonObject{})) {
+	if t.AssignableTo(reflect.TypeOf(&types.JsonObject{})) {
 		return "object"
 	}
-	if t.AssignableTo(reflect.TypeOf(types.JsonNull{})) {
+	if t.AssignableTo(reflect.TypeOf(&types.JsonNull{})) {
 		return "null"
 	}
-	if t.AssignableTo(reflect.TypeOf(types.Semver{})) {
+	if t.AssignableTo(reflect.TypeOf(&types.Semver{})) {
+		return "semver"
+	}
+	if t.AssignableTo(reflect.TypeOf(&types.JsonLambda{})) {
 		return "semver"
 	}
 
-	switch t.Kind() {
-	//case reflect.Bool:
-	//	return "boolean"
-	//case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-	//case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-	//case reflect.Float32, reflect.Float64:
-	//	return "number"
-	//case reflect.String:
-	//	return "string"
-	//case reflect.Slice, reflect.Array:
-	//	return "array"
-	//case reflect.Map:
-	//	return "object"
-	//case reflect.Struct:
-	//	return "object"
-	//case reflect.Ptr:
-	//	return typeToString(t.Elem())
-	case reflect.Func:
-		return "lambda"
-	}
 	return "Unsupported (report bug): " + t.Name()
 }

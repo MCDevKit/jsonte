@@ -13,48 +13,48 @@ type JsonObject struct {
 	Value *utils.NavigableMap[string, JsonType]
 }
 
-func (o JsonObject) Keys() []string {
+func (o *JsonObject) Keys() []string {
 	if o.Value == nil {
 		return []string{}
 	}
 	return o.Value.Keys()
 }
 
-func (o JsonObject) Get(key string) JsonType {
+func (o *JsonObject) Get(key string) JsonType {
 	if o.Value == nil || !o.ContainsKey(key) {
 		return Null
 	}
 	return o.Value.Get(key)
 }
 
-func (o JsonObject) Put(key string, value JsonType) {
+func (o *JsonObject) Put(key string, value JsonType) {
 	o.Value.Put(key, value)
 }
 
-func (o JsonObject) Remove(key string) {
+func (o *JsonObject) Remove(key string) {
 	o.Value.Remove(key)
 }
 
-func (o JsonObject) ContainsKey(key string) bool {
+func (o *JsonObject) ContainsKey(key string) bool {
 	if o.Value == nil {
 		return false
 	}
 	return o.Value.ContainsKey(key)
 }
 
-func (o JsonObject) StringValue() string {
+func (o *JsonObject) StringValue() string {
 	return ToString(o.Unbox())
 }
 
-func (o JsonObject) BoolValue() bool {
+func (o *JsonObject) BoolValue() bool {
 	return o.Value != nil && !o.Value.IsEmpty()
 }
 
-func (o JsonObject) LessThan(value JsonType) (bool, error) {
+func (o *JsonObject) LessThan(value JsonType) (bool, error) {
 	return false, burrito.WrappedErrorf("Objects cannot be compared")
 }
 
-func (o JsonObject) Unbox() interface{} {
+func (o *JsonObject) Unbox() interface{} {
 	result := utils.NewNavigableMap[string, interface{}]()
 	for _, k := range o.Keys() {
 		result.Put(k, o.Get(k).Unbox())
@@ -62,40 +62,40 @@ func (o JsonObject) Unbox() interface{} {
 	return result
 }
 
-func (o JsonObject) Equals(value JsonType) bool {
+func (o *JsonObject) Equals(value JsonType) bool {
 	if value == Null {
 		return false
 	}
-	if b, ok := value.(JsonObject); ok {
+	if b, ok := value.(*JsonObject); ok {
 		return IsEqualObject(*o.Value, *b.Value)
 	}
 	return false
 }
 
-func (o JsonObject) Negate() JsonType {
-	return NaN
+func (o *JsonObject) Negate() JsonType {
+	return NaN()
 }
 
-func (o JsonObject) Index(i JsonType) (JsonType, error) {
-	if b, ok := i.(JsonString); ok {
+func (o *JsonObject) Index(i JsonType) (JsonType, error) {
+	if b, ok := i.(*JsonString); ok {
 		if !o.ContainsKey(b.Value) {
 			return Null, burrito.WrappedErrorf("Property '%s' not found in %s", b.StringValue(), o.StringValue())
 		}
 		return o.Get(b.Value), nil
 	}
-	if b, ok := i.(JsonNumber); ok {
+	if b, ok := i.(*JsonNumber); ok {
 		if b.IntValue() < 0 || b.IntValue() >= int32(len(o.Value.Keys())) {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", b.IntValue())
 		}
 		return o.Value.Get(o.Value.Keys()[int(b.IntValue())]), nil
 	}
-	if b, ok := i.(JsonPath); ok {
+	if b, ok := i.(*JsonPath); ok {
 		return b.Get(o)
 	}
 	return Null, burrito.WrappedErrorf("Index must be a string or a number: %s", i.StringValue())
 }
 
-func (o JsonObject) Add(i JsonType) JsonType {
+func (o *JsonObject) Add(i JsonType) JsonType {
 	if IsObject(i) {
 		return MergeObject(AsObject(i), o, false, "#")
 	}
@@ -105,31 +105,31 @@ func (o JsonObject) Add(i JsonType) JsonType {
 	return NewString(o.StringValue() + i.StringValue())
 }
 
-func (o JsonObject) IsEmpty() bool {
+func (o *JsonObject) IsEmpty() bool {
 	return o.Value.IsEmpty()
 }
 
-func (o JsonObject) Size() int {
+func (o *JsonObject) Size() int {
 	return o.Value.Size()
 }
 
-func (o JsonObject) Values() []JsonType {
+func (o *JsonObject) Values() []JsonType {
 	return o.Value.Values()
 }
 
 // AsObject returns the given interface as a JSON object.
-func AsObject(obj interface{}) JsonObject {
+func AsObject(obj interface{}) *JsonObject {
 	if obj == nil {
 		return NewJsonObject()
 	}
-	if b, ok := obj.(JsonObject); ok {
+	if b, ok := obj.(*JsonObject); ok {
 		return b
 	}
 	if _, ok := obj.(JsonType); ok {
 		return NewJsonObject()
 	}
 	if b, ok := obj.(utils.NavigableMap[string, JsonType]); ok {
-		return JsonObject{&b}
+		return &JsonObject{&b}
 	}
 	if b, ok := obj.(utils.NavigableMap[string, interface{}]); ok {
 		result := NewJsonObject()
@@ -163,7 +163,7 @@ func IsObject(obj interface{}) bool {
 	if obj == nil {
 		return false
 	}
-	if _, ok := obj.(JsonObject); ok {
+	if _, ok := obj.(*JsonObject); ok {
 		return true
 	}
 	if _, ok := obj.(JsonType); ok {
@@ -209,7 +209,7 @@ var actionPattern, _ = regexp.Compile("^\\{\\{(?:\\\\.|[^{}])+}}$")
 
 // MergeObject merges two JSON objects into a new JSON object.
 // If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.
-func MergeObject(template, parent JsonObject, keepOverrides bool, path string) JsonObject {
+func MergeObject(template, parent *JsonObject, keepOverrides bool, path string) *JsonObject {
 	result := NewJsonObject()
 	for _, k := range template.Keys() {
 		v := template.Get(k)
@@ -260,7 +260,7 @@ out:
 				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
 				result.Put(k, merge)
 			} else if IsArray(v) && IsArray(template.Get(k)) {
-				var merge, v1 JsonArray
+				var merge, v1 *JsonArray
 				if result.ContainsKey(k) {
 					v1 = AsArray(result.Get(k))
 				} else {
@@ -281,7 +281,7 @@ out:
 }
 
 // DeepCopyObject creates a deep copy of the given JSON object.
-func DeepCopyObject(object JsonObject) JsonObject {
+func DeepCopyObject(object *JsonObject) *JsonObject {
 	result := NewJsonObject()
 	for _, k := range object.Keys() {
 		v := object.Get(k)
@@ -296,9 +296,9 @@ func DeepCopyObject(object JsonObject) JsonObject {
 	return result
 }
 
-func NewJsonObject() JsonObject {
+func NewJsonObject() *JsonObject {
 	navigableMap := utils.NewNavigableMap[string, JsonType]()
-	return JsonObject{&navigableMap}
+	return &JsonObject{&navigableMap}
 }
 
 func IsReservedKey(k string) bool {

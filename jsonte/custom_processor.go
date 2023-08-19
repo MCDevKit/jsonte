@@ -9,7 +9,7 @@ import (
 )
 
 // ProcessLangFile processes a lang file replacing all the jsonte expressions with their values
-func ProcessLangFile(input string, scope types.JsonObject) (string, error) {
+func ProcessLangFile(input string, scope *types.JsonObject) (string, error) {
 	str, err := json.ConvertToUTF8([]byte(input))
 	if err != nil {
 		return input, burrito.PassError(err)
@@ -25,7 +25,7 @@ func ProcessLangFile(input string, scope types.JsonObject) (string, error) {
 }
 
 // ProcessMCFunction processes a file replacing all the jsonte expressions with their values
-func ProcessMCFunction(input string, scope types.JsonObject) (string, error) {
+func ProcessMCFunction(input string, scope *types.JsonObject) (string, error) {
 	str, err := json.ConvertToUTF8([]byte(input))
 	if err != nil {
 		return input, burrito.PassError(err)
@@ -38,13 +38,13 @@ func ProcessMCFunction(input string, scope types.JsonObject) (string, error) {
 }
 
 // ProcessString processes a string replacing all the jsonte expressions with their values
-func ProcessString(input string, scope types.JsonObject, startToken, endToken string) (string, error) {
+func ProcessString(input string, scope *types.JsonObject, startToken, endToken string) (string, error) {
 	runes := []rune(input)
 	templateMatches, err := FindTemplateMatches(input, startToken, endToken)
 	if err != nil {
 		return "", burrito.PassError(err)
 	}
-	globalScope := deque.Deque[types.JsonObject]{}
+	globalScope := deque.Deque[*types.JsonObject]{}
 	globalScope.PushBack(scope)
 	var sb strings.Builder
 	lastMatchEnd := 0

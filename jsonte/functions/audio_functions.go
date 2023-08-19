@@ -48,7 +48,7 @@ func RegisterAudioFunctions() {
 	})
 }
 
-func audioDuration(str types.JsonString) (types.JsonNumber, error) {
+func audioDuration(str *types.JsonString) (*types.JsonNumber, error) {
 	var length float64 = 0
 	cache := utils.GetCache(audioCache, str.StringValue())
 	if cache != nil {

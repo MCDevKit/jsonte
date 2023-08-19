@@ -274,43 +274,43 @@ func RegisterTypeFunctions() {
 	})
 }
 
-func isArray(obj types.JsonType) types.JsonBool {
+func isArray(obj types.JsonType) *types.JsonBool {
 	return types.NewBool(types.IsArray(obj))
 }
 
-func isObject(obj types.JsonType) types.JsonBool {
+func isObject(obj types.JsonType) *types.JsonBool {
 	return types.NewBool(types.IsObject(obj))
 }
 
-func isNumber(obj types.JsonType) types.JsonBool {
+func isNumber(obj types.JsonType) *types.JsonBool {
 	return types.NewBool(types.IsNumber(obj))
 }
 
-func isBoolean(obj types.JsonType) types.JsonBool {
+func isBoolean(obj types.JsonType) *types.JsonBool {
 	return types.NewBool(types.IsBool(obj))
 }
 
-func isSemver(obj types.JsonType) types.JsonBool {
+func isSemver(obj types.JsonType) *types.JsonBool {
 	return types.NewBool(types.IsSemver(obj))
 }
 
-func isString(obj types.JsonType) types.JsonBool {
+func isString(obj types.JsonType) *types.JsonBool {
 	return types.NewBool(types.IsString(obj))
 }
 
-func asString(obj types.JsonType) types.JsonString {
+func asString(obj types.JsonType) *types.JsonString {
 	return types.AsString(obj)
 }
 
-func asNumber(obj types.JsonType) types.JsonNumber {
+func asNumber(obj types.JsonType) *types.JsonNumber {
 	return types.AsNumber(obj)
 }
 
-func asBool(obj types.JsonType) types.JsonBool {
+func asBool(obj types.JsonType) *types.JsonBool {
 	return types.AsBool(obj)
 }
 
-func parseArray(obj types.JsonString) (types.JsonArray, error) {
+func parseArray(obj *types.JsonString) (*types.JsonArray, error) {
 	jsonc, err := json.UnmarshallJSONC([]byte(obj.StringValue()))
 	if err != nil {
 		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to parse string as a valid JSON")
@@ -321,7 +321,7 @@ func parseArray(obj types.JsonString) (types.JsonArray, error) {
 	return types.AsArray(jsonc), nil
 }
 
-func parseObject(obj types.JsonString) (types.JsonObject, error) {
+func parseObject(obj *types.JsonString) (*types.JsonObject, error) {
 	jsonc, err := json.UnmarshallJSONC([]byte(obj.StringValue()))
 	if err != nil {
 		return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to parse string as a valid JSON")

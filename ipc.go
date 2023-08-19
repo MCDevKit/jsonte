@@ -36,7 +36,7 @@ const (
 	Error              int = 3
 )
 
-func StartIPC(ipcName string, scope types.JsonObject) error {
+func StartIPC(ipcName string, scope *types.JsonObject) error {
 	color.NoColor = true
 	sc, err := ipc.StartServer(ipcName, nil)
 	if err != nil {
@@ -61,7 +61,7 @@ func StartIPC(ipcName string, scope types.JsonObject) error {
 					sendError(sc, burrito.WrapErrorf(err, "An error occurred while unmarshalling the request"))
 					continue
 				}
-				s := deque.Deque[types.JsonObject]{}
+				s := deque.Deque[*types.JsonObject]{}
 				s.PushBack(scope)
 				s.PushBack(types.AsObject(request.ExtraScope))
 				utils.Logger.Infof("Evaluating expression %s", request.Expression)

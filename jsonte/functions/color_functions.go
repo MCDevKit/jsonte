@@ -110,12 +110,12 @@ func RegisterColorFunctions() {
 	})
 }
 
-func hexToArray(str types.JsonString) (types.JsonArray, error) {
+func hexToArray(str *types.JsonString) (*types.JsonArray, error) {
 	fast, err := parseHexColorFast(str.StringValue())
 	if err != nil {
 		return types.NewJsonArray(), burrito.WrapErrorf(err, "Failed to parse hex color %s", str.StringValue())
 	}
-	return types.JsonArray{Value: []types.JsonType{
+	return &types.JsonArray{Value: []types.JsonType{
 		types.AsNumber(float64(fast.R) / 255),
 		types.AsNumber(float64(fast.G) / 255),
 		types.AsNumber(float64(fast.B) / 255),
@@ -123,26 +123,26 @@ func hexToArray(str types.JsonString) (types.JsonArray, error) {
 	}}, nil
 }
 
-func arrayToHex(array types.JsonArray) (types.JsonString, error) {
+func arrayToHex(array *types.JsonArray) (*types.JsonString, error) {
 	if len(array.Value) < 3 || len(array.Value) > 4 {
-		return types.EmptyString, burrito.WrappedErrorf("Expected array of length 3 or 4, got %d", len(array.Value))
+		return nil, burrito.WrappedErrorf("Expected array of length 3 or 4, got %d", len(array.Value))
 	}
 	var r, g, b byte
 	if !types.IsNumber(array.Value[0]) {
-		return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[0].StringValue())
+		return nil, burrito.WrappedErrorf("Expected number, got %s", array.Value[0].StringValue())
 	}
 	if !types.IsNumber(array.Value[1]) {
-		return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[1].StringValue())
+		return nil, burrito.WrappedErrorf("Expected number, got %s", array.Value[1].StringValue())
 	}
 	if !types.IsNumber(array.Value[2]) {
-		return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[2].StringValue())
+		return nil, burrito.WrappedErrorf("Expected number, got %s", array.Value[2].StringValue())
 	}
 	r = byte(types.AsNumber(array.Value[0]).FloatValue() * 255)
 	g = byte(types.AsNumber(array.Value[1]).FloatValue() * 255)
 	b = byte(types.AsNumber(array.Value[2]).FloatValue() * 255)
 	if len(array.Value) == 4 {
 		if !types.IsNumber(array.Value[3]) {
-			return types.EmptyString, burrito.WrappedErrorf("Expected number, got %s", array.Value[3].StringValue())
+			return nil, burrito.WrappedErrorf("Expected number, got %s", array.Value[3].StringValue())
 		}
 		a := byte(types.AsNumber(array.Value[3]).FloatValue() * 255)
 		return types.AsString(fmt.Sprintf("#%02x%02x%02x%02x", a, r, g, b)), nil
@@ -150,7 +150,7 @@ func arrayToHex(array types.JsonArray) (types.JsonString, error) {
 	return types.AsString(fmt.Sprintf("#%02x%02x%02x", r, g, b)), nil
 }
 
-func hsl(array types.JsonArray) (types.JsonArray, error) {
+func hsl(array *types.JsonArray) (*types.JsonArray, error) {
 	if len(array.Value) != 3 {
 		return types.NewJsonArray(), burrito.WrappedErrorf("Expected array of length 3, got %d", len(array.Value))
 	}
@@ -204,7 +204,7 @@ func hsl(array types.JsonArray) (types.JsonArray, error) {
 	return result, nil
 }
 
-func greyscale(array types.JsonArray) (types.JsonArray, error) {
+func greyscale(array *types.JsonArray) (*types.JsonArray, error) {
 	if len(array.Value) != 3 {
 		return types.NewJsonArray(), burrito.WrappedErrorf("Expected array of length 3, got %d", len(array.Value))
 	}

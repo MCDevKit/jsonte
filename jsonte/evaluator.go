@@ -27,7 +27,7 @@ func (r *Result) GetError() error {
 
 // QuickEval is a convenience function for evaluating a single expression
 func QuickEval(text string, path string) (Result, error) {
-	return Eval(text, deque.Deque[types.JsonObject]{}, path)
+	return Eval(text, deque.Deque[*types.JsonObject]{}, path)
 }
 
 // CollectingErrorListener is an error listener that collects all errors by appending them to the Error field
@@ -41,7 +41,7 @@ func (l *CollectingErrorListener) SyntaxError(recognizer antlr.Recognizer, offen
 }
 
 // Eval evaluates the given expression and returns the result
-func Eval(text string, scope deque.Deque[types.JsonObject], path string) (Result, error) {
+func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Result, error) {
 	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
 	is := antlr.NewInputStream(text)
 	lexer := parser.NewJsonTemplateLexer(is)
@@ -70,8 +70,8 @@ func Eval(text string, scope deque.Deque[types.JsonObject], path string) (Result
 }
 
 // EvalWithTempScope evaluates the given expression and returns the result
-func EvalWithTempScope(text string, scope deque.Deque[types.JsonObject], path string, temp ...types.JsonObject) (Result, error) {
-	d := deque.Deque[types.JsonObject]{}
+func EvalWithTempScope(text string, scope deque.Deque[*types.JsonObject], path string, temp ...*types.JsonObject) (Result, error) {
+	d := deque.Deque[*types.JsonObject]{}
 	for i := 0; i < scope.Len(); i++ {
 		d.PushBack(scope.At(i))
 	}

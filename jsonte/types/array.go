@@ -7,29 +7,28 @@ import (
 )
 
 type JsonArray struct {
-	JsonType
 	Value []JsonType
 }
 
-func (o JsonArray) StringValue() string {
+func (o *JsonArray) StringValue() string {
 	return ToString(o.Unbox())
 }
 
-func (o JsonArray) BoolValue() bool {
+func (o *JsonArray) BoolValue() bool {
 	return o.Value != nil && len(o.Value) > 0
 }
 
-func (o JsonArray) Equals(value JsonType) bool {
+func (o *JsonArray) Equals(value JsonType) bool {
 	if value == Null {
 		return false
 	}
-	if b, ok := value.(JsonArray); ok {
+	if b, ok := value.(*JsonArray); ok {
 		return IsEqualArray(o.Value, b.Value)
 	}
 	return false
 }
 
-func (o JsonArray) Unbox() interface{} {
+func (o *JsonArray) Unbox() interface{} {
 	result := make([]interface{}, len(o.Value))
 	for i, k := range o.Value {
 		result[i] = k.Unbox()
@@ -37,17 +36,17 @@ func (o JsonArray) Unbox() interface{} {
 	return result
 }
 
-func (o JsonArray) Negate() JsonType {
+func (o *JsonArray) Negate() JsonType {
 	// TODO: This should be removed, because `-array` and `array * -1` both should work and currently they don't.
 	result := make([]JsonType, len(o.Value))
 	for i, v := range o.Value {
 		result[i] = v.Negate()
 	}
-	return JsonArray{Value: result}
+	return &JsonArray{Value: result}
 }
 
-func (o JsonArray) Index(i JsonType) (JsonType, error) {
-	if b, ok := i.(JsonNumber); ok {
+func (o *JsonArray) Index(i JsonType) (JsonType, error) {
+	if b, ok := i.(*JsonNumber); ok {
 		index := int(b.IntValue())
 		if index < 0 {
 			index = len(o.Value) + index
@@ -58,13 +57,13 @@ func (o JsonArray) Index(i JsonType) (JsonType, error) {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
 		}
 	}
-	if b, ok := i.(JsonPath); ok {
+	if b, ok := i.(*JsonPath); ok {
 		return b.Get(o)
 	}
 	return Null, burrito.WrappedErrorf("Index must be a number: %s", i.StringValue())
 }
 
-func (o JsonArray) Add(i JsonType) JsonType {
+func (o *JsonArray) Add(i JsonType) JsonType {
 	if IsArray(i) {
 		return MergeArray(o, AsArray(i), false, "#")
 	}
@@ -74,7 +73,7 @@ func (o JsonArray) Add(i JsonType) JsonType {
 	return NewString(o.StringValue() + i.StringValue())
 }
 
-func (o JsonArray) LessThan(other JsonType) (bool, error) {
+func (o *JsonArray) LessThan(other JsonType) (bool, error) {
 	return false, burrito.WrappedErrorf("Arrays cannot be compared")
 }
 
@@ -96,7 +95,7 @@ func IsArray(obj interface{}) bool {
 	if obj == nil {
 		return false
 	}
-	if _, ok := obj.(JsonArray); ok {
+	if _, ok := obj.(*JsonArray); ok {
 		return true
 	}
 	rt := reflect.TypeOf(obj)
@@ -108,11 +107,11 @@ func IsArray(obj interface{}) bool {
 }
 
 // AsArray returns the given interface as a JSON array.
-func AsArray(obj interface{}) JsonArray {
+func AsArray(obj interface{}) *JsonArray {
 	if obj == nil {
 		return NewJsonArray()
 	}
-	if b, ok := obj.(JsonArray); ok {
+	if b, ok := obj.(*JsonArray); ok {
 		return b
 	}
 	rt := reflect.TypeOf(obj)
@@ -123,13 +122,13 @@ func AsArray(obj interface{}) JsonArray {
 		for i := 0; i < rv.Len(); i++ {
 			result[i] = Box(rv.Index(i).Interface())
 		}
-		return JsonArray{Value: result}
+		return &JsonArray{Value: result}
 	}
 	return NewJsonArray()
 }
 
 // MergeArray merges two JSON arrays into a new JSON array.
-func MergeArray(template, parent JsonArray, keepOverrides bool, path string) JsonArray {
+func MergeArray(template, parent *JsonArray, keepOverrides bool, path string) *JsonArray {
 	var result = NewJsonArray()
 	for i, v := range template.Value {
 		if IsObject(v) {
@@ -157,7 +156,7 @@ func MergeArray(template, parent JsonArray, keepOverrides bool, path string) Jso
 }
 
 // DeepCopyArray creates a deep copy of the given JSON array.
-func DeepCopyArray(object JsonArray) JsonArray {
+func DeepCopyArray(object *JsonArray) *JsonArray {
 	var result = NewJsonArray()
 	for _, v := range object.Value {
 		if IsObject(v) {
@@ -171,6 +170,6 @@ func DeepCopyArray(object JsonArray) JsonArray {
 	return result
 }
 
-func NewJsonArray() JsonArray {
-	return JsonArray{Value: make([]JsonType, 0)}
+func NewJsonArray() *JsonArray {
+	return &JsonArray{Value: make([]JsonType, 0)}
 }

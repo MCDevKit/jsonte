@@ -9,8 +9,8 @@ func TestJsonPathParsing(t *testing.T) {
 	eval := evaluate(t, `jsonpath('#/test/path[1]')`)
 	assertJsonPath(t, eval, types.JsonPath{
 		Path: []types.JsonType{
-			types.JsonString{Value: "test"},
-			types.JsonString{Value: "path"},
+			&types.JsonString{Value: "test"},
+			&types.JsonString{Value: "path"},
 			types.AsNumber(1),
 		},
 	})
@@ -20,8 +20,8 @@ func TestJsonPathParsingWithoutHash(t *testing.T) {
 	eval := evaluate(t, `jsonpath('/test/path[1]')`)
 	assertJsonPath(t, eval, types.JsonPath{
 		Path: []types.JsonType{
-			types.JsonString{Value: "test"},
-			types.JsonString{Value: "path"},
+			&types.JsonString{Value: "test"},
+			&types.JsonString{Value: "path"},
 			types.AsNumber(1),
 		},
 	})
@@ -31,8 +31,8 @@ func TestJsonPathParent(t *testing.T) {
 	eval := evaluate(t, `jsonpath('test/path[1]').parent()`)
 	assertJsonPath(t, eval, types.JsonPath{
 		Path: []types.JsonType{
-			types.JsonString{Value: "test"},
-			types.JsonString{Value: "path"},
+			&types.JsonString{Value: "test"},
+			&types.JsonString{Value: "path"},
 		},
 	})
 }

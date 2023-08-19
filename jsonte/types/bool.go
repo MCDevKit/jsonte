@@ -7,16 +7,19 @@ import (
 
 // JsonBool is a struct that represents a boolean JSON value.
 type JsonBool struct {
-	JsonType
 	Value bool
 }
 
-// True and False are predefined JsonBool values for true and false respectively.
-var True = JsonBool{Value: true}
-var False = JsonBool{Value: false}
+func True() *JsonBool {
+	return &JsonBool{Value: true}
+}
+
+func False() *JsonBool {
+	return &JsonBool{Value: false}
+}
 
 // LessThan compares the JsonBool with another JsonType, returning true if the boolean is false and the other value is true.
-func (n JsonBool) LessThan(other JsonType) (bool, error) {
+func (n *JsonBool) LessThan(other JsonType) (bool, error) {
 	if other == nil {
 		return false, nil
 	}
@@ -37,17 +40,17 @@ func (n JsonBool) LessThan(other JsonType) (bool, error) {
 }
 
 // BoolValue returns the boolean value of the JsonBool.
-func (n JsonBool) BoolValue() bool {
+func (n *JsonBool) BoolValue() bool {
 	return n.Value
 }
 
 // StringValue returns the string representation of the JsonBool.
-func (n JsonBool) StringValue() string {
+func (n *JsonBool) StringValue() string {
 	return strconv.FormatBool(n.BoolValue())
 }
 
 // Equals checks if the JsonBool is equal to another JsonType.
-func (n JsonBool) Equals(value JsonType) bool {
+func (n *JsonBool) Equals(value JsonType) bool {
 	if value == Null {
 		return false
 	}
@@ -61,22 +64,22 @@ func (n JsonBool) Equals(value JsonType) bool {
 }
 
 // Unbox returns the JsonBool as a native Go bool.
-func (n JsonBool) Unbox() interface{} {
+func (n *JsonBool) Unbox() interface{} {
 	return n.BoolValue()
 }
 
 // Negate returns a new JsonBool with the opposite value.
-func (n JsonBool) Negate() JsonType {
+func (n *JsonBool) Negate() JsonType {
 	return NewBool(!n.BoolValue())
 }
 
 // Index returns an error since indexing is not supported for booleans.
-func (n JsonBool) Index(i JsonType) (JsonType, error) {
+func (n *JsonBool) Index(i JsonType) (JsonType, error) {
 	return Null, burrito.WrappedErrorf("Cannot access %s from a boolean", i.StringValue())
 }
 
 // Add performs addition of the JsonBool with another JsonType.
-func (n JsonBool) Add(i JsonType) JsonType {
+func (n *JsonBool) Add(i JsonType) JsonType {
 	if IsNumber(i) {
 		return AsNumber(i).Add(n)
 	}
@@ -88,7 +91,7 @@ func (n JsonBool) Add(i JsonType) JsonType {
 		if AsBool(i).BoolValue() {
 			result++
 		}
-		return JsonNumber{
+		return &JsonNumber{
 			Value:   float64(result),
 			Decimal: false,
 		}
@@ -97,21 +100,21 @@ func (n JsonBool) Add(i JsonType) JsonType {
 }
 
 // AsBool converts an interface to a JsonBool.
-func AsBool(obj interface{}) JsonBool {
+func AsBool(obj interface{}) *JsonBool {
 	if obj == nil {
-		return False
+		return False()
 	}
 	if b, ok := obj.(bool); ok {
 		return NewBool(b)
 	}
 	if b, ok := obj.(int); ok && b != 0 {
-		return True
+		return True()
 	}
 	if b, ok := obj.(float64); ok && b != 0 {
-		return True
+		return True()
 	}
 	if b, ok := obj.(float32); ok && b != 0 {
-		return True
+		return True()
 	}
 	if b, ok := obj.(JsonType); ok {
 		return NewBool(b.BoolValue())
@@ -127,16 +130,13 @@ func IsBool(obj interface{}) bool {
 	if _, ok := obj.(bool); ok {
 		return true
 	}
-	if _, ok := obj.(JsonBool); ok {
+	if _, ok := obj.(*JsonBool); ok {
 		return true
 	}
 	return false
 }
 
 // NewBool creates a new JsonBool with the specified value.
-func NewBool(value bool) JsonBool {
-	if value {
-		return True
-	}
-	return False
+func NewBool(value bool) *JsonBool {
+	return &JsonBool{Value: value}
 }
