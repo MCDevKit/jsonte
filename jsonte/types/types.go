@@ -83,6 +83,12 @@ func Init() {
 			AsType: func(i interface{}) JsonType { return AsObject(i) },
 		},
 		{
+			Type:   reflect.TypeOf(JsonPath{}),
+			Name:   "path",
+			IsType: IsJsonPath,
+			AsType: func(i interface{}) JsonType { return AsJsonPath(i) },
+		},
+		{
 			Type:   reflect.TypeOf(JsonLambda{}),
 			Name:   "lambda",
 			IsType: func(i interface{}) bool { _, ok := i.(JsonLambda); return ok },
@@ -98,7 +104,7 @@ func Init() {
 
 func TypeName(obj interface{}) string {
 	if obj == nil || obj == Null {
-		return "nil"
+		return "null"
 	}
 	if IsArray(obj) {
 		return "array"
@@ -117,6 +123,9 @@ func TypeName(obj interface{}) string {
 	}
 	if IsString(obj) {
 		return "string"
+	}
+	if IsJsonPath(obj) {
+		return "path"
 	}
 	if _, ok := obj.(JsonLambda); ok {
 		return "lambda"

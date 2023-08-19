@@ -45,6 +45,7 @@ func Init() {
 		RegisterFileFunctions()
 		RegisterSemverFunctions()
 		RegisterTypeFunctions()
+		RegisterJsonPathFunctions()
 		initialized = true
 	}
 }

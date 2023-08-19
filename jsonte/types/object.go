@@ -89,6 +89,9 @@ func (o JsonObject) Index(i JsonType) (JsonType, error) {
 		}
 		return o.Value.Get(o.Value.Keys()[int(b.IntValue())]), nil
 	}
+	if b, ok := i.(JsonPath); ok {
+		return b.Get(o)
+	}
 	return Null, burrito.WrappedErrorf("Index must be a string or a number: %s", i.StringValue())
 }
 

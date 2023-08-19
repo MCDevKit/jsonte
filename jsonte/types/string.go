@@ -58,11 +58,12 @@ func (n JsonString) Negate() JsonType {
 func (n JsonString) Index(index JsonType) (JsonType, error) {
 	if IsNumber(index) {
 		i := int(AsNumber(index).IntValue())
+		runes := []rune(n.StringValue())
 		if i < 0 {
-			i = len(n.StringValue()) + i
+			i = len(runes) + i
 		}
-		if i >= 0 && i < len(n.StringValue()) {
-			return NewString(string(n.StringValue()[i])), nil
+		if i >= 0 && i < len(runes) {
+			return NewString(string(runes[i])), nil
 		} else {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", i)
 		}
