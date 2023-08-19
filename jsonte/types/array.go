@@ -58,6 +58,9 @@ func (o JsonArray) Index(i JsonType) (JsonType, error) {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
 		}
 	}
+	if b, ok := i.(JsonPath); ok {
+		return b.Get(o)
+	}
 	return Null, burrito.WrappedErrorf("Index must be a number: %s", i.StringValue())
 }
 

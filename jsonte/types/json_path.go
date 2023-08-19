@@ -204,7 +204,7 @@ func AsJsonPath(obj interface{}) JsonPath {
 
 func ParseJsonPath(path string) (JsonPath, error) {
 	path = strings.TrimPrefix(path, "#")
-	if !strings.HasPrefix(path, "/") {
+	if !strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "[") {
 		path = "/" + path
 	}
 	parts := make([]JsonType, 0)

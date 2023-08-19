@@ -120,6 +120,20 @@ func assertSemver(t *testing.T, eval jsonte.Result, expected types.Semver) {
 	}
 }
 
+func assertJsonPath(t *testing.T, eval jsonte.Result, expected types.JsonPath) {
+	assertAction(t, eval, types.Value)
+	if eval.Value == nil {
+		t.Fatalf("Result is null")
+	}
+	if !types.IsJsonPath(eval.Value) {
+		t.Fatalf("Result is not a JSON Path (%s)", reflect.TypeOf(eval.Value).Name())
+	}
+	path := types.AsJsonPath(eval.Value)
+	if path.StringValue() != expected.StringValue() {
+		t.Fatalf("Result is not correct (expected %s, got %s)", expected.StringValue(), path.StringValue())
+	}
+}
+
 func assertBool(t *testing.T, eval jsonte.Result, expected bool) {
 	assertAction(t, eval, types.Value)
 	if eval.Value == nil {
