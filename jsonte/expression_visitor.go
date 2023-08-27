@@ -84,14 +84,10 @@ func isError(v interface{}) bool {
 // ResolveScope resolves a value from the scope by name
 func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 	if name == "this" {
-		scope := types.NewJsonObject()
-		for i := 0; i < v.scope.Len(); i++ {
-			s := v.scope.At(i)
-			for _, key := range s.Keys() {
-				scope.Put(key, s.Get(key))
-			}
+		return &types.JsonObject{
+			Value:      nil,
+			StackValue: &v.scope,
 		}
-		return scope
 	}
 	for i := v.scope.Len() - 1; i >= 0; i-- {
 		m := v.scope.At(i)
