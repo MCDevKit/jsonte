@@ -59,5 +59,5 @@ func parseJsonPath(str *types.JsonString) (*types.JsonPath, error) {
 }
 
 func pathParent(path *types.JsonPath) *types.JsonPath {
-	return path.Parent()
+	return path.ParentPath()
 }

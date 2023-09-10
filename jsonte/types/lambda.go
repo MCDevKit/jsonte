@@ -19,36 +19,47 @@ var IdentityLambda = NewLambda(func(this *JsonLambda, args []JsonType) (JsonType
 	return args[0], nil
 }, "x=>x", []string{"x"}, []string{"x"})
 
-func (n *JsonLambda) LessThan(JsonType) (bool, error) {
+func (t *JsonLambda) Parent() JsonType {
+	return nil
+}
+
+func (t *JsonLambda) ParentIndex() JsonType {
+	return nil
+}
+
+func (t *JsonLambda) UpdateParent(parent JsonType, parentIndex JsonType) {
+}
+
+func (t *JsonLambda) LessThan(JsonType) (bool, error) {
 	return false, burrito.WrappedErrorf("Lambdas cannot be compared")
 }
 
-func (n *JsonLambda) BoolValue() bool {
+func (t *JsonLambda) BoolValue() bool {
 	return true
 }
 
-func (n *JsonLambda) StringValue() string {
-	return n.String
+func (t *JsonLambda) StringValue() string {
+	return t.String
 }
 
-func (n *JsonLambda) Equals(JsonType) bool {
+func (t *JsonLambda) Equals(JsonType) bool {
 	return false
 }
 
-func (n *JsonLambda) Unbox() interface{} {
-	return n.String
+func (t *JsonLambda) Unbox() interface{} {
+	return t.String
 }
 
-func (n *JsonLambda) Negate() JsonType {
+func (t *JsonLambda) Negate() JsonType {
 	return True()
 }
 
-func (n *JsonLambda) Index(i JsonType) (JsonType, error) {
+func (t *JsonLambda) Index(i JsonType) (JsonType, error) {
 	return Null, burrito.WrappedErrorf("Cannot access %s from a lambda", i.StringValue())
 }
 
-func (n *JsonLambda) Add(i JsonType) JsonType {
-	return NewString(n.StringValue() + i.StringValue())
+func (t *JsonLambda) Add(i JsonType) JsonType {
+	return NewString(t.StringValue() + i.StringValue())
 }
 
 func NewLambda(value func(this *JsonLambda, args []JsonType) (JsonType, error), stringValue string, vars, args []string) *JsonLambda {

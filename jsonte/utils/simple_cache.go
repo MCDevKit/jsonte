@@ -21,7 +21,7 @@ func PutCache(bucket string, key string, value interface{}) {
 	if b, ok := cache[bucket]; ok {
 		b.Items[key] = &value
 	} else {
-		panic("Cache bucket not found!")
+		BadDeveloperError("Cache bucket not found!")
 	}
 }
 

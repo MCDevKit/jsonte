@@ -838,6 +838,158 @@ the result will be
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "append",
+		Body:       arrayAppend,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Adds the given value to the end of the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to add to",
+				},
+				{
+					Name:    "element",
+					Summary: "The element to add",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be [1, 2, 3, 5, 8, 10, 12]",
+	"test": "{{[1, 2, 3, 5, 8, 10].append(12)}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "prepend",
+		Body:       arrayPrepend,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Adds the given value to the start of the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to add to",
+				},
+				{
+					Name:    "element",
+					Summary: "The element to add",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be [-2, 1, 2, 3, 5, 8, 10]",
+	"test": "{{[1, 2, 3, 5, 8, 10].prepend(-2)}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "prepend",
+		Body:       arrayRemove,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Removes the element at the given index from the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to remove from",
+				},
+				{
+					Name:    "index",
+					Summary: "The index to remove",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be [1, 3, 5, 8, 10]",
+	"test": "{{[1, 2, 3, 5, 8, 10].remove(1)}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "prepend",
+		Body:       arrayRemoveFront,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Removes and returns the first element from the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to remove from",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 1",
+	"test": "{{[1, 2, 3, 5, 8, 10].removeFront()}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "prepend",
+		Body:       arrayRemoveBack,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Removes and returns the last element from the given array",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to remove from",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be 10",
+	"test": "{{[1, 2, 3, 5, 8, 10].removeBack()}}"
+  }
+}
+</code>`,
+		},
+	})
+}
+
+func arrayAppend(arr *types.JsonArray, value types.JsonType) *types.JsonArray {
+	return arr.Append(value)
+}
+
+func arrayPrepend(arr *types.JsonArray, value types.JsonType) *types.JsonArray {
+	return arr.Prepend(value)
+}
+
+func arrayRemove(arr *types.JsonArray, index *types.JsonNumber) (types.JsonType, error) {
+	return arr.Remove(index)
+}
+
+func arrayRemoveFront(arr *types.JsonArray) (types.JsonType, error) {
+	return arr.RemoveFront()
+}
+
+func arrayRemoveBack(arr *types.JsonArray) (types.JsonType, error) {
+	return arr.RemoveBack()
 }
 
 func randomElement(arr *types.JsonArray) (types.JsonType, error) {

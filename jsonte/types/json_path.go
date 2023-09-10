@@ -10,17 +10,32 @@ import (
 
 // JsonPath represents a simplified JSONPath
 type JsonPath struct {
-	Path []JsonType
+	Path        []JsonType
+	parent      JsonType
+	parentIndex JsonType
 }
 
-func (s *JsonPath) LessThan(other JsonType) (bool, error) {
+func (t *JsonPath) Parent() JsonType {
+	return t.parent
+}
+
+func (t *JsonPath) ParentIndex() JsonType {
+	return t.parentIndex
+}
+
+func (t *JsonPath) UpdateParent(parent JsonType, parentIndex JsonType) {
+	t.parent = parent
+	t.parentIndex = parentIndex
+}
+
+func (t *JsonPath) LessThan(other JsonType) (bool, error) {
 	return false, burrito.WrappedErrorf("JsonPaths cannot be compared")
 }
 
 // StringValue returns a string representation of the semantic version
-func (s *JsonPath) StringValue() string {
+func (t *JsonPath) StringValue() string {
 	sb := "#"
-	for _, p := range s.Path {
+	for _, p := range t.Path {
 		if i, ok := p.(*JsonNumber); ok {
 			sb += fmt.Sprintf("[%d]", i.IntValue())
 		} else if s, ok := p.(*JsonString); ok {
@@ -33,34 +48,34 @@ func (s *JsonPath) StringValue() string {
 }
 
 // BoolValue returns a string representation of the semantic version
-func (s *JsonPath) BoolValue() bool {
+func (t *JsonPath) BoolValue() bool {
 	return true
 }
 
 // Equals returns true if the two semantic versions are equal
-func (s *JsonPath) Equals(value JsonType) bool {
+func (t *JsonPath) Equals(value JsonType) bool {
 	if IsJsonPath(value) {
-		return s.StringValue() == value.StringValue()
+		return t.StringValue() == value.StringValue()
 	}
 	return false
 }
 
-func (s *JsonPath) Unbox() interface{} {
-	return s.StringValue()
+func (t *JsonPath) Unbox() interface{} {
+	return t.StringValue()
 }
 
-func (s *JsonPath) Negate() JsonType {
+func (t *JsonPath) Negate() JsonType {
 	return NaN()
 }
 
-func (s *JsonPath) Index(i JsonType) (JsonType, error) {
+func (t *JsonPath) Index(i JsonType) (JsonType, error) {
 	if b, ok := i.(*JsonNumber); ok {
 		index := int(b.IntValue())
 		if index < 0 {
-			index = len(s.Path) + index
+			index = len(t.Path) + index
 		}
-		if index >= 0 && index < len(s.Path) {
-			return s.Path[index], nil
+		if index >= 0 && index < len(t.Path) {
+			return t.Path[index], nil
 		} else {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
 		}
@@ -68,14 +83,14 @@ func (s *JsonPath) Index(i JsonType) (JsonType, error) {
 	return Null, burrito.WrappedErrorf("Index must be a number: %s", i.StringValue())
 }
 
-func (s *JsonPath) SetIndex(i, value JsonType) error {
+func (t *JsonPath) SetIndex(i, value JsonType) error {
 	if b, ok := i.(*JsonNumber); ok {
 		index := int(b.IntValue())
 		if index < 0 {
-			index = len(s.Path) + index
+			index = len(t.Path) + index
 		}
-		if index >= 0 && index < len(s.Path) {
-			s.Path[index] = value
+		if index >= 0 && index < len(t.Path) {
+			t.Path[index] = value
 			return nil
 		} else {
 			return burrito.WrappedErrorf("Index out of bounds: %d", index)
@@ -84,77 +99,79 @@ func (s *JsonPath) SetIndex(i, value JsonType) error {
 	return burrito.WrappedErrorf("Index must be a number: %s", i.StringValue())
 }
 
-func (s *JsonPath) Add(i JsonType) JsonType {
+func (t *JsonPath) Add(i JsonType) JsonType {
 	if b, ok := i.(*JsonNumber); ok {
-		p := make([]JsonType, len(s.Path)+1)
-		copy(p, s.Path)
-		p[len(s.Path)] = b
+		p := make([]JsonType, len(t.Path)+1)
+		copy(p, t.Path)
+		p[len(t.Path)] = b
 		return &JsonPath{Path: p}
 	} else if b, ok := i.(*JsonString); ok {
-		p := make([]JsonType, len(s.Path)+1)
-		copy(p, s.Path)
-		p[len(s.Path)] = b
+		p := make([]JsonType, len(t.Path)+1)
+		copy(p, t.Path)
+		p[len(t.Path)] = b
 		return &JsonPath{Path: p}
 	} else if b, ok := i.(*JsonPath); ok {
-		p := make([]JsonType, len(s.Path)+len(b.Path))
-		copy(p, s.Path)
-		copy(p[len(s.Path):], b.Path)
+		p := make([]JsonType, len(t.Path)+len(b.Path))
+		copy(p, t.Path)
+		copy(p[len(t.Path):], b.Path)
 		return &JsonPath{Path: p}
 	} else {
-		return NewString(s.StringValue() + i.StringValue())
+		return NewString(t.StringValue() + i.StringValue())
 	}
 }
 
-func (s *JsonPath) IsEmpty() bool {
-	return s.Path == nil || len(s.Path) == 0
+func (t *JsonPath) IsEmpty() bool {
+	return t.Path == nil || len(t.Path) == 0
 }
 
-func (s *JsonPath) Parent() *JsonPath {
-	if len(s.Path) == 0 {
-		return s
+func (t *JsonPath) ParentPath() *JsonPath {
+	if len(t.Path) == 0 {
+		return t
 	}
-	return &JsonPath{Path: s.Path[:len(s.Path)-1]}
+	return &JsonPath{Path: t.Path[:len(t.Path)-1]}
 }
 
-func (s *JsonPath) Get(x JsonType) (JsonType, error) {
+func (t *JsonPath) Get(x JsonType) (JsonType, error) {
 	if _, ok := x.(*JsonObject); !ok {
 		if _, ok := x.(*JsonArray); !ok {
-			return nil, burrito.WrappedErrorf("Cannot get %s from %s", s.StringValue(), x.StringValue())
+			return nil, burrito.WrappedErrorf("Cannot get %s from %s", t.StringValue(), x.StringValue())
 		}
 	}
 	var err error
-	for i := 0; i < len(s.Path); i++ {
-		x, err = x.Index(s.Path[i])
+	for i := 0; i < len(t.Path); i++ {
+		//parent := x
+		x, err = x.Index(t.Path[i])
+		//x.UpdateParent(parent, t.Path[i])
 		if err != nil {
-			return nil, burrito.WrapErrorf(err, "Cannot get %s from %s", s.StringValue(), x.StringValue())
+			return nil, burrito.WrapErrorf(err, "Cannot get %s from %s", t.StringValue(), x.StringValue())
 		}
 	}
 	return x, nil
 }
 
-func (s *JsonPath) Set(x, value JsonType) (JsonType, error) {
+func (t *JsonPath) Set(x, value JsonType) (JsonType, error) {
 	original := x
 	if _, ok := x.(*JsonObject); !ok {
 		if _, ok := x.(*JsonArray); !ok {
-			return original, burrito.WrappedErrorf("Cannot set %s in %s", s.StringValue(), x.StringValue())
+			return original, burrito.WrappedErrorf("Cannot set %s in %s", t.StringValue(), x.StringValue())
 		}
 	}
 	var err error
-	for i := 0; i < len(s.Path)-1; i++ {
-		x, err = x.Index(s.Path[i])
+	for i := 0; i < len(t.Path)-1; i++ {
+		x, err = x.Index(t.Path[i])
 		if err != nil {
-			return original, burrito.WrapErrorf(err, "Cannot get %s from %s", s.StringValue(), x.StringValue())
+			return original, burrito.WrapErrorf(err, "Cannot get %s from %s", t.StringValue(), x.StringValue())
 		}
 	}
 	if b, ok := x.(*JsonObject); ok {
-		if k, ok := s.Path[len(s.Path)-1].(*JsonString); ok {
+		if k, ok := t.Path[len(t.Path)-1].(*JsonString); ok {
 			b.Value.Put(k.StringValue(), value)
 			return original, nil
 		} else {
-			return original, burrito.WrappedErrorf("Cannot set %s in %s", s.StringValue(), x.StringValue())
+			return original, burrito.WrappedErrorf("Cannot set %s in %s", t.StringValue(), x.StringValue())
 		}
 	} else if b, ok := x.(*JsonArray); ok {
-		if k, ok := s.Path[len(s.Path)-1].(*JsonNumber); ok {
+		if k, ok := t.Path[len(t.Path)-1].(*JsonNumber); ok {
 			if k.IntValue() < 0 {
 				k = AsNumber(int32(len(b.Value)) + k.IntValue())
 			}
@@ -162,15 +179,15 @@ func (s *JsonPath) Set(x, value JsonType) (JsonType, error) {
 				b.Value = append(b.Value, value)
 				return original, nil
 			} else if k.IntValue() > int32(len(b.Value)) {
-				return original, burrito.WrappedErrorf("Cannot set %s in %s", s.StringValue(), x.StringValue())
+				return original, burrito.WrappedErrorf("Cannot set %s in %s", t.StringValue(), x.StringValue())
 			}
 			b.Value[k.IntValue()] = value
 			return original, nil
 		} else {
-			return original, burrito.WrappedErrorf("Cannot set %s in %s", s.StringValue(), x.StringValue())
+			return original, burrito.WrappedErrorf("Cannot set %s in %s", t.StringValue(), x.StringValue())
 		}
 	} else {
-		return original, burrito.WrappedErrorf("Cannot set %s in %s", s.StringValue(), x.StringValue())
+		return original, burrito.WrappedErrorf("Cannot set %s in %s", t.StringValue(), x.StringValue())
 	}
 }
 

@@ -1,9 +1,11 @@
 package jsonte
 
 import (
+	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"github.com/MCDevKit/jsonte/jsonte/types"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/MCDevKit/jsonte/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/gammazero/deque"
@@ -43,8 +45,40 @@ func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) 
 		return v.VisitName(val)
 	case *parser.IndexContext:
 		return v.VisitIndex(val)
+	case *parser.StatementContext:
+		return v.VisitStatement(val)
 	}
-	panic("Unknown tree type " + reflect.TypeOf(tree).String())
+	utils.BadDeveloperError("Unknown tree type " + reflect.TypeOf(tree).String())
+	return nil, nil
+}
+
+func treeMatches(context antlr.Tree, matchFunction func(ctx, parent antlr.Tree) bool) bool {
+	if context == nil {
+		return false
+	}
+	counter := 0
+	for {
+		if context.GetParent() == nil {
+			return false
+		}
+		if matchFunction(context, context.GetParent()) {
+			return true
+		}
+		context = context.GetParent()
+		counter++
+		if counter > 100 {
+			utils.BadDeveloperError("Too many loops in treeMatches")
+		}
+	}
+}
+
+func isInLeftSideOfAssignment(context antlr.Tree) bool {
+	return treeMatches(context, func(ctx, parent antlr.Tree) bool {
+		if f, ok := parent.(*parser.FieldContext); ok && f.Literal() != nil && len(f.AllField()) == 2 && f.Field(0) == ctx {
+			return true
+		}
+		return false
+	})
 }
 
 // resolveLambdaTree resolves a string to an AST tree
@@ -92,10 +126,17 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 	for i := v.scope.Len() - 1; i >= 0; i-- {
 		m := v.scope.At(i)
 		if m.ContainsKey(name) {
-			return m.Get(name)
+			get := m.Get(name)
+			get.UpdateParent(m, types.NewString(name))
+			return get
 		}
 	}
-	return types.Null
+	return types.NullWithParent(v.scope.Back(), types.NewString(name))
+}
+
+func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.JsonType, error) {
+	utils.BadDeveloperError("Not yet implemented")
+	return nil, nil
 }
 
 func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) (types.JsonType, error) {
@@ -143,6 +184,66 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		}
 		return types.AsBool(!visit.BoolValue()), nil
 	}
+	if context.Literal() != nil {
+		left, err := v.Visit(context.Field(0))
+		if err != nil {
+			return nil, burrito.WrapErrorf(err, "Error resolving left side of the statement")
+		}
+		right, err := v.Visit(context.Field(1))
+		if err != nil {
+			return nil, burrito.WrapErrorf(err, "Error resolving right side of the statement")
+		}
+		if left.Parent() == nil {
+			return nil, burrito.WrappedErrorf("Cannot assign a value to this expression")
+		}
+		if left.ParentIndex() == nil {
+			utils.BadDeveloperError("Invalid parent index type")
+		}
+		if b, ok := (left.Parent()).(*types.JsonObject); ok {
+			if i, ok1 := left.ParentIndex().(*types.JsonString); ok1 {
+				b.Put(i.StringValue(), right)
+				return right, nil
+			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
+				return i.Set(left.Parent(), right)
+			} else {
+				utils.BadDeveloperError(fmt.Sprintf("Invalid parent index type. Expected string, but got %s", reflect.TypeOf(left.ParentIndex()).String()))
+			}
+		} else if b, ok := (left.Parent()).(*types.JsonArray); ok {
+			if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
+				index := int(i.IntValue())
+				if index < 0 {
+					index = len(b.Value) + index
+				}
+				if index >= 0 && index < len(b.Value) {
+					b.Value[index] = right
+					return right, nil
+				} else {
+					return nil, burrito.WrappedErrorf("Index out of bounds: %d", index)
+				}
+			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
+				return i.Set(left.Parent(), right)
+			} else {
+				utils.BadDeveloperError("Invalid parent index type")
+			}
+		} else if b, ok := (left.Parent()).(*types.JsonPath); ok {
+			if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
+				index := int(i.IntValue())
+				if index < 0 {
+					index = len(b.Path) + index
+				}
+				if index >= 0 && index < len(b.Path) {
+					b.Path[index] = right
+					return right, nil
+				} else {
+					return nil, burrito.WrappedErrorf("Index out of bounds: %d", index)
+				}
+			} else {
+				utils.BadDeveloperError("Invalid parent index type")
+			}
+		} else {
+			return nil, burrito.WrappedErrorf("Cannot assign a value to this expression")
+		}
+	}
 	// process field composed of two other fields
 	if len(context.AllField()) == 2 {
 		f1, err := v.Visit(context.Field(0))
@@ -171,18 +272,6 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				return types.True(), nil
 			}
 		}
-		// What is this???
-		/*else if context.Question() != nil {
-			if f1.BoolValue() {
-				f2, err := v.Visit(context.Field(1))
-				if err != nil {
-					return types.Null, err
-				}
-				return f2, nil
-			} else {
-				return types.Null, nil
-			}
-		}*/
 		f2, err := v.Visit(context.Field(1))
 		if err != nil {
 			return types.Null, err
@@ -364,12 +453,13 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		} else {
 			index, err := object.Index(types.NewString(text))
 			if err != nil {
-				if context.Question() != nil || v.action == types.Predicate {
-					return types.Null, nil
+				if context.Question() != nil || v.action == types.Predicate || isInLeftSideOfAssignment(context) {
+					return types.NullWithParent(object, types.NewString(text)), nil
 				} else {
 					return types.Null, burrito.WrapErrorf(err, "Cannot access %s", context.GetText())
 				}
 			}
+			index.UpdateParent(object, types.NewString(text))
 			return index, nil
 		}
 	}
@@ -388,12 +478,13 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		}
 		index, err := object.Index(i)
 		if err != nil {
-			if context.Question() != nil || v.action == types.Predicate {
-				return types.Null, nil
+			if context.Question() != nil || v.action == types.Predicate || isInLeftSideOfAssignment(context) {
+				return types.NullWithParent(object, i), nil
 			} else {
 				return types.Null, burrito.WrapErrorf(err, "Cannot access %s", context.GetText())
 			}
 		}
+		index.UpdateParent(object, i)
 		return index, nil
 	}
 	if context.NUMBER() != nil {

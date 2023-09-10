@@ -17,22 +17,37 @@ type Number interface {
 
 // JsonNumber is a struct that represents a number, that can be either integer or decimal.
 type JsonNumber struct {
-	Value   float64
-	Decimal bool
+	Value       float64
+	Decimal     bool
+	parent      JsonType
+	parentIndex JsonType
 }
 
-func (n *JsonNumber) LessThan(other JsonType) (bool, error) {
+func (t *JsonNumber) Parent() JsonType {
+	return t.parent
+}
+
+func (t *JsonNumber) ParentIndex() JsonType {
+	return t.parentIndex
+}
+
+func (t *JsonNumber) UpdateParent(parent JsonType, parentIndex JsonType) {
+	t.parent = parent
+	t.parentIndex = parentIndex
+}
+
+func (t *JsonNumber) LessThan(other JsonType) (bool, error) {
 	if other == nil || other == Null {
-		return n.FloatValue() < float64(0), nil
+		return t.FloatValue() < float64(0), nil
 	}
 	if IsNumber(other) {
-		return n.FloatValue() < AsNumber(other).FloatValue(), nil
+		return t.FloatValue() < AsNumber(other).FloatValue(), nil
 	}
-	return false, incompatibleTypesError(n, other)
+	return false, incompatibleTypesError(t, other)
 }
 
-func (n *JsonNumber) IntValue() int32 {
-	return int32(n.Value)
+func (t *JsonNumber) IntValue() int32 {
+	return int32(t.Value)
 }
 
 // toFixed rounds a float to a given precision.
@@ -41,82 +56,82 @@ func toFixed(num float64, precision int) float64 {
 	return math.Round(num*output) / output
 }
 
-func (n *JsonNumber) FloatValue() float64 {
-	if n.Decimal {
-		return toFixed(n.Value, 6)
+func (t *JsonNumber) FloatValue() float64 {
+	if t.Decimal {
+		return toFixed(t.Value, 6)
 	} else {
-		return math.Floor(n.Value)
+		return math.Floor(t.Value)
 	}
 }
 
-func (n *JsonNumber) BoolValue() bool {
-	if toFixed(n.Value, 6) == 0 {
+func (t *JsonNumber) BoolValue() bool {
+	if toFixed(t.Value, 6) == 0 {
 		return false
 	}
 	return true
 }
 
-func (n *JsonNumber) StringValue() string {
-	if n.Decimal {
-		return strconv.FormatFloat(n.FloatValue(), 'f', -1, 64)
+func (t *JsonNumber) StringValue() string {
+	if t.Decimal {
+		return strconv.FormatFloat(t.FloatValue(), 'f', -1, 64)
 	}
-	return strconv.FormatInt(int64(n.IntValue()), 10)
+	return strconv.FormatInt(int64(t.IntValue()), 10)
 }
 
-func (n *JsonNumber) Equals(value JsonType) bool {
+func (t *JsonNumber) Equals(value JsonType) bool {
 	if value == Null {
 		return false
 	}
 	if IsNumber(value) {
-		return n.FloatValue() == AsNumber(value).FloatValue()
+		return t.FloatValue() == AsNumber(value).FloatValue()
 	}
 	return false
 }
 
-func (n *JsonNumber) Unbox() interface{} {
-	if n.Decimal {
-		return n.FloatValue()
+func (t *JsonNumber) Unbox() interface{} {
+	if t.Decimal {
+		return t.FloatValue()
 	}
-	return n.IntValue()
+	return t.IntValue()
 }
 
-func (n *JsonNumber) Negate() JsonType {
+func (t *JsonNumber) Negate() JsonType {
 	return &JsonNumber{
-		Value:   -n.FloatValue(),
-		Decimal: n.Decimal,
+		Value:   -t.FloatValue(),
+		Decimal: t.Decimal,
 	}
 }
 
-func (n *JsonNumber) Index(i JsonType) (JsonType, error) {
+func (t *JsonNumber) Index(i JsonType) (JsonType, error) {
 	return Null, burrito.WrappedErrorf("Cannot access %s from a number", i.StringValue())
 }
 
-func (n *JsonNumber) Add(i JsonType) JsonType {
+func (t *JsonNumber) Add(i JsonType) JsonType {
 	if i == Null {
 		return &JsonNumber{
-			Value:   n.FloatValue(),
-			Decimal: n.Decimal,
+			Value:   t.FloatValue(),
+			Decimal: t.Decimal,
 		}
 	}
 	if IsNumber(i) {
 		return &JsonNumber{
-			Value:   n.FloatValue() + AsNumber(i).FloatValue(),
-			Decimal: n.Decimal || AsNumber(i).Decimal,
+			Value:   t.FloatValue() + AsNumber(i).FloatValue(),
+			Decimal: t.Decimal || AsNumber(i).Decimal,
 		}
 	}
 	if IsBool(i) {
 		if i.BoolValue() {
 			return &JsonNumber{
-				Value:   n.FloatValue() + 1,
-				Decimal: n.Decimal,
+				Value:   t.FloatValue() + 1,
+				Decimal: t.Decimal,
 			}
 		}
 		return &JsonNumber{
-			Value:   n.FloatValue(),
-			Decimal: n.Decimal || AsNumber(i).Decimal,
+			Value:   t.FloatValue(),
+			Decimal: t.Decimal || AsNumber(i).Decimal,
 		}
 	}
-	return NewString(n.StringValue() + i.StringValue())
+	return NewString(t.StringValue() + i.StringValue())
 }
 
 // AsNumber converts an interface to a JSON number.

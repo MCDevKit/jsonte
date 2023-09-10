@@ -4,33 +4,52 @@ import "github.com/Bedrock-OSS/go-burrito/burrito"
 
 // JsonNull is a struct that represents a null value.
 type JsonNull struct {
+	parent      JsonType
+	parentIndex JsonType
 }
 
 var Null = &JsonNull{}
 
-func (n *JsonNull) LessThan(other JsonType) (bool, error) {
+func NullWithParent(parent JsonType, parentIndex JsonType) *JsonNull {
+	return &JsonNull{parent, parentIndex}
+}
+
+func (t *JsonNull) Parent() JsonType {
+	return t.parent
+}
+
+func (t *JsonNull) ParentIndex() JsonType {
+	return t.parentIndex
+}
+
+func (t *JsonNull) UpdateParent(parent JsonType, parentIndex JsonType) {
+	t.parent = parent
+	t.parentIndex = parentIndex
+}
+
+func (t *JsonNull) LessThan(other JsonType) (bool, error) {
 	if other == nil {
 		return true, nil
 	}
 	if other == Null {
 		return false, nil
 	}
-	if other.Equals(n) {
+	if other.Equals(t) {
 		return false, nil
 	}
-	result, err := other.LessThan(n)
+	result, err := other.LessThan(t)
 	return !result, err
 }
 
-func (n *JsonNull) BoolValue() bool {
+func (t *JsonNull) BoolValue() bool {
 	return false
 }
 
-func (n *JsonNull) StringValue() string {
+func (t *JsonNull) StringValue() string {
 	return "null"
 }
 
-func (n *JsonNull) Equals(value JsonType) bool {
+func (t *JsonNull) Equals(value JsonType) bool {
 	if value == Null || value == nil {
 		return true
 	}
@@ -40,21 +59,21 @@ func (n *JsonNull) Equals(value JsonType) bool {
 	return false
 }
 
-func (n *JsonNull) Unbox() interface{} {
+func (t *JsonNull) Unbox() interface{} {
 	return nil
 }
 
-func (n *JsonNull) Negate() JsonType {
+func (t *JsonNull) Negate() JsonType {
 	return True()
 }
 
-func (n *JsonNull) Index(i JsonType) (JsonType, error) {
+func (t *JsonNull) Index(i JsonType) (JsonType, error) {
 	return Null, burrito.WrappedErrorf("Cannot access %s from a null", i.StringValue())
 }
 
-func (n *JsonNull) Add(i JsonType) JsonType {
+func (t *JsonNull) Add(i JsonType) JsonType {
 	if i == Null {
 		return Null
 	}
-	return i.Add(n)
+	return i.Add(t)
 }

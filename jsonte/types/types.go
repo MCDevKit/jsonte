@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/json"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"reflect"
 	"strconv"
 )
@@ -25,6 +26,12 @@ type JsonType interface {
 	Index(index JsonType) (JsonType, error)
 	// Add returns the sum of the value and the given value.
 	Add(index JsonType) JsonType
+	// Parent returns the parent of the value or nil.
+	Parent() JsonType
+	// ParentIndex returns the index of the value in the parent or nil.
+	ParentIndex() JsonType
+	// UpdateParent updates the parent of the value.
+	UpdateParent(parent JsonType, parentIndex JsonType)
 }
 
 type TypeDescriptor struct {
@@ -98,7 +105,8 @@ func Init() {
 				if b, ok := i.(*JsonLambda); ok {
 					return b
 				}
-				panic("Not a lambda")
+				utils.BadDeveloperError("Not a lambda")
+				return nil
 			},
 		},
 	}
@@ -141,7 +149,8 @@ func Box(obj interface{}) JsonType {
 			return descriptor.AsType(obj)
 		}
 	}
-	panic("Unknown type: " + TypeName(obj))
+	utils.BadDeveloperError("Unknown type: " + TypeName(obj))
+	return nil
 }
 
 func MergeJSON(template, parent JsonType, keepOverrides bool) (JsonType, error) {
@@ -199,7 +208,7 @@ func ToString(obj interface{}) string {
 	}
 	jsonc, err := json.MarshalJSONC(obj, false)
 	if err != nil {
-		panic(err)
+		utils.BadDeveloperError(err.Error())
 	}
 	return string(jsonc)
 }
@@ -232,7 +241,7 @@ func ToPrettyString(obj interface{}) string {
 	}
 	jsonc, err := json.MarshalJSONC(obj, true)
 	if err != nil {
-		panic(err)
+		utils.BadDeveloperError(err.Error())
 	}
 	return string(jsonc)
 }

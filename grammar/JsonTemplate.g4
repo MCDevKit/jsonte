@@ -46,7 +46,6 @@ script
 
 statement
     : field ';'
-    | field Literal field ';'
     | 'return' field ';'
     | 'for' (name (Comma name)*)? 'in' field LeftBrace statement* RightBrace
     | 'if' field LeftBrace statement* RightBrace ('else' 'if' field LeftBrace statement* RightBrace)* ('else' LeftBrace statement* RightBrace)?
@@ -99,6 +98,7 @@ field
     | field And field
     | field Or field
     | field Question field (':' field)?
+    | field Literal field
     ;
 
 array

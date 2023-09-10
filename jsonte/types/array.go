@@ -7,73 +7,128 @@ import (
 )
 
 type JsonArray struct {
-	Value []JsonType
+	Value       []JsonType
+	parent      JsonType
+	parentIndex JsonType
 }
 
-func (o *JsonArray) StringValue() string {
-	return ToString(o.Unbox())
+func (t *JsonArray) Append(v JsonType) *JsonArray {
+	t.Value = append(t.Value, v)
+	return t
 }
 
-func (o *JsonArray) BoolValue() bool {
-	return o.Value != nil && len(o.Value) > 0
+func (t *JsonArray) Prepend(v JsonType) *JsonArray {
+	t.Value = append([]JsonType{v}, t.Value...)
+	return t
 }
 
-func (o *JsonArray) Equals(value JsonType) bool {
+func (t *JsonArray) Remove(i *JsonNumber) (JsonType, error) {
+	if len(t.Value) == 0 {
+		return Null, burrito.WrappedErrorf("Cannot remove from empty array")
+	}
+	index := int(i.IntValue())
+	if index < 0 {
+		index = len(t.Value) + index
+	}
+	if index >= 0 && index < len(t.Value) {
+		t.Value = append(t.Value[:index], t.Value[index+1:]...)
+	}
+	return t, nil
+}
+
+func (t *JsonArray) RemoveFront() (JsonType, error) {
+	if len(t.Value) == 0 {
+		return Null, burrito.WrappedErrorf("Cannot remove from empty array")
+	}
+	t.Value = t.Value[1:]
+	return t, nil
+}
+
+func (t *JsonArray) RemoveBack() (JsonType, error) {
+	if len(t.Value) == 0 {
+		return Null, burrito.WrappedErrorf("Cannot remove from empty array")
+	}
+	t.Value = t.Value[:len(t.Value)-1]
+	return t, nil
+}
+
+func (t *JsonArray) Parent() JsonType {
+	return t.parent
+}
+
+func (t *JsonArray) ParentIndex() JsonType {
+	return t.parentIndex
+}
+
+func (t *JsonArray) UpdateParent(parent JsonType, parentIndex JsonType) {
+	t.parent = parent
+	t.parentIndex = parentIndex
+}
+
+func (t *JsonArray) StringValue() string {
+	return ToString(t.Unbox())
+}
+
+func (t *JsonArray) BoolValue() bool {
+	return t.Value != nil && len(t.Value) > 0
+}
+
+func (t *JsonArray) Equals(value JsonType) bool {
 	if value == Null {
 		return false
 	}
 	if b, ok := value.(*JsonArray); ok {
-		return IsEqualArray(o.Value, b.Value)
+		return IsEqualArray(t.Value, b.Value)
 	}
 	return false
 }
 
-func (o *JsonArray) Unbox() interface{} {
-	result := make([]interface{}, len(o.Value))
-	for i, k := range o.Value {
+func (t *JsonArray) Unbox() interface{} {
+	result := make([]interface{}, len(t.Value))
+	for i, k := range t.Value {
 		result[i] = k.Unbox()
 	}
 	return result
 }
 
-func (o *JsonArray) Negate() JsonType {
+func (t *JsonArray) Negate() JsonType {
 	// TODO: This should be removed, because `-array` and `array * -1` both should work and currently they don't.
-	result := make([]JsonType, len(o.Value))
-	for i, v := range o.Value {
+	result := make([]JsonType, len(t.Value))
+	for i, v := range t.Value {
 		result[i] = v.Negate()
 	}
 	return &JsonArray{Value: result}
 }
 
-func (o *JsonArray) Index(i JsonType) (JsonType, error) {
+func (t *JsonArray) Index(i JsonType) (JsonType, error) {
 	if b, ok := i.(*JsonNumber); ok {
 		index := int(b.IntValue())
 		if index < 0 {
-			index = len(o.Value) + index
+			index = len(t.Value) + index
 		}
-		if index >= 0 && index < len(o.Value) {
-			return o.Value[index], nil
+		if index >= 0 && index < len(t.Value) {
+			return t.Value[index], nil
 		} else {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
 		}
 	}
 	if b, ok := i.(*JsonPath); ok {
-		return b.Get(o)
+		return b.Get(t)
 	}
 	return Null, burrito.WrappedErrorf("Index must be a number: %s", i.StringValue())
 }
 
-func (o *JsonArray) Add(i JsonType) JsonType {
+func (t *JsonArray) Add(i JsonType) JsonType {
 	if IsArray(i) {
-		return MergeArray(o, AsArray(i), false, "#")
+		return MergeArray(t, AsArray(i), false, "#")
 	}
 	if i == nil || i == Null {
-		return o
+		return t
 	}
-	return NewString(o.StringValue() + i.StringValue())
+	return NewString(t.StringValue() + i.StringValue())
 }
 
-func (o *JsonArray) LessThan(other JsonType) (bool, error) {
+func (t *JsonArray) LessThan(other JsonType) (bool, error) {
 	return false, burrito.WrappedErrorf("Arrays cannot be compared")
 }
 

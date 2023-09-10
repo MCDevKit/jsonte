@@ -8,54 +8,69 @@ import (
 
 // JsonString is a struct that represents a number, that can be either integer or decimal.
 type JsonString struct {
-	Value string
+	Value       string
+	parent      JsonType
+	parentIndex JsonType
 }
 
-func (n *JsonString) LessThan(other JsonType) (bool, error) {
+func (t *JsonString) Parent() JsonType {
+	return t.parent
+}
+
+func (t *JsonString) ParentIndex() JsonType {
+	return t.parentIndex
+}
+
+func (t *JsonString) UpdateParent(parent JsonType, parentIndex JsonType) {
+	t.parent = parent
+	t.parentIndex = parentIndex
+}
+
+func (t *JsonString) LessThan(other JsonType) (bool, error) {
 	if other == nil || other == Null {
 		return false, nil
 	}
 	if IsString(other) {
-		compare := strings.Compare(n.StringValue(), AsString(other).StringValue())
+		compare := strings.Compare(t.StringValue(), AsString(other).StringValue())
 		return compare < 0, nil
 	}
-	return false, incompatibleTypesError(n, other)
+	return false, incompatibleTypesError(t, other)
 }
 
-func (n *JsonString) BoolValue() bool {
-	return strings.Trim(n.StringValue(), "\n\r") != ""
+func (t *JsonString) BoolValue() bool {
+	return strings.Trim(t.StringValue(), "\n\r") != ""
 }
 
-func (n *JsonString) StringValue() string {
-	return n.Value
+func (t *JsonString) StringValue() string {
+	return t.Value
 }
 
-func (n *JsonString) Equals(value JsonType) bool {
+func (t *JsonString) Equals(value JsonType) bool {
 	if value == Null {
 		return false
 	}
 	if IsString(value) {
-		return n.StringValue() == value.StringValue()
+		return t.StringValue() == value.StringValue()
 	}
 	return false
 }
 
-func (n *JsonString) Unbox() interface{} {
-	return n.StringValue()
+func (t *JsonString) Unbox() interface{} {
+	return t.StringValue()
 }
 
-func (n *JsonString) Add(i JsonType) JsonType {
-	return NewString(n.StringValue() + i.StringValue())
+func (t *JsonString) Add(i JsonType) JsonType {
+	return NewString(t.StringValue() + i.StringValue())
 }
 
-func (n *JsonString) Negate() JsonType {
-	return AsBool(!n.BoolValue())
+func (t *JsonString) Negate() JsonType {
+	return AsBool(!t.BoolValue())
 }
 
-func (n *JsonString) Index(index JsonType) (JsonType, error) {
+func (t *JsonString) Index(index JsonType) (JsonType, error) {
 	if IsNumber(index) {
 		i := int(AsNumber(index).IntValue())
-		runes := []rune(n.StringValue())
+		runes := []rune(t.StringValue())
 		if i < 0 {
 			i = len(runes) + i
 		}

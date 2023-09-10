@@ -11,66 +11,68 @@ import (
 )
 
 type JsonObject struct {
-	Value      *utils.NavigableMap[string, JsonType]
-	StackValue *deque.Deque[*JsonObject]
+	Value       *utils.NavigableMap[string, JsonType]
+	StackValue  *deque.Deque[*JsonObject]
+	parent      JsonType
+	parentIndex JsonType
 }
 
-func (o *JsonObject) Keys() []string {
-	if o.Value != nil {
-		return o.Value.Keys()
+func (t *JsonObject) Keys() []string {
+	if t.Value != nil {
+		return t.Value.Keys()
 	}
-	if o.StackValue != nil {
+	if t.StackValue != nil {
 		keys := make([]string, 0)
-		for i := 0; i < o.StackValue.Len(); i++ {
-			keys = append(keys, o.StackValue.At(i).Keys()...)
+		for i := 0; i < t.StackValue.Len(); i++ {
+			keys = append(keys, t.StackValue.At(i).Keys()...)
 		}
 		return keys
 	}
 	return []string{}
 }
 
-func (o *JsonObject) Get(key string) JsonType {
-	if o.Value != nil && o.ContainsKey(key) {
-		return o.Value.Get(key)
+func (t *JsonObject) Get(key string) JsonType {
+	if t.Value != nil && t.ContainsKey(key) {
+		return t.Value.Get(key)
 	}
-	if o.StackValue != nil {
-		for i := o.StackValue.Len() - 1; i >= 0; i-- {
-			if o.StackValue.At(i).ContainsKey(key) {
-				return o.StackValue.At(i).Get(key)
+	if t.StackValue != nil {
+		for i := t.StackValue.Len() - 1; i >= 0; i-- {
+			if t.StackValue.At(i).ContainsKey(key) {
+				return t.StackValue.At(i).Get(key)
 			}
 		}
 	}
 	return Null
 }
 
-func (o *JsonObject) Put(key string, value JsonType) {
-	if o.Value != nil {
-		o.Value.Put(key, value)
+func (t *JsonObject) Put(key string, value JsonType) {
+	if t.Value != nil {
+		t.Value.Put(key, value)
 	} else {
-		o.StackValue.At(0).Put(key, value)
+		t.StackValue.At(0).Put(key, value)
 	}
 }
 
-func (o *JsonObject) Remove(key string) {
-	if o.Value != nil {
-		o.Value.Remove(key)
+func (t *JsonObject) Remove(key string) {
+	if t.Value != nil {
+		t.Value.Remove(key)
 	}
-	if o.StackValue != nil {
-		for i := o.StackValue.Len() - 1; i >= 0; i-- {
-			if o.StackValue.At(i).ContainsKey(key) {
-				o.StackValue.At(i).Remove(key)
+	if t.StackValue != nil {
+		for i := t.StackValue.Len() - 1; i >= 0; i-- {
+			if t.StackValue.At(i).ContainsKey(key) {
+				t.StackValue.At(i).Remove(key)
 			}
 		}
 	}
 }
 
-func (o *JsonObject) ContainsKey(key string) bool {
-	if o.Value != nil {
-		return o.Value.ContainsKey(key)
+func (t *JsonObject) ContainsKey(key string) bool {
+	if t.Value != nil {
+		return t.Value.ContainsKey(key)
 	}
-	if o.StackValue != nil {
-		for i := o.StackValue.Len() - 1; i >= 0; i-- {
-			if o.StackValue.At(i).ContainsKey(key) {
+	if t.StackValue != nil {
+		for i := t.StackValue.Len() - 1; i >= 0; i-- {
+			if t.StackValue.At(i).ContainsKey(key) {
 				return true
 			}
 		}
@@ -78,79 +80,92 @@ func (o *JsonObject) ContainsKey(key string) bool {
 	return false
 }
 
-func (o *JsonObject) StringValue() string {
-	return ToString(o.Unbox())
+func (t *JsonObject) Parent() JsonType {
+	return t.parent
 }
 
-func (o *JsonObject) BoolValue() bool {
-	return !o.IsEmpty()
+func (t *JsonObject) ParentIndex() JsonType {
+	return t.parentIndex
 }
 
-func (o *JsonObject) LessThan(value JsonType) (bool, error) {
+func (t *JsonObject) UpdateParent(parent JsonType, parentIndex JsonType) {
+	t.parent = parent
+	t.parentIndex = parentIndex
+}
+
+func (t *JsonObject) StringValue() string {
+	return ToString(t.Unbox())
+}
+
+func (t *JsonObject) BoolValue() bool {
+	return !t.IsEmpty()
+}
+
+func (t *JsonObject) LessThan(value JsonType) (bool, error) {
 	return false, burrito.WrappedErrorf("Objects cannot be compared")
 }
 
-func (o *JsonObject) Unbox() interface{} {
+func (t *JsonObject) Unbox() interface{} {
 	result := utils.NewNavigableMap[string, interface{}]()
-	for _, k := range o.Keys() {
-		result.Put(k, o.Get(k).Unbox())
+	for _, k := range t.Keys() {
+		result.Put(k, t.Get(k).Unbox())
 	}
 	return result
 }
 
-func (o *JsonObject) Equals(value JsonType) bool {
+func (t *JsonObject) Equals(value JsonType) bool {
 	if value == Null {
 		return false
 	}
 	if b, ok := value.(*JsonObject); ok {
-		return IsEqualObject(o.Unbox().(utils.NavigableMap[string, JsonType]), b.Unbox().(utils.NavigableMap[string, JsonType]))
+		return IsEqualObject(t.Unbox().(utils.NavigableMap[string, JsonType]), b.Unbox().(utils.NavigableMap[string, JsonType]))
 	}
 	return false
 }
 
-func (o *JsonObject) Negate() JsonType {
+func (t *JsonObject) Negate() JsonType {
 	return NaN()
 }
 
-func (o *JsonObject) Index(i JsonType) (JsonType, error) {
+func (t *JsonObject) Index(i JsonType) (JsonType, error) {
 	if b, ok := i.(*JsonString); ok {
-		if !o.ContainsKey(b.Value) {
-			return Null, burrito.WrappedErrorf("Property '%s' not found in %s", b.StringValue(), o.StringValue())
+		if !t.ContainsKey(b.Value) {
+			return Null, burrito.WrappedErrorf("Property '%s' not found in %s", b.StringValue(), t.StringValue())
 		}
-		return o.Get(b.Value), nil
+		return t.Get(b.Value), nil
 	}
 	if b, ok := i.(*JsonNumber); ok {
-		if o.StackValue != nil {
+		if t.StackValue != nil {
 			return Null, burrito.WrappedErrorf("Cannot index a combined object with a number")
 		}
-		if b.IntValue() < 0 || b.IntValue() >= int32(len(o.Value.Keys())) {
+		if b.IntValue() < 0 || b.IntValue() >= int32(len(t.Value.Keys())) {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", b.IntValue())
 		}
-		return o.Value.Get(o.Value.Keys()[int(b.IntValue())]), nil
+		return t.Value.Get(t.Value.Keys()[int(b.IntValue())]), nil
 	}
 	if b, ok := i.(*JsonPath); ok {
-		return b.Get(o)
+		return b.Get(t)
 	}
 	return Null, burrito.WrappedErrorf("Index must be a string or a number: %s", i.StringValue())
 }
 
-func (o *JsonObject) Add(i JsonType) JsonType {
+func (t *JsonObject) Add(i JsonType) JsonType {
 	if IsObject(i) {
-		return MergeObject(AsObject(i), o, false, "#")
+		return MergeObject(AsObject(i), t, false, "#")
 	}
 	if i == nil || i == Null {
-		return o
+		return t
 	}
-	return NewString(o.StringValue() + i.StringValue())
+	return NewString(t.StringValue() + i.StringValue())
 }
 
-func (o *JsonObject) IsEmpty() bool {
-	if o.Value != nil {
-		return o.Value.IsEmpty()
+func (t *JsonObject) IsEmpty() bool {
+	if t.Value != nil {
+		return t.Value.IsEmpty()
 	}
-	if o.StackValue != nil {
-		for i := 0; i < o.StackValue.Len(); i++ {
-			if !o.StackValue.At(i).IsEmpty() {
+	if t.StackValue != nil {
+		for i := 0; i < t.StackValue.Len(); i++ {
+			if !t.StackValue.At(i).IsEmpty() {
 				return false
 			}
 		}
@@ -158,28 +173,28 @@ func (o *JsonObject) IsEmpty() bool {
 	return true
 }
 
-func (o *JsonObject) Size() int {
-	if o.Value != nil {
-		return o.Value.Size()
+func (t *JsonObject) Size() int {
+	if t.Value != nil {
+		return t.Value.Size()
 	}
-	if o.StackValue != nil {
+	if t.StackValue != nil {
 		size := 0
-		for i := 0; i < o.StackValue.Len(); i++ {
-			size += o.StackValue.At(i).Size()
+		for i := 0; i < t.StackValue.Len(); i++ {
+			size += t.StackValue.At(i).Size()
 		}
 		return size
 	}
 	return 0
 }
 
-func (o *JsonObject) Values() []JsonType {
-	if o.Value != nil {
-		return o.Value.Values()
+func (t *JsonObject) Values() []JsonType {
+	if t.Value != nil {
+		return t.Value.Values()
 	}
-	if o.StackValue != nil {
+	if t.StackValue != nil {
 		values := make([]JsonType, 0)
-		for i := 0; i < o.StackValue.Len(); i++ {
-			values = append(values, o.StackValue.At(i).Values()...)
+		for i := 0; i < t.StackValue.Len(); i++ {
+			values = append(values, t.StackValue.At(i).Values()...)
 		}
 		return values
 	}
@@ -198,7 +213,7 @@ func AsObject(obj interface{}) *JsonObject {
 		return NewJsonObject()
 	}
 	if b, ok := obj.(utils.NavigableMap[string, JsonType]); ok {
-		return &JsonObject{&b, nil}
+		return &JsonObject{&b, nil, nil, nil}
 	}
 	if b, ok := obj.(utils.NavigableMap[string, interface{}]); ok {
 		result := NewJsonObject()
@@ -367,7 +382,7 @@ func DeepCopyObject(object *JsonObject) *JsonObject {
 
 func NewJsonObject() *JsonObject {
 	navigableMap := utils.NewNavigableMap[string, JsonType]()
-	return &JsonObject{&navigableMap, nil}
+	return &JsonObject{&navigableMap, nil, nil, nil}
 }
 
 func IsReservedKey(k string) bool {

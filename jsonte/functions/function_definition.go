@@ -64,10 +64,10 @@ func RegisterGroup(group Group) {
 func RegisterFunction(fn JsonFunction) {
 	of := reflect.ValueOf(fn.Body)
 	if of.Kind() != reflect.Func {
-		panic("Function body must be a function!")
+		utils.BadDeveloperError("Function body must be a function!")
 	}
 	if of.Type().NumIn() == 0 && fn.IsInstance {
-		panic("Registered instance function doesn't have an instance parameter!")
+		utils.BadDeveloperError("Registered instance function doesn't have an instance parameter!")
 	}
 	for i := 0; i < of.Type().NumIn(); i++ {
 		typeSanityCheck(of.Type().In(i))
@@ -77,7 +77,7 @@ func RegisterFunction(fn JsonFunction) {
 		}
 	}
 	if (of.Type().NumOut() > 2) || (of.Type().NumOut() == 2 && of.Type().Out(1).String() != "error") {
-		panic("Function body must return only one value and can return an error!")
+		utils.BadDeveloperError("Function body must return only one value and can return an error!")
 	}
 	for i := 0; i < of.Type().NumOut(); i++ {
 		typeSanityCheck(of.Type().Out(i))
@@ -100,9 +100,6 @@ func typeSanityCheck(in reflect.Type) {
 	if in.AssignableTo(test.Elem()) {
 		return
 	}
-	//if in.Elem().AssignableTo(test.Elem()) {
-	//	return
-	//}
 	if in.AssignableTo(reflect.TypeOf((*types.JsonLambda)(nil)).Elem()) {
 		return
 	}
@@ -112,7 +109,7 @@ func typeSanityCheck(in reflect.Type) {
 	if in.AssignableTo(reflect.TypeOf((*error)(nil)).Elem()) {
 		return
 	}
-	panic(fmt.Sprintf("Function body must only take parameters of types JsonType, error or JsonLambda! Got %s", in.String()))
+	utils.BadDeveloperError(fmt.Sprintf("Function body must only take parameters of types JsonType, error or JsonLambda! Got %s", in.String()))
 }
 
 func HasInstanceFunction(t reflect.Type, name string) bool {
