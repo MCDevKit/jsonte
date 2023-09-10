@@ -40,6 +40,20 @@ Null: 'null';
 False: 'false';
 True: 'true';
 
+script
+    : statement*
+    ;
+
+statement
+    : field ';'
+    | field Literal field ';'
+    | 'return' field ';'
+    | 'for' (name (Comma name)*)? 'in' field LeftBrace statement* RightBrace
+    | 'if' field LeftBrace statement* RightBrace ('else' 'if' field LeftBrace statement* RightBrace)* ('else' LeftBrace statement* RightBrace)?
+    | 'while' field LeftBrace statement* RightBrace
+    | 'do' LeftBrace statement* RightBrace 'while' field ';'
+    ;
+
 expression
     : (LeftBrace LeftBrace)? Iteration field (As name (Comma name)?)? (RightBrace RightBrace)? EOF
     | (LeftBrace LeftBrace)? Question field (RightBrace RightBrace)? EOF

@@ -8,6 +8,12 @@ import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 type JsonTemplateListener interface {
 	antlr.ParseTreeListener
 
+	// EnterScript is called when entering the script production.
+	EnterScript(c *ScriptContext)
+
+	// EnterStatement is called when entering the statement production.
+	EnterStatement(c *StatementContext)
+
 	// EnterExpression is called when entering the expression production.
 	EnterExpression(c *ExpressionContext)
 
@@ -34,6 +40,12 @@ type JsonTemplateListener interface {
 
 	// EnterIndex is called when entering the index production.
 	EnterIndex(c *IndexContext)
+
+	// ExitScript is called when exiting the script production.
+	ExitScript(c *ScriptContext)
+
+	// ExitStatement is called when exiting the statement production.
+	ExitStatement(c *StatementContext)
 
 	// ExitExpression is called when exiting the expression production.
 	ExitExpression(c *ExpressionContext)

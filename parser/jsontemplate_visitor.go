@@ -8,6 +8,12 @@ import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 type JsonTemplateVisitor interface {
 	antlr.ParseTreeVisitor
 
+	// Visit a parse tree produced by JsonTemplateParser#script.
+	VisitScript(ctx *ScriptContext) interface{}
+
+	// Visit a parse tree produced by JsonTemplateParser#statement.
+	VisitStatement(ctx *StatementContext) interface{}
+
 	// Visit a parse tree produced by JsonTemplateParser#expression.
 	VisitExpression(ctx *ExpressionContext) interface{}
 
