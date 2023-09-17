@@ -33,6 +33,12 @@ func (s *BaseJsonTemplateListener) EnterStatement(ctx *StatementContext) {}
 // ExitStatement is called when production statement is exited.
 func (s *BaseJsonTemplateListener) ExitStatement(ctx *StatementContext) {}
 
+// EnterStatements is called when production statements is entered.
+func (s *BaseJsonTemplateListener) EnterStatements(ctx *StatementsContext) {}
+
+// ExitStatements is called when production statements is exited.
+func (s *BaseJsonTemplateListener) ExitStatements(ctx *StatementsContext) {}
+
 // EnterExpression is called when production expression is entered.
 func (s *BaseJsonTemplateListener) EnterExpression(ctx *ExpressionContext) {}
 

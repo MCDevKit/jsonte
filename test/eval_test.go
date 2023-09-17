@@ -212,6 +212,16 @@ func evaluateWithScope(t *testing.T, text string, scope utils.NavigableMap[strin
 	return eval
 }
 
+func evaluateWithObjectScope(t *testing.T, text string, scope *types.JsonObject) jsonte.Result {
+	s := deque.Deque[*types.JsonObject]{}
+	s.PushBack(scope)
+	eval, err := jsonte.Eval(text, s, "#")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return eval
+}
+
 func TestRangeOperator(t *testing.T) {
 	eval := evaluate(t, "1..10")
 	assertArray(t, eval, types.Box([]interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}).(*types.JsonArray))

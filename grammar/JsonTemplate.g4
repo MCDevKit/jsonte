@@ -47,10 +47,14 @@ script
 statement
     : field ';'
     | 'return' field ';'
-    | 'for' (name (Comma name)*)? 'in' field LeftBrace statement* RightBrace
-    | 'if' field LeftBrace statement* RightBrace ('else' 'if' field LeftBrace statement* RightBrace)* ('else' LeftBrace statement* RightBrace)?
-    | 'while' field LeftBrace statement* RightBrace
-    | 'do' LeftBrace statement* RightBrace 'while' field ';'
+    | 'for' (name (Comma name)*)? 'in' field statements
+    | 'if' field statements ('else' 'if' field statements)* ('else' statements)?
+    | 'while' field statements
+    | 'do' statements 'while' field ';'
+    ;
+
+statements
+    : LeftBrace statement* RightBrace
     ;
 
 expression

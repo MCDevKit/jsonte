@@ -14,6 +14,9 @@ type JsonTemplateVisitor interface {
 	// Visit a parse tree produced by JsonTemplateParser#statement.
 	VisitStatement(ctx *StatementContext) interface{}
 
+	// Visit a parse tree produced by JsonTemplateParser#statements.
+	VisitStatements(ctx *StatementsContext) interface{}
+
 	// Visit a parse tree produced by JsonTemplateParser#expression.
 	VisitExpression(ctx *ExpressionContext) interface{}
 

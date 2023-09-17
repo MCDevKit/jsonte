@@ -14,6 +14,9 @@ type JsonTemplateListener interface {
 	// EnterStatement is called when entering the statement production.
 	EnterStatement(c *StatementContext)
 
+	// EnterStatements is called when entering the statements production.
+	EnterStatements(c *StatementsContext)
+
 	// EnterExpression is called when entering the expression production.
 	EnterExpression(c *ExpressionContext)
 
@@ -46,6 +49,9 @@ type JsonTemplateListener interface {
 
 	// ExitStatement is called when exiting the statement production.
 	ExitStatement(c *StatementContext)
+
+	// ExitStatements is called when exiting the statements production.
+	ExitStatements(c *StatementsContext)
 
 	// ExitExpression is called when exiting the expression production.
 	ExitExpression(c *ExpressionContext)

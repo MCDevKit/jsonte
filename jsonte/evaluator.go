@@ -10,10 +10,12 @@ import (
 
 // Result is the result of evaluating an expression
 type Result struct {
-	Value     types.JsonType
-	Action    types.JsonAction
-	Name      string
-	IndexName string
+	Value         types.JsonType
+	Action        types.JsonAction
+	Name          string
+	IndexName     string
+	Scope         deque.Deque[*types.JsonObject]
+	VariableScope *types.JsonObject
 }
 
 // GetError returns the error from the result or nil if the expression evaluated correctly
@@ -63,10 +65,44 @@ func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Resul
 	}
 	r, err := visitor.Visit(tree)
 	return Result{
-		Value:     r,
-		Action:    visitor.action,
-		Name:      *visitor.name,
-		IndexName: *visitor.indexName,
+		Value:         r,
+		Action:        visitor.action,
+		Name:          *visitor.name,
+		IndexName:     *visitor.indexName,
+		VariableScope: visitor.variableScope,
+		Scope:         scope,
+	}, err
+}
+
+// EvalScript evaluates the given script and returns the result
+func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) (Result, error) {
+	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
+	is := antlr.NewInputStream(text)
+	lexer := parser.NewJsonTemplateLexer(is)
+	lexer.RemoveErrorListeners()
+	lexer.AddErrorListener(&listener)
+	stream := antlr.NewCommonTokenStream(lexer, 0)
+	p := parser.NewJsonTemplateParser(stream)
+	p.RemoveErrorListeners()
+	p.AddErrorListener(&listener)
+	p.BuildParseTrees = true
+	tree := p.Expression()
+	if listener.Error != nil {
+		return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
+	}
+	visitor := ExpressionVisitor{
+		scope:         scope,
+		variableScope: types.NewJsonObject(),
+		path:          &path,
+	}
+	r, err := visitor.Visit(tree)
+	return Result{
+		Value:         r,
+		Action:        visitor.action,
+		Name:          *visitor.name,
+		IndexName:     *visitor.indexName,
+		VariableScope: visitor.variableScope,
+		Scope:         scope,
 	}, err
 }
 

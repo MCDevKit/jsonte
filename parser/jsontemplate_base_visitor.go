@@ -16,6 +16,10 @@ func (v *BaseJsonTemplateVisitor) VisitStatement(ctx *StatementContext) interfac
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseJsonTemplateVisitor) VisitStatements(ctx *StatementsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseJsonTemplateVisitor) VisitExpression(ctx *ExpressionContext) interface{} {
 	return v.VisitChildren(ctx)
 }

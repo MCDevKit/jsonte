@@ -48,6 +48,8 @@ func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) 
 		return v.VisitIndex(val)
 	case *parser.StatementContext:
 		return v.VisitStatement(val)
+	case *parser.StatementsContext:
+		return v.VisitStatements(val)
 	}
 	utils.BadDeveloperError("Unknown tree type " + reflect.TypeOf(tree).String())
 	return nil, nil
@@ -137,6 +139,11 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 }
 
 func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.JsonType, error) {
+	utils.BadDeveloperError("Not yet implemented")
+	return nil, nil
+}
+
+func (v *ExpressionVisitor) VisitStatements(ctx *parser.StatementsContext) (types.JsonType, error) {
 	utils.BadDeveloperError("Not yet implemented")
 	return nil, nil
 }
