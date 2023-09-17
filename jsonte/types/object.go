@@ -13,6 +13,7 @@ import (
 type JsonObject struct {
 	Value       *utils.NavigableMap[string, JsonType]
 	StackValue  *deque.Deque[*JsonObject]
+	StackTarget *JsonObject
 	parent      JsonType
 	parentIndex JsonType
 }
@@ -22,9 +23,18 @@ func (t *JsonObject) Keys() []string {
 		return t.Value.Keys()
 	}
 	if t.StackValue != nil {
-		keys := make([]string, 0)
+		keysMap := make(map[string]bool)
+		for _, k := range t.StackTarget.Keys() {
+			keysMap[k] = true
+		}
 		for i := 0; i < t.StackValue.Len(); i++ {
-			keys = append(keys, t.StackValue.At(i).Keys()...)
+			for _, k := range t.StackValue.At(i).Keys() {
+				keysMap[k] = true
+			}
+		}
+		keys := make([]string, 0)
+		for k := range keysMap {
+			keys = append(keys, k)
 		}
 		return keys
 	}
@@ -36,6 +46,9 @@ func (t *JsonObject) Get(key string) JsonType {
 		return t.Value.Get(key)
 	}
 	if t.StackValue != nil {
+		if t.StackTarget.ContainsKey(key) {
+			return t.StackTarget.Get(key)
+		}
 		for i := t.StackValue.Len() - 1; i >= 0; i-- {
 			if t.StackValue.At(i).ContainsKey(key) {
 				return t.StackValue.At(i).Get(key)
@@ -49,7 +62,7 @@ func (t *JsonObject) Put(key string, value JsonType) {
 	if t.Value != nil {
 		t.Value.Put(key, value)
 	} else {
-		t.StackValue.At(0).Put(key, value)
+		t.StackTarget.Put(key, value)
 	}
 }
 
@@ -58,6 +71,9 @@ func (t *JsonObject) Remove(key string) {
 		t.Value.Remove(key)
 	}
 	if t.StackValue != nil {
+		if t.StackTarget.ContainsKey(key) {
+			t.StackTarget.Remove(key)
+		}
 		for i := t.StackValue.Len() - 1; i >= 0; i-- {
 			if t.StackValue.At(i).ContainsKey(key) {
 				t.StackValue.At(i).Remove(key)
@@ -71,6 +87,9 @@ func (t *JsonObject) ContainsKey(key string) bool {
 		return t.Value.ContainsKey(key)
 	}
 	if t.StackValue != nil {
+		if t.StackTarget.ContainsKey(key) {
+			return true
+		}
 		for i := t.StackValue.Len() - 1; i >= 0; i-- {
 			if t.StackValue.At(i).ContainsKey(key) {
 				return true
@@ -114,7 +133,7 @@ func (t *JsonObject) Unbox() interface{} {
 }
 
 func (t *JsonObject) Equals(value JsonType) bool {
-	if value == Null {
+	if IsNull(value) {
 		return false
 	}
 	if b, ok := value.(*JsonObject); ok {
@@ -136,7 +155,7 @@ func (t *JsonObject) Index(i JsonType) (JsonType, error) {
 	}
 	if b, ok := i.(*JsonNumber); ok {
 		if t.StackValue != nil {
-			return Null, burrito.WrappedErrorf("Cannot index a combined object with a number")
+			return Null, burrito.WrappedErrorf("Cannot index a stack based object with a number")
 		}
 		if b.IntValue() < 0 || b.IntValue() >= int32(len(t.Value.Keys())) {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", b.IntValue())
@@ -153,7 +172,7 @@ func (t *JsonObject) Add(i JsonType) JsonType {
 	if IsObject(i) {
 		return MergeObject(AsObject(i), t, false, "#")
 	}
-	if i == nil || i == Null {
+	if i == nil || IsNull(i) {
 		return t
 	}
 	return NewString(t.StringValue() + i.StringValue())
@@ -164,6 +183,9 @@ func (t *JsonObject) IsEmpty() bool {
 		return t.Value.IsEmpty()
 	}
 	if t.StackValue != nil {
+		if !t.StackTarget.IsEmpty() {
+			return false
+		}
 		for i := 0; i < t.StackValue.Len(); i++ {
 			if !t.StackValue.At(i).IsEmpty() {
 				return false
@@ -178,11 +200,7 @@ func (t *JsonObject) Size() int {
 		return t.Value.Size()
 	}
 	if t.StackValue != nil {
-		size := 0
-		for i := 0; i < t.StackValue.Len(); i++ {
-			size += t.StackValue.At(i).Size()
-		}
-		return size
+		return len(t.Keys())
 	}
 	return 0
 }
@@ -193,8 +211,9 @@ func (t *JsonObject) Values() []JsonType {
 	}
 	if t.StackValue != nil {
 		values := make([]JsonType, 0)
-		for i := 0; i < t.StackValue.Len(); i++ {
-			values = append(values, t.StackValue.At(i).Values()...)
+		keys := t.Keys()
+		for _, k := range keys {
+			values = append(values, t.Get(k))
 		}
 		return values
 	}
@@ -213,7 +232,7 @@ func AsObject(obj interface{}) *JsonObject {
 		return NewJsonObject()
 	}
 	if b, ok := obj.(utils.NavigableMap[string, JsonType]); ok {
-		return &JsonObject{&b, nil, nil, nil}
+		return &JsonObject{&b, nil, nil, nil, nil}
 	}
 	if b, ok := obj.(utils.NavigableMap[string, interface{}]); ok {
 		result := NewJsonObject()
@@ -382,7 +401,7 @@ func DeepCopyObject(object *JsonObject) *JsonObject {
 
 func NewJsonObject() *JsonObject {
 	navigableMap := utils.NewNavigableMap[string, JsonType]()
-	return &JsonObject{&navigableMap, nil, nil, nil}
+	return &JsonObject{&navigableMap, nil, nil, nil, nil}
 }
 
 func IsReservedKey(k string) bool {

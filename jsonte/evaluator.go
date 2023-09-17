@@ -57,8 +57,9 @@ func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Resul
 		return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
 	}
 	visitor := ExpressionVisitor{
-		scope: scope,
-		path:  &path,
+		scope:         scope,
+		variableScope: types.NewJsonObject(),
+		path:          &path,
 	}
 	r, err := visitor.Visit(tree)
 	return Result{

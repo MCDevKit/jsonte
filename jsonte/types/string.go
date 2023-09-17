@@ -27,7 +27,7 @@ func (t *JsonString) UpdateParent(parent JsonType, parentIndex JsonType) {
 }
 
 func (t *JsonString) LessThan(other JsonType) (bool, error) {
-	if other == nil || other == Null {
+	if other == nil || IsNull(other) {
 		return false, nil
 	}
 	if IsString(other) {
@@ -46,7 +46,7 @@ func (t *JsonString) StringValue() string {
 }
 
 func (t *JsonString) Equals(value JsonType) bool {
-	if value == Null {
+	if IsNull(value) {
 		return false
 	}
 	if IsString(value) {

@@ -66,7 +66,7 @@ func (t *JsonBool) StringValue() string {
 
 // Equals checks if the JsonBool is equal to another JsonType.
 func (t *JsonBool) Equals(value JsonType) bool {
-	if value == Null {
+	if IsNull(value) {
 		return false
 	}
 	if IsBool(value) {

@@ -31,7 +31,7 @@ func (t *JsonNull) LessThan(other JsonType) (bool, error) {
 	if other == nil {
 		return true, nil
 	}
-	if other == Null {
+	if IsNull(other) {
 		return false, nil
 	}
 	if other.Equals(t) {
@@ -50,10 +50,10 @@ func (t *JsonNull) StringValue() string {
 }
 
 func (t *JsonNull) Equals(value JsonType) bool {
-	if value == Null || value == nil {
+	if value == nil || IsNull(value) {
 		return true
 	}
-	if b, ok := value.(JsonType); ok && b == Null {
+	if b, ok := value.(JsonType); ok && IsNull(b) {
 		return true
 	}
 	return false
@@ -72,8 +72,13 @@ func (t *JsonNull) Index(i JsonType) (JsonType, error) {
 }
 
 func (t *JsonNull) Add(i JsonType) JsonType {
-	if i == Null {
+	if IsNull(i) {
 		return Null
 	}
 	return i.Add(t)
+}
+
+func IsNull(i interface{}) bool {
+	_, ok := i.(*JsonNull)
+	return ok
 }

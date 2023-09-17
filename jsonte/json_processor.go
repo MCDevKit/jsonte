@@ -334,7 +334,7 @@ func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]J
 		if err != nil {
 			return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to evaluate $copy")
 		}
-		if c == nil || c == types.Null {
+		if c == nil || types.IsNull(c) {
 			utils.Logger.Debugf("Skipping null copy path at %s", loopPath)
 			continue
 		}
@@ -417,7 +417,7 @@ func extendTemplate(extend types.JsonType, template *types.JsonObject, visitor *
 			if err != nil {
 				return types.NewJsonObject(), resolvedModules, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", path)
 			}
-			if eval == nil || eval == types.Null {
+			if eval == nil || types.IsNull(eval) {
 				utils.Logger.Debugf("Skipping null module at %s", path)
 				continue
 			}
@@ -618,7 +618,7 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 }
 
 func PutValue(result *types.JsonObject, key string, r types.JsonType, path string) error {
-	if r == nil || r == types.Null {
+	if r == nil || types.IsNull(r) {
 		result.Put(key, types.Null)
 	} else {
 		if strings.HasPrefix(key, "$") && result.ContainsKey(key) && !types.IsReservedKey(key) {

@@ -23,6 +23,7 @@ type ExpressionVisitor struct {
 	scope         deque.Deque[*types.JsonObject]
 	path          *string
 	usedVariables []string
+	variableScope *types.JsonObject
 }
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) {
@@ -119,8 +120,9 @@ func isError(v interface{}) bool {
 func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 	if name == "this" {
 		return &types.JsonObject{
-			Value:      nil,
-			StackValue: &v.scope,
+			Value:       nil,
+			StackValue:  &v.scope,
+			StackTarget: v.variableScope,
 		}
 	}
 	for i := v.scope.Len() - 1; i >= 0; i-- {
@@ -131,7 +133,7 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 			return get
 		}
 	}
-	return types.NullWithParent(v.scope.Back(), types.NewString(name))
+	return types.NullWithParent(v.variableScope, types.NewString(name))
 }
 
 func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.JsonType, error) {
@@ -277,7 +279,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			return types.Null, err
 		}
 		if context.NullCoalescing() != nil {
-			if f1 == types.Null {
+			if types.IsNull(f1) {
 				return f2, nil
 			} else {
 				return f1, nil

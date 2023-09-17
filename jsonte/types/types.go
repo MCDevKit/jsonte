@@ -52,7 +52,7 @@ func Init() {
 		{
 			Type:   reflect.TypeOf(Null),
 			Name:   "null",
-			IsType: func(i interface{}) bool { return i == nil || i == Null },
+			IsType: func(i interface{}) bool { return i == nil || IsNull(i) },
 			AsType: func(i interface{}) JsonType { return Null },
 		},
 		{
@@ -113,7 +113,7 @@ func Init() {
 }
 
 func TypeName(obj interface{}) string {
-	if obj == nil || obj == Null {
+	if obj == nil || IsNull(obj) {
 		return "null"
 	}
 	if IsArray(obj) {
@@ -154,10 +154,10 @@ func Box(obj interface{}) JsonType {
 }
 
 func MergeJSON(template, parent JsonType, keepOverrides bool) (JsonType, error) {
-	if template == nil || template == Null {
+	if template == nil || IsNull(template) {
 		return parent, nil
 	}
-	if parent == nil || parent == Null {
+	if parent == nil || IsNull(parent) {
 		return template, nil
 	}
 	if IsObject(template) && IsObject(parent) {
@@ -290,7 +290,7 @@ func DeleteNulls(object *JsonObject) *JsonObject {
 			object.Put(k, DeleteNulls(AsObject(v)))
 		} else if IsArray(v) {
 			object.Put(k, DeleteNullsFromArray(AsArray(v)))
-		} else if v == nil || v == Null {
+		} else if v == nil || IsNull(v) {
 			object.Remove(k)
 		}
 	}

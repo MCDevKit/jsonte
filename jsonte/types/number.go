@@ -37,7 +37,7 @@ func (t *JsonNumber) UpdateParent(parent JsonType, parentIndex JsonType) {
 }
 
 func (t *JsonNumber) LessThan(other JsonType) (bool, error) {
-	if other == nil || other == Null {
+	if other == nil || IsNull(other) {
 		return t.FloatValue() < float64(0), nil
 	}
 	if IsNumber(other) {
@@ -79,7 +79,7 @@ func (t *JsonNumber) StringValue() string {
 }
 
 func (t *JsonNumber) Equals(value JsonType) bool {
-	if value == Null {
+	if IsNull(value) {
 		return false
 	}
 	if IsNumber(value) {
@@ -107,7 +107,7 @@ func (t *JsonNumber) Index(i JsonType) (JsonType, error) {
 }
 
 func (t *JsonNumber) Add(i JsonType) JsonType {
-	if i == Null {
+	if IsNull(i) {
 		return &JsonNumber{
 			Value:   t.FloatValue(),
 			Decimal: t.Decimal,

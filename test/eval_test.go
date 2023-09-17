@@ -162,7 +162,7 @@ func assertString(t *testing.T, eval jsonte.Result, expected string) {
 
 func assertNull(t *testing.T, eval jsonte.Result) {
 	assertAction(t, eval, types.Value)
-	if eval.Value != types.Null {
+	if !types.IsNull(eval.Value) {
 		t.Fatalf("Result is not null (%s)", types.ToString(eval.Value))
 	}
 }

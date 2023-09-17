@@ -74,7 +74,7 @@ func (t *JsonArray) BoolValue() bool {
 }
 
 func (t *JsonArray) Equals(value JsonType) bool {
-	if value == Null {
+	if IsNull(value) {
 		return false
 	}
 	if b, ok := value.(*JsonArray); ok {
@@ -122,7 +122,7 @@ func (t *JsonArray) Add(i JsonType) JsonType {
 	if IsArray(i) {
 		return MergeArray(t, AsArray(i), false, "#")
 	}
-	if i == nil || i == Null {
+	if i == nil || IsNull(i) {
 		return t
 	}
 	return NewString(t.StringValue() + i.StringValue())
