@@ -204,7 +204,7 @@ func TestAppendArray(t *testing.T) {
 }
 
 func TestAppendSpreadArray(t *testing.T) {
-	eval := evaluate(t, `[1, 2, 3].append([4, 5]...)`)
+	eval := evaluate(t, `[1, 2, 3].append(...[4, 5])`)
 	assertArray(t, eval, types.Box([]interface{}{1, 2, 3, 4, 5}).(*types.JsonArray))
 }
 
@@ -224,7 +224,7 @@ func TestPrependArray(t *testing.T) {
 }
 
 func TestPrependSpreadArray(t *testing.T) {
-	eval := evaluate(t, `[1, 2, 3].prepend([4, 5]...)`)
+	eval := evaluate(t, `[1, 2, 3].prepend(...[4, 5])`)
 	assertArray(t, eval, types.Box([]interface{}{4, 5, 1, 2, 3}).(*types.JsonArray))
 }
 

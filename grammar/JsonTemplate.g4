@@ -71,7 +71,7 @@ lambda
     ;
 
 function_param
-    : field (Spread)?
+    : (Spread)? field
     | lambda
     ;
 

@@ -563,32 +563,32 @@ func TestEncoding(t *testing.T) {
 }
 
 func TestSpreadArray(t *testing.T) {
-	eval := evaluate(t, ` [1, 2, ...[3, 4], 5]`)
+	eval := evaluate(t, `[1, 2, ...[3, 4], 5]`)
 	assertArray(t, eval, types.AsArray([]interface{}{1, 2, 3, 4, 5}))
 }
 
 func TestSpreadArray2(t *testing.T) {
-	eval := evaluate(t, ` [...[1, 2], 3, 4, 5]`)
+	eval := evaluate(t, `[...[1, 2], 3, 4, 5]`)
 	assertArray(t, eval, types.AsArray([]interface{}{1, 2, 3, 4, 5}))
 }
 
 func TestSpreadArray3(t *testing.T) {
-	eval := evaluate(t, ` [1, 2, ...[3, 4], ...[5, 6]]`)
+	eval := evaluate(t, `[1, 2, ...[3, 4], ...[5, 6]]`)
 	assertArray(t, eval, types.AsArray([]interface{}{1, 2, 3, 4, 5, 6}))
 }
 
 func TestSpreadArray4(t *testing.T) {
-	eval := evaluate(t, ` [...[1, 2], ...[3, 4], 5]`)
+	eval := evaluate(t, `[...[1, 2], ...[3, 4], 5]`)
 	assertArray(t, eval, types.AsArray([]interface{}{1, 2, 3, 4, 5}))
 }
 
 func TestSpreadArray5(t *testing.T) {
-	eval := evaluate(t, ` [...[1, 2], ...[3, 4], ...[5, 6]]`)
+	eval := evaluate(t, `[...[1, 2], ...[3, 4], ...[5, 6]]`)
 	assertArray(t, eval, types.AsArray([]interface{}{1, 2, 3, 4, 5, 6}))
 }
 
 func TestSpreadObject(t *testing.T) {
-	eval := evaluate(t, ` {'a': 1, ...{'b': 2}, 'c': 3}`)
+	eval := evaluate(t, `{'a': 1, ...{'b': 2}, 'c': 3}`)
 	assertObject(t, eval, types.AsObject(utils.ToNavigableMap(
 		"a", 1,
 		"b", 2,
@@ -597,7 +597,7 @@ func TestSpreadObject(t *testing.T) {
 }
 
 func TestSpreadObject2(t *testing.T) {
-	eval := evaluate(t, ` {'a': 1, ...{'a': 2}, 'c': 3}`)
+	eval := evaluate(t, `{'a': 1, ...{'a': 2}, 'c': 3}`)
 	assertObject(t, eval, types.AsObject(utils.ToNavigableMap(
 		"a", 2,
 		"c", 3,
@@ -605,7 +605,7 @@ func TestSpreadObject2(t *testing.T) {
 }
 
 func TestSpreadObject3(t *testing.T) {
-	eval := evaluate(t, ` {'a': 1, ...{'b': 2}, ...{'c': 3}}`)
+	eval := evaluate(t, `{'a': 1, ...{'b': 2}, ...{'c': 3}}`)
 	assertObject(t, eval, types.AsObject(utils.ToNavigableMap(
 		"a", 1,
 		"b", 2,
