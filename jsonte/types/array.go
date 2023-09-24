@@ -12,13 +12,13 @@ type JsonArray struct {
 	parentIndex JsonType
 }
 
-func (t *JsonArray) Append(v JsonType) *JsonArray {
-	t.Value = append(t.Value, v)
+func (t *JsonArray) Append(v ...JsonType) *JsonArray {
+	t.Value = append(t.Value, v...)
 	return t
 }
 
-func (t *JsonArray) Prepend(v JsonType) *JsonArray {
-	t.Value = append([]JsonType{v}, t.Value...)
+func (t *JsonArray) Prepend(v ...JsonType) *JsonArray {
+	t.Value = append(v, t.Value...)
 	return t
 }
 
@@ -33,6 +33,19 @@ func (t *JsonArray) Remove(i *JsonNumber) (JsonType, error) {
 	if index >= 0 && index < len(t.Value) {
 		t.Value = append(t.Value[:index], t.Value[index+1:]...)
 	}
+	return t, nil
+}
+
+func (t *JsonArray) RemoveIf(i *JsonLambda) (JsonType, error) {
+	result := make([]JsonType, 0)
+	for index, v := range t.Value {
+		if b, err := i.Call(v, AsNumber(index)); err != nil {
+			return Null, err
+		} else if !b.BoolValue() {
+			result = append(result, v)
+		}
+	}
+	t.Value = result
 	return t, nil
 }
 

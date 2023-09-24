@@ -69,6 +69,12 @@ func (s *BaseJsonTemplateListener) EnterArray(ctx *ArrayContext) {}
 // ExitArray is called when production array is exited.
 func (s *BaseJsonTemplateListener) ExitArray(ctx *ArrayContext) {}
 
+// EnterSpread_field is called when production spread_field is entered.
+func (s *BaseJsonTemplateListener) EnterSpread_field(ctx *Spread_fieldContext) {}
+
+// ExitSpread_field is called when production spread_field is exited.
+func (s *BaseJsonTemplateListener) ExitSpread_field(ctx *Spread_fieldContext) {}
+
 // EnterObject is called when production object is entered.
 func (s *BaseJsonTemplateListener) EnterObject(ctx *ObjectContext) {}
 

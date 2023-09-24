@@ -89,8 +89,8 @@ func (v *LambdaVisitor) VisitIndex(context *parser.IndexContext) {
 }
 
 func (v *LambdaVisitor) VisitArray(context *parser.ArrayContext) {
-	for _, f := range context.AllField() {
-		v.Visit(f)
+	for _, f := range context.AllSpread_field() {
+		v.Visit(f.(*parser.Spread_fieldContext).Field())
 	}
 }
 

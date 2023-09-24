@@ -40,6 +40,10 @@ func (v *BaseJsonTemplateVisitor) VisitArray(ctx *ArrayContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseJsonTemplateVisitor) VisitSpread_field(ctx *Spread_fieldContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseJsonTemplateVisitor) VisitObject(ctx *ObjectContext) interface{} {
 	return v.VisitChildren(ctx)
 }

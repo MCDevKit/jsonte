@@ -19,6 +19,10 @@ var IdentityLambda = NewLambda(func(this *JsonLambda, args []JsonType) (JsonType
 	return args[0], nil
 }, "x=>x", []string{"x"}, []string{"x"})
 
+func (t *JsonLambda) Call(args ...JsonType) (JsonType, error) {
+	return t.Value(t, args)
+}
+
 func (t *JsonLambda) Parent() JsonType {
 	return nil
 }

@@ -29,6 +29,7 @@ Literal: '=';
 NullCoalescing: '??';
 
 Range: '..';
+Spread: '...';
 As: 'as';
 Comma: ',';
 Arrow: '=>';
@@ -70,7 +71,7 @@ lambda
     ;
 
 function_param
-    : field
+    : field (Spread)?
     | lambda
     ;
 
@@ -106,7 +107,11 @@ field
     ;
 
 array
-    : LeftBracket (field (Comma field)*)? RightBracket
+    : LeftBracket (spread_field (Comma spread_field)*)? RightBracket
+    ;
+
+spread_field
+    : Spread? field
     ;
 
 object
@@ -116,6 +121,7 @@ object
 object_field
     : name ':' field
     | ESCAPED_STRING ':' field
+    | Spread? field
     ;
 
 name

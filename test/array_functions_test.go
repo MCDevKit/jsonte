@@ -187,3 +187,63 @@ func TestRandomElement(t *testing.T) {
 	eval := evaluate(t, `(1..5).random()`)
 	assertNumber(t, eval, 5)
 }
+
+func TestAppendElement(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].append(4)`)
+	assertArray(t, eval, types.Box([]interface{}{1, 2, 3, 4}).(*types.JsonArray))
+}
+
+func TestAppendElements(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].append(4, 5)`)
+	assertArray(t, eval, types.Box([]interface{}{1, 2, 3, 4, 5}).(*types.JsonArray))
+}
+
+func TestAppendArray(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].append([4, 5])`)
+	assertArray(t, eval, types.Box([]interface{}{1, 2, 3, []interface{}{4, 5}}).(*types.JsonArray))
+}
+
+func TestAppendSpreadArray(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].append([4, 5]...)`)
+	assertArray(t, eval, types.Box([]interface{}{1, 2, 3, 4, 5}).(*types.JsonArray))
+}
+
+func TestPrependElement(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].prepend(4)`)
+	assertArray(t, eval, types.Box([]interface{}{4, 1, 2, 3}).(*types.JsonArray))
+}
+
+func TestPrependElements(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].prepend(4, 5)`)
+	assertArray(t, eval, types.Box([]interface{}{4, 5, 1, 2, 3}).(*types.JsonArray))
+}
+
+func TestPrependArray(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].prepend([4, 5])`)
+	assertArray(t, eval, types.Box([]interface{}{[]interface{}{4, 5}, 1, 2, 3}).(*types.JsonArray))
+}
+
+func TestPrependSpreadArray(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].prepend([4, 5]...)`)
+	assertArray(t, eval, types.Box([]interface{}{4, 5, 1, 2, 3}).(*types.JsonArray))
+}
+
+func TestRemoveElement(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].remove(1)`)
+	assertArray(t, eval, types.Box([]interface{}{1, 3}).(*types.JsonArray))
+}
+
+func TestRemoveFront(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].removeFront()`)
+	assertArray(t, eval, types.Box([]interface{}{2, 3}).(*types.JsonArray))
+}
+
+func TestRemoveBack(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].removeBack()`)
+	assertArray(t, eval, types.Box([]interface{}{1, 2}).(*types.JsonArray))
+}
+
+func TestRemoveElementWithPredicate(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3].remove(x => x == 1)`)
+	assertArray(t, eval, types.Box([]interface{}{2, 3}).(*types.JsonArray))
+}

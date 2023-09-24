@@ -387,13 +387,21 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if err != nil {
 			return types.Null, err
 		}
-		params := make([]types.JsonType, len(context.AllFunction_param()))
-		for i, param := range context.AllFunction_param() {
+		params := make([]types.JsonType, 0)
+		for _, param := range context.AllFunction_param() {
 			p, err := v.Visit(param)
 			if err != nil {
 				return types.Null, err
 			}
-			params[i] = p
+			if param.(*parser.Function_paramContext).Spread() != nil {
+				if a, ok := p.(*types.JsonArray); ok {
+					params = append(params, a.Value...)
+				} else {
+					return types.Null, burrito.WrappedErrorf("Cannot spread %s", p.StringValue())
+				}
+			} else {
+				params = append(params, p)
+			}
 		}
 		if _, ok := lambda.(*types.JsonString); ok {
 			lambdaContext := v.resolveLambdaTree(lambda.StringValue())
@@ -550,13 +558,21 @@ func (v *ExpressionVisitor) VisitIndex(context *parser.IndexContext) (types.Json
 }
 
 func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) (types.JsonType, error) {
-	result := make([]types.JsonType, len(context.AllField()))
-	for i, f := range context.AllField() {
-		r, err := v.Visit(f)
+	result := make([]types.JsonType, 0)
+	for _, f := range context.AllSpread_field() {
+		sf := f.(*parser.Spread_fieldContext)
+		r, err := v.Visit(sf.Field())
 		if err != nil {
 			return types.Null, err
 		}
-		result[i] = r
+		if sf.Spread() != nil {
+			if _, ok := r.(*types.JsonArray); !ok {
+				return types.Null, burrito.WrappedErrorf("Cannot spread %s into an array", r.StringValue())
+			}
+			result = append(result, r.(*types.JsonArray).Value...)
+		} else {
+			result = append(result, r)
+		}
 	}
 	return &types.JsonArray{Value: result}, nil
 }
@@ -580,6 +596,8 @@ func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContex
 	name := ""
 	if context.ESCAPED_STRING() != nil {
 		name = unescapeString(types.ToString(context.ESCAPED_STRING().GetText()))
+	} else if context.Spread() != nil {
+		return v.Visit(context.Field())
 	} else {
 		name = context.Name().GetText()
 	}

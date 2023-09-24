@@ -391,6 +391,7 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, error) {
 					if err != nil {
 						return burrito.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
 					}
+					err = jsonte.VerifyReservedNames(json, path + "#/")
 					result = types.MergeObject(result, json, false, "#")
 				} else if strings.HasSuffix(path, ".assert") {
 					file, err := os.ReadFile(path)
@@ -485,7 +486,7 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 func repl(scope *types.JsonObject) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("> ")
-	for true {
+	for {
 		read, _ := reader.ReadString('\n')
 		text := strings.TrimRight(read, "\n\r")
 		if text == "exit" {

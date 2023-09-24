@@ -32,6 +32,9 @@ type JsonTemplateListener interface {
 	// EnterArray is called when entering the array production.
 	EnterArray(c *ArrayContext)
 
+	// EnterSpread_field is called when entering the spread_field production.
+	EnterSpread_field(c *Spread_fieldContext)
+
 	// EnterObject is called when entering the object production.
 	EnterObject(c *ObjectContext)
 
@@ -67,6 +70,9 @@ type JsonTemplateListener interface {
 
 	// ExitArray is called when exiting the array production.
 	ExitArray(c *ArrayContext)
+
+	// ExitSpread_field is called when exiting the spread_field production.
+	ExitSpread_field(c *Spread_fieldContext)
 
 	// ExitObject is called when exiting the object production.
 	ExitObject(c *ObjectContext)

@@ -852,7 +852,8 @@ the result will be
 				},
 				{
 					Name:    "element",
-					Summary: "The element to add",
+					Summary: "The elements to add",
+					VarArgs: true,
 				},
 			},
 			Example: `
@@ -880,7 +881,8 @@ the result will be
 				},
 				{
 					Name:    "element",
-					Summary: "The element to add",
+					Summary: "The elements to add",
+					VarArgs: true,
 				},
 			},
 			Example: `
@@ -896,7 +898,7 @@ the result will be
 	})
 	RegisterFunction(JsonFunction{
 		Group:      group,
-		Name:       "prepend",
+		Name:       "remove",
 		Body:       arrayRemove,
 		IsInstance: true,
 		Docs: Docs{
@@ -908,7 +910,7 @@ the result will be
 				},
 				{
 					Name:    "index",
-					Summary: "The index to remove",
+					Summary: "The index to remove or a predicate to find the elements to remove",
 				},
 			},
 			Example: `
@@ -924,7 +926,13 @@ the result will be
 	})
 	RegisterFunction(JsonFunction{
 		Group:      group,
-		Name:       "prepend",
+		Name:       "remove",
+		Body:       arrayRemovePredicate,
+		IsInstance: true,
+	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "removeFront",
 		Body:       arrayRemoveFront,
 		IsInstance: true,
 		Docs: Docs{
@@ -948,7 +956,7 @@ the result will be
 	})
 	RegisterFunction(JsonFunction{
 		Group:      group,
-		Name:       "prepend",
+		Name:       "removeBack",
 		Body:       arrayRemoveBack,
 		IsInstance: true,
 		Docs: Docs{
@@ -972,16 +980,20 @@ the result will be
 	})
 }
 
-func arrayAppend(arr *types.JsonArray, value types.JsonType) *types.JsonArray {
-	return arr.Append(value)
+func arrayAppend(arr *types.JsonArray, values ...types.JsonType) *types.JsonArray {
+	return arr.Append(values...)
 }
 
-func arrayPrepend(arr *types.JsonArray, value types.JsonType) *types.JsonArray {
-	return arr.Prepend(value)
+func arrayPrepend(arr *types.JsonArray, value ...types.JsonType) *types.JsonArray {
+	return arr.Prepend(value...)
 }
 
 func arrayRemove(arr *types.JsonArray, index *types.JsonNumber) (types.JsonType, error) {
 	return arr.Remove(index)
+}
+
+func arrayRemovePredicate(arr *types.JsonArray, predicate *types.JsonLambda) (types.JsonType, error) {
+	return arr.RemoveIf(predicate)
 }
 
 func arrayRemoveFront(arr *types.JsonArray) (types.JsonType, error) {

@@ -6,6 +6,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -129,4 +130,80 @@ func UnescapeStringToBuffer(text []rune, sb *strings.Builder, i *int, end rune) 
 		}
 	}
 	return false, debugBuilder.String()
+}
+
+var reservedNames = []string{
+	"null",
+	"true",
+	"false",
+	"undefined",
+	"NaN",
+	"if",
+	"else",
+	"for",
+	"while",
+	"do",
+}
+
+const variableNamePattern = "^[a-zA-Z_$][a-zA-Z0-9_$]*$"
+
+func VerifyReservedNames(o *types.JsonObject, path string) error {
+	for _, key := range o.Value.Keys() {
+		err := verifyReservedName(key, path+"."+key)
+		if err != nil {
+			return err
+		}
+		if v, ok := o.Value.Get(key).(*types.JsonObject); ok {
+			err := VerifyReservedNames(v, path+"."+key)
+			if err != nil {
+				return err
+			}
+		} else if v, ok := o.Value.Get(key).(*types.JsonArray); ok {
+			err := verifyReservedNamesArray(v, path+"."+key)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func verifyReservedNamesArray(o *types.JsonArray, path string) error {
+	for i, v := range o.Value {
+		p := path + "[" + strconv.Itoa(i) + "]"
+		if v, ok := v.(*types.JsonObject); ok {
+			err := VerifyReservedNames(v, p)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		if a, ok := v.(*types.JsonArray); ok {
+			err := verifyReservedNamesArray(a, p)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func verifyReservedName(key string, path string) error {
+	for _, name := range reservedNames {
+		if key == name {
+			// For now only warn about reserved names
+			utils.Logger.Warnf("The key %s at %s is a reserved name. In the future versions, this will fail the compilation.", key, path)
+			//return utils.WrappedJsonErrorf(path, "The key %s is a reserved name", key)
+		}
+	}
+	matched, err := regexp.Match(variableNamePattern, []byte(key))
+	if err != nil {
+		return burrito.WrappedErrorf("Failed to match the variable name %s: %s", key, err)
+	}
+	if !matched {
+		// For now only warn about reserved names
+		utils.Logger.Warnf("The key %s at %s is not a valid variable name. Valid names should match ^[a-zA-Z_$][a-zA-Z0-9_$]*$ regex pattern. In the future versions, this will fail the compilation.", key, path)
+		//return utils.WrappedJsonErrorf(path, "The key %s is not a valid variable name. Valid names should match ^[a-zA-Z_$][a-zA-Z0-9_$]*$ regex pattern.", key)
+	}
+	return nil
 }

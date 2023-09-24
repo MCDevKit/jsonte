@@ -32,6 +32,9 @@ type JsonTemplateVisitor interface {
 	// Visit a parse tree produced by JsonTemplateParser#array.
 	VisitArray(ctx *ArrayContext) interface{}
 
+	// Visit a parse tree produced by JsonTemplateParser#spread_field.
+	VisitSpread_field(ctx *Spread_fieldContext) interface{}
+
 	// Visit a parse tree produced by JsonTemplateParser#object.
 	VisitObject(ctx *ObjectContext) interface{}
 
