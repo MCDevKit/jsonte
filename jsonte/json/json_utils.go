@@ -6,13 +6,12 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/saintfish/chardet"
 	"golang.org/x/net/html/charset"
-	"io/ioutil"
+	"io"
 	"unicode/utf8"
 )
 
 // CacheDir is a directory used for cache
 var CacheDir string
-
 
 func ConvertToUTF8(str []byte) ([]byte, error) {
 	if !utf8.Valid(str) {
@@ -26,7 +25,7 @@ func ConvertToUTF8(str []byte) ([]byte, error) {
 		if err != nil {
 			return nil, burrito.WrapErrorf(err, "Failed to convert the file to UTF-8")
 		}
-		str, err = ioutil.ReadAll(reader)
+		str, err = io.ReadAll(reader)
 		if err != nil {
 			return nil, burrito.WrapErrorf(err, "Failed to convert the file to UTF-8")
 		}

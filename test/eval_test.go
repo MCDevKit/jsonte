@@ -688,3 +688,63 @@ func TestLambdaInfo(t *testing.T) {
 		})
 	}
 }
+
+func TestEqualsObjects(t *testing.T) {
+	eval := evaluate(t, `{"a": 1} == {"a": 1}`)
+	assertBool(t, eval, true)
+}
+
+func TestEqualsObjects2(t *testing.T) {
+	eval := evaluate(t, `{"a": 1} == {"a": 2}`)
+	assertBool(t, eval, false)
+}
+
+func TestEqualsObjects3(t *testing.T) {
+	eval := evaluate(t, `{"a": 1} == {"b": 1}`)
+	assertBool(t, eval, false)
+}
+
+func TestEqualsNestedObjects(t *testing.T) {
+	eval := evaluate(t, `{"a": {"b": 1}} == {"a": {"b": 1}}`)
+	assertBool(t, eval, true)
+}
+
+func TestEqualsNestedObjects2(t *testing.T) {
+	eval := evaluate(t, `{"a": {"b": 1}} == {"a": {"b": 2}}`)
+	assertBool(t, eval, false)
+}
+
+func TestEqualsArrays(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3] == [1, 2, 3]`)
+	assertBool(t, eval, true)
+}
+
+func TestEqualsArrays2(t *testing.T) {
+	eval := evaluate(t, `[1, 2, 3] == [1, 2, 4]`)
+	assertBool(t, eval, false)
+}
+
+func TestEqualsNestedArrays(t *testing.T) {
+	eval := evaluate(t, `[[1, 2], [3, 4]] == [[1, 2], [3, 4]]`)
+	assertBool(t, eval, true)
+}
+
+func TestEqualsNestedArrays2(t *testing.T) {
+	eval := evaluate(t, `[[1, 2], [3, 4]] == [[1, 2], [3, 5]]`)
+	assertBool(t, eval, false)
+}
+
+func TestEqualsMixed(t *testing.T) {
+	eval := evaluate(t, `[1, 2, {"a": 1}] == [1, 2, {"a": 1}]`)
+	assertBool(t, eval, true)
+}
+
+func TestEqualsStrings(t *testing.T) {
+	eval := evaluate(t, `"hello" == "hello"`)
+	assertBool(t, eval, true)
+}
+
+func TestEqualsStrings2(t *testing.T) {
+	eval := evaluate(t, `"hello" == "world"`)
+	assertBool(t, eval, false)
+}

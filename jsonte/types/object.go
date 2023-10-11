@@ -137,7 +137,7 @@ func (t *JsonObject) Equals(value JsonType) bool {
 		return false
 	}
 	if b, ok := value.(*JsonObject); ok {
-		return IsEqualObject(t.Unbox().(utils.NavigableMap[string, JsonType]), b.Unbox().(utils.NavigableMap[string, JsonType]))
+		return IsEqualObject(*AsObject(t.Unbox()).Value, *AsObject(b.Unbox()).Value)
 	}
 	return false
 }
