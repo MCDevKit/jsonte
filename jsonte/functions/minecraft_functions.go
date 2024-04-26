@@ -508,7 +508,7 @@ func listLatestFiles(p string, m utils.NavigableMap[string, string], version *ty
 	result := map[string]string{}
 	keys := m.Keys()
 	for i := len(keys) - 1; i >= 0; i-- {
-		if !version.IsEmpty() {
+		if version != nil && !version.IsEmpty() {
 			ver, err := types.ParseSemverString(keys[i])
 			if err != nil {
 				continue

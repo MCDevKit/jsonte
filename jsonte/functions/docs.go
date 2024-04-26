@@ -3,7 +3,6 @@ package functions
 import (
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -46,7 +45,7 @@ func GenerateDocs() error {
 		if err != nil {
 			return burrito.WrapErrorf(err, "Failed to create %s directory", group.Name)
 		}
-		err = ioutil.WriteFile(fmt.Sprintf("%s-functions/index.md", group.Name), []byte(fmt.Sprintf(`---
+		err = os.WriteFile(fmt.Sprintf("%s-functions/index.md", group.Name), []byte(fmt.Sprintf(`---
 layout: page
 title: %[1]s
 parent: JSON Templating Engine
@@ -69,7 +68,7 @@ has_children: true
 				if fn.IsUnsafe {
 					summary += "\n\n**This method is marked as unsafe. It can be disabled in certain environments.**"
 				}
-				err = ioutil.WriteFile(fmt.Sprintf("%s-functions/%s.md", group.Name, fn.Name), []byte(fmt.Sprintf(`---
+				err = os.WriteFile(fmt.Sprintf("%s-functions/%s.md", group.Name, fn.Name), []byte(fmt.Sprintf(`---
 layout: page
 grand_parent: JSON Templating Engine
 parent: %[2]s

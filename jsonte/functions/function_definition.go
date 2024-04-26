@@ -33,6 +33,8 @@ var initialized = false
 var cacheAll = false
 var cacheAllBucket = "all-cache"
 
+var SafeMode = false
+
 func Init() {
 	if !initialized {
 		RegisterMathFunctions()
@@ -207,6 +209,9 @@ func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType, re
 		return nil, burrito.WrapErrorf(nil, "Ambiguous function call for \"%s\". Matched: %s", name, strings.Join(matched, ", "))
 	} else {
 		fn := matching[0]
+		if SafeMode && fn.IsUnsafe {
+			return nil, burrito.WrappedErrorf("Function \"%s\" is marked as unsafe and is disabled in safe mode", name)
+		}
 		key := ""
 		if cacheAll {
 			keyObject := types.AsObject(utils.ToNavigableMap(
