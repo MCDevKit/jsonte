@@ -33,6 +33,9 @@ Spread: '...';
 As: 'as';
 Comma: ',';
 Arrow: '=>';
+Colon: ':';
+Semicolon: ';';
+Dot: '.';
 
 LeftBrace: '{';
 RightBrace: '}';
@@ -41,17 +44,30 @@ Null: 'null';
 False: 'false';
 True: 'true';
 
+Return: 'return';
+For: 'for';
+In: 'in';
+If: 'if';
+Else: 'else';
+While: 'while';
+Do: 'do';
+Break: 'break';
+Continue: 'continue';
+
 script
     : statement*
     ;
 
 statement
-    : field ';'
-    | 'return' field ';'
-    | 'for' (name (Comma name)*)? 'in' field statements
-    | 'if' field statements ('else' 'if' field statements)* ('else' statements)?
-    | 'while' field statements
-    | 'do' statements 'while' field ';'
+    : statements
+    | field Semicolon
+    | Return field? Semicolon
+    | Break Semicolon
+    | Continue Semicolon
+    | For (name (Comma name)?) In field statements
+    | If field statements (Else If field statements)* (Else statements)?
+    | While field statements
+    | Do statements While field Semicolon
     ;
 
 statements
@@ -85,7 +101,7 @@ field
     | array
     | object
     | name
-    | field (Question? '.' name)
+    | field (Question? Dot name)
     | field (Question? LeftBracket index RightBracket)
     | field LeftParen (function_param (Comma function_param)*)? RightParen
     | Subtract field
@@ -102,7 +118,7 @@ field
     | field NotEqual field
     | field And field
     | field Or field
-    | field Question field (':' field)?
+    | field Question field (Colon field)?
     | field Literal field
     ;
 
@@ -115,12 +131,12 @@ spread_field
     ;
 
 object
-    : '{' (object_field (Comma object_field)*)? '}'
+    : LeftBrace (object_field (Comma object_field)*)? RightBrace
     ;
 
 object_field
-    : name ':' field
-    | ESCAPED_STRING ':' field
+    : name Colon field
+    | ESCAPED_STRING Colon field
     | Spread? field
     ;
 

@@ -109,6 +109,18 @@ func Init() {
 				return nil
 			},
 		},
+		{
+			Type:   reflect.TypeOf(JsonSignal{}),
+			Name:   "signal",
+			IsType: IsSignal,
+			AsType: func(i interface{}) JsonType {
+				if b, ok := i.(*JsonSignal); ok {
+					return b
+				}
+				utils.BadDeveloperError("Not a signal")
+				return nil
+			},
+		},
 	}
 }
 

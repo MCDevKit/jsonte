@@ -33,19 +33,20 @@ var jsontemplateParserStaticData struct {
 func jsontemplateParserInit() {
 	staticData := &jsontemplateParserStaticData
 	staticData.literalNames = []string{
-		"", "';'", "'return'", "'for'", "'in'", "'if'", "'else'", "'while'",
-		"'do'", "'.'", "':'", "'<'", "'<='", "'=='", "'>'", "'>='", "'!='",
-		"'&&'", "'||'", "'!'", "'+'", "'-'", "'*'", "'/'", "'('", "')'", "'['",
-		"']'", "'#'", "'?'", "'='", "'??'", "'..'", "'...'", "'as'", "','",
-		"'=>'", "'{'", "'}'", "'null'", "'false'", "'true'",
+		"", "'<'", "'<='", "'=='", "'>'", "'>='", "'!='", "'&&'", "'||'", "'!'",
+		"'+'", "'-'", "'*'", "'/'", "'('", "')'", "'['", "']'", "'#'", "'?'",
+		"'='", "'??'", "'..'", "'...'", "'as'", "','", "'=>'", "':'", "';'",
+		"'.'", "'{'", "'}'", "'null'", "'false'", "'true'", "'return'", "'for'",
+		"'in'", "'if'", "'else'", "'while'", "'do'", "'break'", "'continue'",
 	}
 	staticData.symbolicNames = []string{
-		"", "", "", "", "", "", "", "", "", "", "", "Less", "LessOrEqual", "Equal",
-		"Greater", "GreaterOrEqual", "NotEqual", "And", "Or", "Not", "Add",
-		"Subtract", "Multiply", "Divide", "LeftParen", "RightParen", "LeftBracket",
-		"RightBracket", "Iteration", "Question", "Literal", "NullCoalescing",
-		"Range", "Spread", "As", "Comma", "Arrow", "LeftBrace", "RightBrace",
-		"Null", "False", "True", "ESCAPED_STRING", "STRING", "NUMBER", "WS",
+		"", "Less", "LessOrEqual", "Equal", "Greater", "GreaterOrEqual", "NotEqual",
+		"And", "Or", "Not", "Add", "Subtract", "Multiply", "Divide", "LeftParen",
+		"RightParen", "LeftBracket", "RightBracket", "Iteration", "Question",
+		"Literal", "NullCoalescing", "Range", "Spread", "As", "Comma", "Arrow",
+		"Colon", "Semicolon", "Dot", "LeftBrace", "RightBrace", "Null", "False",
+		"True", "Return", "For", "In", "If", "Else", "While", "Do", "Break",
+		"Continue", "ESCAPED_STRING", "STRING", "NUMBER", "WS",
 	}
 	staticData.ruleNames = []string{
 		"script", "statement", "statements", "expression", "lambda", "function_param",
@@ -54,158 +55,160 @@ func jsontemplateParserInit() {
 	}
 	staticData.predictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
-		4, 1, 45, 328, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
+		4, 1, 47, 329, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
 		4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9, 2, 10, 7,
 		10, 2, 11, 7, 11, 2, 12, 7, 12, 1, 0, 5, 0, 28, 8, 0, 10, 0, 12, 0, 31,
-		9, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-		5, 1, 44, 8, 1, 10, 1, 12, 1, 47, 9, 1, 3, 1, 49, 8, 1, 1, 1, 1, 1, 1,
-		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1, 63, 8, 1,
-		10, 1, 12, 1, 66, 9, 1, 1, 1, 1, 1, 3, 1, 70, 8, 1, 1, 1, 1, 1, 1, 1, 1,
-		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 82, 8, 1, 1, 2, 1, 2, 5, 2,
-		86, 8, 2, 10, 2, 12, 2, 89, 9, 2, 1, 2, 1, 2, 1, 3, 1, 3, 3, 3, 95, 8,
-		3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 103, 8, 3, 3, 3, 105, 8, 3,
-		1, 3, 1, 3, 3, 3, 109, 8, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 115, 8, 3, 1,
-		3, 1, 3, 1, 3, 1, 3, 3, 3, 121, 8, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 127,
-		8, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 133, 8, 3, 1, 3, 1, 3, 1, 3, 1, 3,
-		3, 3, 139, 8, 3, 1, 3, 1, 3, 1, 3, 3, 3, 144, 8, 3, 1, 3, 1, 3, 3, 3, 148,
-		8, 3, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 5, 4, 158, 8, 4,
-		10, 4, 12, 4, 161, 9, 4, 5, 4, 163, 8, 4, 10, 4, 12, 4, 166, 9, 4, 1, 4,
-		1, 4, 1, 4, 3, 4, 171, 8, 4, 1, 5, 3, 5, 174, 8, 5, 1, 5, 1, 5, 3, 5, 178,
+		9, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 39, 8, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 50, 8, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1, 64, 8, 1, 10,
+		1, 12, 1, 67, 9, 1, 1, 1, 1, 1, 3, 1, 71, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 83, 8, 1, 1, 2, 1, 2, 5, 2, 87,
+		8, 2, 10, 2, 12, 2, 90, 9, 2, 1, 2, 1, 2, 1, 3, 1, 3, 3, 3, 96, 8, 3, 1,
+		3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 104, 8, 3, 3, 3, 106, 8, 3, 1, 3,
+		1, 3, 3, 3, 110, 8, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 116, 8, 3, 1, 3, 1,
+		3, 1, 3, 1, 3, 3, 3, 122, 8, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 128, 8, 3,
+		1, 3, 1, 3, 1, 3, 1, 3, 3, 3, 134, 8, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 3,
+		140, 8, 3, 1, 3, 1, 3, 1, 3, 3, 3, 145, 8, 3, 1, 3, 1, 3, 3, 3, 149, 8,
+		3, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 5, 4, 159, 8, 4, 10,
+		4, 12, 4, 162, 9, 4, 5, 4, 164, 8, 4, 10, 4, 12, 4, 167, 9, 4, 1, 4, 1,
+		4, 1, 4, 3, 4, 172, 8, 4, 1, 5, 3, 5, 175, 8, 5, 1, 5, 1, 5, 3, 5, 179,
 		8, 5, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6,
-		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 3, 6, 197, 8, 6, 1, 6, 1, 6, 1, 6,
+		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 3, 6, 198, 8, 6, 1, 6, 1, 6, 1, 6,
 		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6,
 		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6,
 		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6,
-		1, 6, 1, 6, 3, 6, 240, 8, 6, 1, 6, 1, 6, 1, 6, 1, 6, 3, 6, 246, 8, 6, 1,
-		6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 5, 6, 257, 8, 6, 10,
-		6, 12, 6, 260, 9, 6, 3, 6, 262, 8, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1,
-		6, 3, 6, 270, 8, 6, 5, 6, 272, 8, 6, 10, 6, 12, 6, 275, 9, 6, 1, 7, 1,
-		7, 1, 7, 1, 7, 5, 7, 281, 8, 7, 10, 7, 12, 7, 284, 9, 7, 3, 7, 286, 8,
-		7, 1, 7, 1, 7, 1, 8, 3, 8, 291, 8, 8, 1, 8, 1, 8, 1, 9, 1, 9, 1, 9, 1,
-		9, 5, 9, 299, 8, 9, 10, 9, 12, 9, 302, 9, 9, 3, 9, 304, 8, 9, 1, 9, 1,
-		9, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 3, 10, 316,
-		8, 10, 1, 10, 3, 10, 319, 8, 10, 1, 11, 1, 11, 1, 12, 1, 12, 1, 12, 3,
-		12, 326, 8, 12, 1, 12, 0, 1, 12, 13, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18,
-		20, 22, 24, 0, 2, 1, 0, 22, 23, 1, 0, 20, 21, 385, 0, 29, 1, 0, 0, 0, 2,
-		81, 1, 0, 0, 0, 4, 83, 1, 0, 0, 0, 6, 147, 1, 0, 0, 0, 8, 170, 1, 0, 0,
-		0, 10, 177, 1, 0, 0, 0, 12, 196, 1, 0, 0, 0, 14, 276, 1, 0, 0, 0, 16, 290,
-		1, 0, 0, 0, 18, 294, 1, 0, 0, 0, 20, 318, 1, 0, 0, 0, 22, 320, 1, 0, 0,
-		0, 24, 325, 1, 0, 0, 0, 26, 28, 3, 2, 1, 0, 27, 26, 1, 0, 0, 0, 28, 31,
+		1, 6, 1, 6, 3, 6, 241, 8, 6, 1, 6, 1, 6, 1, 6, 1, 6, 3, 6, 247, 8, 6, 1,
+		6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 5, 6, 258, 8, 6, 10,
+		6, 12, 6, 261, 9, 6, 3, 6, 263, 8, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1,
+		6, 3, 6, 271, 8, 6, 5, 6, 273, 8, 6, 10, 6, 12, 6, 276, 9, 6, 1, 7, 1,
+		7, 1, 7, 1, 7, 5, 7, 282, 8, 7, 10, 7, 12, 7, 285, 9, 7, 3, 7, 287, 8,
+		7, 1, 7, 1, 7, 1, 8, 3, 8, 292, 8, 8, 1, 8, 1, 8, 1, 9, 1, 9, 1, 9, 1,
+		9, 5, 9, 300, 8, 9, 10, 9, 12, 9, 303, 9, 9, 3, 9, 305, 8, 9, 1, 9, 1,
+		9, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 3, 10, 317,
+		8, 10, 1, 10, 3, 10, 320, 8, 10, 1, 11, 1, 11, 1, 12, 1, 12, 1, 12, 3,
+		12, 327, 8, 12, 1, 12, 0, 1, 12, 13, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18,
+		20, 22, 24, 0, 2, 1, 0, 12, 13, 1, 0, 10, 11, 389, 0, 29, 1, 0, 0, 0, 2,
+		82, 1, 0, 0, 0, 4, 84, 1, 0, 0, 0, 6, 148, 1, 0, 0, 0, 8, 171, 1, 0, 0,
+		0, 10, 178, 1, 0, 0, 0, 12, 197, 1, 0, 0, 0, 14, 277, 1, 0, 0, 0, 16, 291,
+		1, 0, 0, 0, 18, 295, 1, 0, 0, 0, 20, 319, 1, 0, 0, 0, 22, 321, 1, 0, 0,
+		0, 24, 326, 1, 0, 0, 0, 26, 28, 3, 2, 1, 0, 27, 26, 1, 0, 0, 0, 28, 31,
 		1, 0, 0, 0, 29, 27, 1, 0, 0, 0, 29, 30, 1, 0, 0, 0, 30, 1, 1, 0, 0, 0,
-		31, 29, 1, 0, 0, 0, 32, 33, 3, 12, 6, 0, 33, 34, 5, 1, 0, 0, 34, 82, 1,
-		0, 0, 0, 35, 36, 5, 2, 0, 0, 36, 37, 3, 12, 6, 0, 37, 38, 5, 1, 0, 0, 38,
-		82, 1, 0, 0, 0, 39, 48, 5, 3, 0, 0, 40, 45, 3, 22, 11, 0, 41, 42, 5, 35,
-		0, 0, 42, 44, 3, 22, 11, 0, 43, 41, 1, 0, 0, 0, 44, 47, 1, 0, 0, 0, 45,
-		43, 1, 0, 0, 0, 45, 46, 1, 0, 0, 0, 46, 49, 1, 0, 0, 0, 47, 45, 1, 0, 0,
-		0, 48, 40, 1, 0, 0, 0, 48, 49, 1, 0, 0, 0, 49, 50, 1, 0, 0, 0, 50, 51,
-		5, 4, 0, 0, 51, 52, 3, 12, 6, 0, 52, 53, 3, 4, 2, 0, 53, 82, 1, 0, 0, 0,
-		54, 55, 5, 5, 0, 0, 55, 56, 3, 12, 6, 0, 56, 64, 3, 4, 2, 0, 57, 58, 5,
-		6, 0, 0, 58, 59, 5, 5, 0, 0, 59, 60, 3, 12, 6, 0, 60, 61, 3, 4, 2, 0, 61,
-		63, 1, 0, 0, 0, 62, 57, 1, 0, 0, 0, 63, 66, 1, 0, 0, 0, 64, 62, 1, 0, 0,
-		0, 64, 65, 1, 0, 0, 0, 65, 69, 1, 0, 0, 0, 66, 64, 1, 0, 0, 0, 67, 68,
-		5, 6, 0, 0, 68, 70, 3, 4, 2, 0, 69, 67, 1, 0, 0, 0, 69, 70, 1, 0, 0, 0,
-		70, 82, 1, 0, 0, 0, 71, 72, 5, 7, 0, 0, 72, 73, 3, 12, 6, 0, 73, 74, 3,
-		4, 2, 0, 74, 82, 1, 0, 0, 0, 75, 76, 5, 8, 0, 0, 76, 77, 3, 4, 2, 0, 77,
-		78, 5, 7, 0, 0, 78, 79, 3, 12, 6, 0, 79, 80, 5, 1, 0, 0, 80, 82, 1, 0,
-		0, 0, 81, 32, 1, 0, 0, 0, 81, 35, 1, 0, 0, 0, 81, 39, 1, 0, 0, 0, 81, 54,
-		1, 0, 0, 0, 81, 71, 1, 0, 0, 0, 81, 75, 1, 0, 0, 0, 82, 3, 1, 0, 0, 0,
-		83, 87, 5, 37, 0, 0, 84, 86, 3, 2, 1, 0, 85, 84, 1, 0, 0, 0, 86, 89, 1,
-		0, 0, 0, 87, 85, 1, 0, 0, 0, 87, 88, 1, 0, 0, 0, 88, 90, 1, 0, 0, 0, 89,
-		87, 1, 0, 0, 0, 90, 91, 5, 38, 0, 0, 91, 5, 1, 0, 0, 0, 92, 93, 5, 37,
-		0, 0, 93, 95, 5, 37, 0, 0, 94, 92, 1, 0, 0, 0, 94, 95, 1, 0, 0, 0, 95,
-		96, 1, 0, 0, 0, 96, 97, 5, 28, 0, 0, 97, 104, 3, 12, 6, 0, 98, 99, 5, 34,
-		0, 0, 99, 102, 3, 22, 11, 0, 100, 101, 5, 35, 0, 0, 101, 103, 3, 22, 11,
-		0, 102, 100, 1, 0, 0, 0, 102, 103, 1, 0, 0, 0, 103, 105, 1, 0, 0, 0, 104,
-		98, 1, 0, 0, 0, 104, 105, 1, 0, 0, 0, 105, 108, 1, 0, 0, 0, 106, 107, 5,
-		38, 0, 0, 107, 109, 5, 38, 0, 0, 108, 106, 1, 0, 0, 0, 108, 109, 1, 0,
-		0, 0, 109, 110, 1, 0, 0, 0, 110, 111, 5, 0, 0, 1, 111, 148, 1, 0, 0, 0,
-		112, 113, 5, 37, 0, 0, 113, 115, 5, 37, 0, 0, 114, 112, 1, 0, 0, 0, 114,
-		115, 1, 0, 0, 0, 115, 116, 1, 0, 0, 0, 116, 117, 5, 29, 0, 0, 117, 120,
-		3, 12, 6, 0, 118, 119, 5, 38, 0, 0, 119, 121, 5, 38, 0, 0, 120, 118, 1,
-		0, 0, 0, 120, 121, 1, 0, 0, 0, 121, 122, 1, 0, 0, 0, 122, 123, 5, 0, 0,
-		1, 123, 148, 1, 0, 0, 0, 124, 125, 5, 37, 0, 0, 125, 127, 5, 37, 0, 0,
-		126, 124, 1, 0, 0, 0, 126, 127, 1, 0, 0, 0, 127, 128, 1, 0, 0, 0, 128,
-		129, 5, 30, 0, 0, 129, 132, 3, 12, 6, 0, 130, 131, 5, 38, 0, 0, 131, 133,
-		5, 38, 0, 0, 132, 130, 1, 0, 0, 0, 132, 133, 1, 0, 0, 0, 133, 134, 1, 0,
-		0, 0, 134, 135, 5, 0, 0, 1, 135, 148, 1, 0, 0, 0, 136, 137, 5, 37, 0, 0,
-		137, 139, 5, 37, 0, 0, 138, 136, 1, 0, 0, 0, 138, 139, 1, 0, 0, 0, 139,
-		140, 1, 0, 0, 0, 140, 143, 3, 12, 6, 0, 141, 142, 5, 38, 0, 0, 142, 144,
-		5, 38, 0, 0, 143, 141, 1, 0, 0, 0, 143, 144, 1, 0, 0, 0, 144, 145, 1, 0,
-		0, 0, 145, 146, 5, 0, 0, 1, 146, 148, 1, 0, 0, 0, 147, 94, 1, 0, 0, 0,
-		147, 114, 1, 0, 0, 0, 147, 126, 1, 0, 0, 0, 147, 138, 1, 0, 0, 0, 148,
-		7, 1, 0, 0, 0, 149, 150, 3, 22, 11, 0, 150, 151, 5, 36, 0, 0, 151, 152,
-		3, 12, 6, 0, 152, 171, 1, 0, 0, 0, 153, 164, 5, 24, 0, 0, 154, 159, 3,
-		22, 11, 0, 155, 156, 5, 35, 0, 0, 156, 158, 3, 22, 11, 0, 157, 155, 1,
-		0, 0, 0, 158, 161, 1, 0, 0, 0, 159, 157, 1, 0, 0, 0, 159, 160, 1, 0, 0,
-		0, 160, 163, 1, 0, 0, 0, 161, 159, 1, 0, 0, 0, 162, 154, 1, 0, 0, 0, 163,
-		166, 1, 0, 0, 0, 164, 162, 1, 0, 0, 0, 164, 165, 1, 0, 0, 0, 165, 167,
-		1, 0, 0, 0, 166, 164, 1, 0, 0, 0, 167, 168, 5, 25, 0, 0, 168, 169, 5, 36,
-		0, 0, 169, 171, 3, 12, 6, 0, 170, 149, 1, 0, 0, 0, 170, 153, 1, 0, 0, 0,
-		171, 9, 1, 0, 0, 0, 172, 174, 5, 33, 0, 0, 173, 172, 1, 0, 0, 0, 173, 174,
-		1, 0, 0, 0, 174, 175, 1, 0, 0, 0, 175, 178, 3, 12, 6, 0, 176, 178, 3, 8,
-		4, 0, 177, 173, 1, 0, 0, 0, 177, 176, 1, 0, 0, 0, 178, 11, 1, 0, 0, 0,
-		179, 180, 6, 6, -1, 0, 180, 181, 5, 24, 0, 0, 181, 182, 3, 12, 6, 0, 182,
-		183, 5, 25, 0, 0, 183, 197, 1, 0, 0, 0, 184, 197, 5, 41, 0, 0, 185, 197,
-		5, 40, 0, 0, 186, 197, 5, 39, 0, 0, 187, 197, 5, 44, 0, 0, 188, 197, 5,
-		42, 0, 0, 189, 197, 3, 14, 7, 0, 190, 197, 3, 18, 9, 0, 191, 197, 3, 22,
-		11, 0, 192, 193, 5, 21, 0, 0, 193, 197, 3, 12, 6, 16, 194, 195, 5, 19,
-		0, 0, 195, 197, 3, 12, 6, 15, 196, 179, 1, 0, 0, 0, 196, 184, 1, 0, 0,
-		0, 196, 185, 1, 0, 0, 0, 196, 186, 1, 0, 0, 0, 196, 187, 1, 0, 0, 0, 196,
-		188, 1, 0, 0, 0, 196, 189, 1, 0, 0, 0, 196, 190, 1, 0, 0, 0, 196, 191,
-		1, 0, 0, 0, 196, 192, 1, 0, 0, 0, 196, 194, 1, 0, 0, 0, 197, 273, 1, 0,
-		0, 0, 198, 199, 10, 14, 0, 0, 199, 200, 7, 0, 0, 0, 200, 272, 3, 12, 6,
-		15, 201, 202, 10, 13, 0, 0, 202, 203, 7, 1, 0, 0, 203, 272, 3, 12, 6, 14,
-		204, 205, 10, 12, 0, 0, 205, 206, 5, 32, 0, 0, 206, 272, 3, 12, 6, 13,
-		207, 208, 10, 11, 0, 0, 208, 209, 5, 31, 0, 0, 209, 272, 3, 12, 6, 12,
-		210, 211, 10, 10, 0, 0, 211, 212, 5, 13, 0, 0, 212, 272, 3, 12, 6, 11,
-		213, 214, 10, 9, 0, 0, 214, 215, 5, 11, 0, 0, 215, 272, 3, 12, 6, 10, 216,
-		217, 10, 8, 0, 0, 217, 218, 5, 12, 0, 0, 218, 272, 3, 12, 6, 9, 219, 220,
-		10, 7, 0, 0, 220, 221, 5, 14, 0, 0, 221, 272, 3, 12, 6, 8, 222, 223, 10,
-		6, 0, 0, 223, 224, 5, 15, 0, 0, 224, 272, 3, 12, 6, 7, 225, 226, 10, 5,
-		0, 0, 226, 227, 5, 16, 0, 0, 227, 272, 3, 12, 6, 6, 228, 229, 10, 4, 0,
-		0, 229, 230, 5, 17, 0, 0, 230, 272, 3, 12, 6, 5, 231, 232, 10, 3, 0, 0,
-		232, 233, 5, 18, 0, 0, 233, 272, 3, 12, 6, 4, 234, 235, 10, 1, 0, 0, 235,
-		236, 5, 30, 0, 0, 236, 272, 3, 12, 6, 2, 237, 239, 10, 19, 0, 0, 238, 240,
-		5, 29, 0, 0, 239, 238, 1, 0, 0, 0, 239, 240, 1, 0, 0, 0, 240, 241, 1, 0,
-		0, 0, 241, 242, 5, 9, 0, 0, 242, 272, 3, 22, 11, 0, 243, 245, 10, 18, 0,
-		0, 244, 246, 5, 29, 0, 0, 245, 244, 1, 0, 0, 0, 245, 246, 1, 0, 0, 0, 246,
-		247, 1, 0, 0, 0, 247, 248, 5, 26, 0, 0, 248, 249, 3, 24, 12, 0, 249, 250,
-		5, 27, 0, 0, 250, 272, 1, 0, 0, 0, 251, 252, 10, 17, 0, 0, 252, 261, 5,
-		24, 0, 0, 253, 258, 3, 10, 5, 0, 254, 255, 5, 35, 0, 0, 255, 257, 3, 10,
-		5, 0, 256, 254, 1, 0, 0, 0, 257, 260, 1, 0, 0, 0, 258, 256, 1, 0, 0, 0,
-		258, 259, 1, 0, 0, 0, 259, 262, 1, 0, 0, 0, 260, 258, 1, 0, 0, 0, 261,
-		253, 1, 0, 0, 0, 261, 262, 1, 0, 0, 0, 262, 263, 1, 0, 0, 0, 263, 272,
-		5, 25, 0, 0, 264, 265, 10, 2, 0, 0, 265, 266, 5, 29, 0, 0, 266, 269, 3,
-		12, 6, 0, 267, 268, 5, 10, 0, 0, 268, 270, 3, 12, 6, 0, 269, 267, 1, 0,
-		0, 0, 269, 270, 1, 0, 0, 0, 270, 272, 1, 0, 0, 0, 271, 198, 1, 0, 0, 0,
-		271, 201, 1, 0, 0, 0, 271, 204, 1, 0, 0, 0, 271, 207, 1, 0, 0, 0, 271,
-		210, 1, 0, 0, 0, 271, 213, 1, 0, 0, 0, 271, 216, 1, 0, 0, 0, 271, 219,
-		1, 0, 0, 0, 271, 222, 1, 0, 0, 0, 271, 225, 1, 0, 0, 0, 271, 228, 1, 0,
-		0, 0, 271, 231, 1, 0, 0, 0, 271, 234, 1, 0, 0, 0, 271, 237, 1, 0, 0, 0,
-		271, 243, 1, 0, 0, 0, 271, 251, 1, 0, 0, 0, 271, 264, 1, 0, 0, 0, 272,
-		275, 1, 0, 0, 0, 273, 271, 1, 0, 0, 0, 273, 274, 1, 0, 0, 0, 274, 13, 1,
-		0, 0, 0, 275, 273, 1, 0, 0, 0, 276, 285, 5, 26, 0, 0, 277, 282, 3, 16,
-		8, 0, 278, 279, 5, 35, 0, 0, 279, 281, 3, 16, 8, 0, 280, 278, 1, 0, 0,
-		0, 281, 284, 1, 0, 0, 0, 282, 280, 1, 0, 0, 0, 282, 283, 1, 0, 0, 0, 283,
-		286, 1, 0, 0, 0, 284, 282, 1, 0, 0, 0, 285, 277, 1, 0, 0, 0, 285, 286,
-		1, 0, 0, 0, 286, 287, 1, 0, 0, 0, 287, 288, 5, 27, 0, 0, 288, 15, 1, 0,
-		0, 0, 289, 291, 5, 33, 0, 0, 290, 289, 1, 0, 0, 0, 290, 291, 1, 0, 0, 0,
-		291, 292, 1, 0, 0, 0, 292, 293, 3, 12, 6, 0, 293, 17, 1, 0, 0, 0, 294,
-		303, 5, 37, 0, 0, 295, 300, 3, 20, 10, 0, 296, 297, 5, 35, 0, 0, 297, 299,
-		3, 20, 10, 0, 298, 296, 1, 0, 0, 0, 299, 302, 1, 0, 0, 0, 300, 298, 1,
-		0, 0, 0, 300, 301, 1, 0, 0, 0, 301, 304, 1, 0, 0, 0, 302, 300, 1, 0, 0,
-		0, 303, 295, 1, 0, 0, 0, 303, 304, 1, 0, 0, 0, 304, 305, 1, 0, 0, 0, 305,
-		306, 5, 38, 0, 0, 306, 19, 1, 0, 0, 0, 307, 308, 3, 22, 11, 0, 308, 309,
-		5, 10, 0, 0, 309, 310, 3, 12, 6, 0, 310, 319, 1, 0, 0, 0, 311, 312, 5,
-		42, 0, 0, 312, 313, 5, 10, 0, 0, 313, 319, 3, 12, 6, 0, 314, 316, 5, 33,
-		0, 0, 315, 314, 1, 0, 0, 0, 315, 316, 1, 0, 0, 0, 316, 317, 1, 0, 0, 0,
-		317, 319, 3, 12, 6, 0, 318, 307, 1, 0, 0, 0, 318, 311, 1, 0, 0, 0, 318,
-		315, 1, 0, 0, 0, 319, 21, 1, 0, 0, 0, 320, 321, 5, 43, 0, 0, 321, 23, 1,
-		0, 0, 0, 322, 326, 3, 12, 6, 0, 323, 326, 5, 44, 0, 0, 324, 326, 5, 42,
-		0, 0, 325, 322, 1, 0, 0, 0, 325, 323, 1, 0, 0, 0, 325, 324, 1, 0, 0, 0,
-		326, 25, 1, 0, 0, 0, 39, 29, 45, 48, 64, 69, 81, 87, 94, 102, 104, 108,
-		114, 120, 126, 132, 138, 143, 147, 159, 164, 170, 173, 177, 196, 239, 245,
-		258, 261, 269, 271, 273, 282, 285, 290, 300, 303, 315, 318, 325,
+		31, 29, 1, 0, 0, 0, 32, 83, 3, 4, 2, 0, 33, 34, 3, 12, 6, 0, 34, 35, 5,
+		28, 0, 0, 35, 83, 1, 0, 0, 0, 36, 38, 5, 35, 0, 0, 37, 39, 3, 12, 6, 0,
+		38, 37, 1, 0, 0, 0, 38, 39, 1, 0, 0, 0, 39, 40, 1, 0, 0, 0, 40, 83, 5,
+		28, 0, 0, 41, 42, 5, 42, 0, 0, 42, 83, 5, 28, 0, 0, 43, 44, 5, 43, 0, 0,
+		44, 83, 5, 28, 0, 0, 45, 46, 5, 36, 0, 0, 46, 49, 3, 22, 11, 0, 47, 48,
+		5, 25, 0, 0, 48, 50, 3, 22, 11, 0, 49, 47, 1, 0, 0, 0, 49, 50, 1, 0, 0,
+		0, 50, 51, 1, 0, 0, 0, 51, 52, 5, 37, 0, 0, 52, 53, 3, 12, 6, 0, 53, 54,
+		3, 4, 2, 0, 54, 83, 1, 0, 0, 0, 55, 56, 5, 38, 0, 0, 56, 57, 3, 12, 6,
+		0, 57, 65, 3, 4, 2, 0, 58, 59, 5, 39, 0, 0, 59, 60, 5, 38, 0, 0, 60, 61,
+		3, 12, 6, 0, 61, 62, 3, 4, 2, 0, 62, 64, 1, 0, 0, 0, 63, 58, 1, 0, 0, 0,
+		64, 67, 1, 0, 0, 0, 65, 63, 1, 0, 0, 0, 65, 66, 1, 0, 0, 0, 66, 70, 1,
+		0, 0, 0, 67, 65, 1, 0, 0, 0, 68, 69, 5, 39, 0, 0, 69, 71, 3, 4, 2, 0, 70,
+		68, 1, 0, 0, 0, 70, 71, 1, 0, 0, 0, 71, 83, 1, 0, 0, 0, 72, 73, 5, 40,
+		0, 0, 73, 74, 3, 12, 6, 0, 74, 75, 3, 4, 2, 0, 75, 83, 1, 0, 0, 0, 76,
+		77, 5, 41, 0, 0, 77, 78, 3, 4, 2, 0, 78, 79, 5, 40, 0, 0, 79, 80, 3, 12,
+		6, 0, 80, 81, 5, 28, 0, 0, 81, 83, 1, 0, 0, 0, 82, 32, 1, 0, 0, 0, 82,
+		33, 1, 0, 0, 0, 82, 36, 1, 0, 0, 0, 82, 41, 1, 0, 0, 0, 82, 43, 1, 0, 0,
+		0, 82, 45, 1, 0, 0, 0, 82, 55, 1, 0, 0, 0, 82, 72, 1, 0, 0, 0, 82, 76,
+		1, 0, 0, 0, 83, 3, 1, 0, 0, 0, 84, 88, 5, 30, 0, 0, 85, 87, 3, 2, 1, 0,
+		86, 85, 1, 0, 0, 0, 87, 90, 1, 0, 0, 0, 88, 86, 1, 0, 0, 0, 88, 89, 1,
+		0, 0, 0, 89, 91, 1, 0, 0, 0, 90, 88, 1, 0, 0, 0, 91, 92, 5, 31, 0, 0, 92,
+		5, 1, 0, 0, 0, 93, 94, 5, 30, 0, 0, 94, 96, 5, 30, 0, 0, 95, 93, 1, 0,
+		0, 0, 95, 96, 1, 0, 0, 0, 96, 97, 1, 0, 0, 0, 97, 98, 5, 18, 0, 0, 98,
+		105, 3, 12, 6, 0, 99, 100, 5, 24, 0, 0, 100, 103, 3, 22, 11, 0, 101, 102,
+		5, 25, 0, 0, 102, 104, 3, 22, 11, 0, 103, 101, 1, 0, 0, 0, 103, 104, 1,
+		0, 0, 0, 104, 106, 1, 0, 0, 0, 105, 99, 1, 0, 0, 0, 105, 106, 1, 0, 0,
+		0, 106, 109, 1, 0, 0, 0, 107, 108, 5, 31, 0, 0, 108, 110, 5, 31, 0, 0,
+		109, 107, 1, 0, 0, 0, 109, 110, 1, 0, 0, 0, 110, 111, 1, 0, 0, 0, 111,
+		112, 5, 0, 0, 1, 112, 149, 1, 0, 0, 0, 113, 114, 5, 30, 0, 0, 114, 116,
+		5, 30, 0, 0, 115, 113, 1, 0, 0, 0, 115, 116, 1, 0, 0, 0, 116, 117, 1, 0,
+		0, 0, 117, 118, 5, 19, 0, 0, 118, 121, 3, 12, 6, 0, 119, 120, 5, 31, 0,
+		0, 120, 122, 5, 31, 0, 0, 121, 119, 1, 0, 0, 0, 121, 122, 1, 0, 0, 0, 122,
+		123, 1, 0, 0, 0, 123, 124, 5, 0, 0, 1, 124, 149, 1, 0, 0, 0, 125, 126,
+		5, 30, 0, 0, 126, 128, 5, 30, 0, 0, 127, 125, 1, 0, 0, 0, 127, 128, 1,
+		0, 0, 0, 128, 129, 1, 0, 0, 0, 129, 130, 5, 20, 0, 0, 130, 133, 3, 12,
+		6, 0, 131, 132, 5, 31, 0, 0, 132, 134, 5, 31, 0, 0, 133, 131, 1, 0, 0,
+		0, 133, 134, 1, 0, 0, 0, 134, 135, 1, 0, 0, 0, 135, 136, 5, 0, 0, 1, 136,
+		149, 1, 0, 0, 0, 137, 138, 5, 30, 0, 0, 138, 140, 5, 30, 0, 0, 139, 137,
+		1, 0, 0, 0, 139, 140, 1, 0, 0, 0, 140, 141, 1, 0, 0, 0, 141, 144, 3, 12,
+		6, 0, 142, 143, 5, 31, 0, 0, 143, 145, 5, 31, 0, 0, 144, 142, 1, 0, 0,
+		0, 144, 145, 1, 0, 0, 0, 145, 146, 1, 0, 0, 0, 146, 147, 5, 0, 0, 1, 147,
+		149, 1, 0, 0, 0, 148, 95, 1, 0, 0, 0, 148, 115, 1, 0, 0, 0, 148, 127, 1,
+		0, 0, 0, 148, 139, 1, 0, 0, 0, 149, 7, 1, 0, 0, 0, 150, 151, 3, 22, 11,
+		0, 151, 152, 5, 26, 0, 0, 152, 153, 3, 12, 6, 0, 153, 172, 1, 0, 0, 0,
+		154, 165, 5, 14, 0, 0, 155, 160, 3, 22, 11, 0, 156, 157, 5, 25, 0, 0, 157,
+		159, 3, 22, 11, 0, 158, 156, 1, 0, 0, 0, 159, 162, 1, 0, 0, 0, 160, 158,
+		1, 0, 0, 0, 160, 161, 1, 0, 0, 0, 161, 164, 1, 0, 0, 0, 162, 160, 1, 0,
+		0, 0, 163, 155, 1, 0, 0, 0, 164, 167, 1, 0, 0, 0, 165, 163, 1, 0, 0, 0,
+		165, 166, 1, 0, 0, 0, 166, 168, 1, 0, 0, 0, 167, 165, 1, 0, 0, 0, 168,
+		169, 5, 15, 0, 0, 169, 170, 5, 26, 0, 0, 170, 172, 3, 12, 6, 0, 171, 150,
+		1, 0, 0, 0, 171, 154, 1, 0, 0, 0, 172, 9, 1, 0, 0, 0, 173, 175, 5, 23,
+		0, 0, 174, 173, 1, 0, 0, 0, 174, 175, 1, 0, 0, 0, 175, 176, 1, 0, 0, 0,
+		176, 179, 3, 12, 6, 0, 177, 179, 3, 8, 4, 0, 178, 174, 1, 0, 0, 0, 178,
+		177, 1, 0, 0, 0, 179, 11, 1, 0, 0, 0, 180, 181, 6, 6, -1, 0, 181, 182,
+		5, 14, 0, 0, 182, 183, 3, 12, 6, 0, 183, 184, 5, 15, 0, 0, 184, 198, 1,
+		0, 0, 0, 185, 198, 5, 34, 0, 0, 186, 198, 5, 33, 0, 0, 187, 198, 5, 32,
+		0, 0, 188, 198, 5, 46, 0, 0, 189, 198, 5, 44, 0, 0, 190, 198, 3, 14, 7,
+		0, 191, 198, 3, 18, 9, 0, 192, 198, 3, 22, 11, 0, 193, 194, 5, 11, 0, 0,
+		194, 198, 3, 12, 6, 16, 195, 196, 5, 9, 0, 0, 196, 198, 3, 12, 6, 15, 197,
+		180, 1, 0, 0, 0, 197, 185, 1, 0, 0, 0, 197, 186, 1, 0, 0, 0, 197, 187,
+		1, 0, 0, 0, 197, 188, 1, 0, 0, 0, 197, 189, 1, 0, 0, 0, 197, 190, 1, 0,
+		0, 0, 197, 191, 1, 0, 0, 0, 197, 192, 1, 0, 0, 0, 197, 193, 1, 0, 0, 0,
+		197, 195, 1, 0, 0, 0, 198, 274, 1, 0, 0, 0, 199, 200, 10, 14, 0, 0, 200,
+		201, 7, 0, 0, 0, 201, 273, 3, 12, 6, 15, 202, 203, 10, 13, 0, 0, 203, 204,
+		7, 1, 0, 0, 204, 273, 3, 12, 6, 14, 205, 206, 10, 12, 0, 0, 206, 207, 5,
+		22, 0, 0, 207, 273, 3, 12, 6, 13, 208, 209, 10, 11, 0, 0, 209, 210, 5,
+		21, 0, 0, 210, 273, 3, 12, 6, 12, 211, 212, 10, 10, 0, 0, 212, 213, 5,
+		3, 0, 0, 213, 273, 3, 12, 6, 11, 214, 215, 10, 9, 0, 0, 215, 216, 5, 1,
+		0, 0, 216, 273, 3, 12, 6, 10, 217, 218, 10, 8, 0, 0, 218, 219, 5, 2, 0,
+		0, 219, 273, 3, 12, 6, 9, 220, 221, 10, 7, 0, 0, 221, 222, 5, 4, 0, 0,
+		222, 273, 3, 12, 6, 8, 223, 224, 10, 6, 0, 0, 224, 225, 5, 5, 0, 0, 225,
+		273, 3, 12, 6, 7, 226, 227, 10, 5, 0, 0, 227, 228, 5, 6, 0, 0, 228, 273,
+		3, 12, 6, 6, 229, 230, 10, 4, 0, 0, 230, 231, 5, 7, 0, 0, 231, 273, 3,
+		12, 6, 5, 232, 233, 10, 3, 0, 0, 233, 234, 5, 8, 0, 0, 234, 273, 3, 12,
+		6, 4, 235, 236, 10, 1, 0, 0, 236, 237, 5, 20, 0, 0, 237, 273, 3, 12, 6,
+		2, 238, 240, 10, 19, 0, 0, 239, 241, 5, 19, 0, 0, 240, 239, 1, 0, 0, 0,
+		240, 241, 1, 0, 0, 0, 241, 242, 1, 0, 0, 0, 242, 243, 5, 29, 0, 0, 243,
+		273, 3, 22, 11, 0, 244, 246, 10, 18, 0, 0, 245, 247, 5, 19, 0, 0, 246,
+		245, 1, 0, 0, 0, 246, 247, 1, 0, 0, 0, 247, 248, 1, 0, 0, 0, 248, 249,
+		5, 16, 0, 0, 249, 250, 3, 24, 12, 0, 250, 251, 5, 17, 0, 0, 251, 273, 1,
+		0, 0, 0, 252, 253, 10, 17, 0, 0, 253, 262, 5, 14, 0, 0, 254, 259, 3, 10,
+		5, 0, 255, 256, 5, 25, 0, 0, 256, 258, 3, 10, 5, 0, 257, 255, 1, 0, 0,
+		0, 258, 261, 1, 0, 0, 0, 259, 257, 1, 0, 0, 0, 259, 260, 1, 0, 0, 0, 260,
+		263, 1, 0, 0, 0, 261, 259, 1, 0, 0, 0, 262, 254, 1, 0, 0, 0, 262, 263,
+		1, 0, 0, 0, 263, 264, 1, 0, 0, 0, 264, 273, 5, 15, 0, 0, 265, 266, 10,
+		2, 0, 0, 266, 267, 5, 19, 0, 0, 267, 270, 3, 12, 6, 0, 268, 269, 5, 27,
+		0, 0, 269, 271, 3, 12, 6, 0, 270, 268, 1, 0, 0, 0, 270, 271, 1, 0, 0, 0,
+		271, 273, 1, 0, 0, 0, 272, 199, 1, 0, 0, 0, 272, 202, 1, 0, 0, 0, 272,
+		205, 1, 0, 0, 0, 272, 208, 1, 0, 0, 0, 272, 211, 1, 0, 0, 0, 272, 214,
+		1, 0, 0, 0, 272, 217, 1, 0, 0, 0, 272, 220, 1, 0, 0, 0, 272, 223, 1, 0,
+		0, 0, 272, 226, 1, 0, 0, 0, 272, 229, 1, 0, 0, 0, 272, 232, 1, 0, 0, 0,
+		272, 235, 1, 0, 0, 0, 272, 238, 1, 0, 0, 0, 272, 244, 1, 0, 0, 0, 272,
+		252, 1, 0, 0, 0, 272, 265, 1, 0, 0, 0, 273, 276, 1, 0, 0, 0, 274, 272,
+		1, 0, 0, 0, 274, 275, 1, 0, 0, 0, 275, 13, 1, 0, 0, 0, 276, 274, 1, 0,
+		0, 0, 277, 286, 5, 16, 0, 0, 278, 283, 3, 16, 8, 0, 279, 280, 5, 25, 0,
+		0, 280, 282, 3, 16, 8, 0, 281, 279, 1, 0, 0, 0, 282, 285, 1, 0, 0, 0, 283,
+		281, 1, 0, 0, 0, 283, 284, 1, 0, 0, 0, 284, 287, 1, 0, 0, 0, 285, 283,
+		1, 0, 0, 0, 286, 278, 1, 0, 0, 0, 286, 287, 1, 0, 0, 0, 287, 288, 1, 0,
+		0, 0, 288, 289, 5, 17, 0, 0, 289, 15, 1, 0, 0, 0, 290, 292, 5, 23, 0, 0,
+		291, 290, 1, 0, 0, 0, 291, 292, 1, 0, 0, 0, 292, 293, 1, 0, 0, 0, 293,
+		294, 3, 12, 6, 0, 294, 17, 1, 0, 0, 0, 295, 304, 5, 30, 0, 0, 296, 301,
+		3, 20, 10, 0, 297, 298, 5, 25, 0, 0, 298, 300, 3, 20, 10, 0, 299, 297,
+		1, 0, 0, 0, 300, 303, 1, 0, 0, 0, 301, 299, 1, 0, 0, 0, 301, 302, 1, 0,
+		0, 0, 302, 305, 1, 0, 0, 0, 303, 301, 1, 0, 0, 0, 304, 296, 1, 0, 0, 0,
+		304, 305, 1, 0, 0, 0, 305, 306, 1, 0, 0, 0, 306, 307, 5, 31, 0, 0, 307,
+		19, 1, 0, 0, 0, 308, 309, 3, 22, 11, 0, 309, 310, 5, 27, 0, 0, 310, 311,
+		3, 12, 6, 0, 311, 320, 1, 0, 0, 0, 312, 313, 5, 44, 0, 0, 313, 314, 5,
+		27, 0, 0, 314, 320, 3, 12, 6, 0, 315, 317, 5, 23, 0, 0, 316, 315, 1, 0,
+		0, 0, 316, 317, 1, 0, 0, 0, 317, 318, 1, 0, 0, 0, 318, 320, 3, 12, 6, 0,
+		319, 308, 1, 0, 0, 0, 319, 312, 1, 0, 0, 0, 319, 316, 1, 0, 0, 0, 320,
+		21, 1, 0, 0, 0, 321, 322, 5, 45, 0, 0, 322, 23, 1, 0, 0, 0, 323, 327, 3,
+		12, 6, 0, 324, 327, 5, 46, 0, 0, 325, 327, 5, 44, 0, 0, 326, 323, 1, 0,
+		0, 0, 326, 324, 1, 0, 0, 0, 326, 325, 1, 0, 0, 0, 327, 25, 1, 0, 0, 0,
+		39, 29, 38, 49, 65, 70, 82, 88, 95, 103, 105, 109, 115, 121, 127, 133,
+		139, 144, 148, 160, 165, 171, 174, 178, 197, 240, 246, 259, 262, 270, 272,
+		274, 283, 286, 291, 301, 304, 316, 319, 326,
 	}
 	deserializer := antlr.NewATNDeserializer(nil)
 	staticData.atn = deserializer.Deserialize(staticData.serializedATN)
@@ -244,51 +247,53 @@ func NewJsonTemplateParser(input antlr.TokenStream) *JsonTemplateParser {
 // JsonTemplateParser tokens.
 const (
 	JsonTemplateParserEOF            = antlr.TokenEOF
-	JsonTemplateParserT__0           = 1
-	JsonTemplateParserT__1           = 2
-	JsonTemplateParserT__2           = 3
-	JsonTemplateParserT__3           = 4
-	JsonTemplateParserT__4           = 5
-	JsonTemplateParserT__5           = 6
-	JsonTemplateParserT__6           = 7
-	JsonTemplateParserT__7           = 8
-	JsonTemplateParserT__8           = 9
-	JsonTemplateParserT__9           = 10
-	JsonTemplateParserLess           = 11
-	JsonTemplateParserLessOrEqual    = 12
-	JsonTemplateParserEqual          = 13
-	JsonTemplateParserGreater        = 14
-	JsonTemplateParserGreaterOrEqual = 15
-	JsonTemplateParserNotEqual       = 16
-	JsonTemplateParserAnd            = 17
-	JsonTemplateParserOr             = 18
-	JsonTemplateParserNot            = 19
-	JsonTemplateParserAdd            = 20
-	JsonTemplateParserSubtract       = 21
-	JsonTemplateParserMultiply       = 22
-	JsonTemplateParserDivide         = 23
-	JsonTemplateParserLeftParen      = 24
-	JsonTemplateParserRightParen     = 25
-	JsonTemplateParserLeftBracket    = 26
-	JsonTemplateParserRightBracket   = 27
-	JsonTemplateParserIteration      = 28
-	JsonTemplateParserQuestion       = 29
-	JsonTemplateParserLiteral        = 30
-	JsonTemplateParserNullCoalescing = 31
-	JsonTemplateParserRange          = 32
-	JsonTemplateParserSpread         = 33
-	JsonTemplateParserAs             = 34
-	JsonTemplateParserComma          = 35
-	JsonTemplateParserArrow          = 36
-	JsonTemplateParserLeftBrace      = 37
-	JsonTemplateParserRightBrace     = 38
-	JsonTemplateParserNull           = 39
-	JsonTemplateParserFalse          = 40
-	JsonTemplateParserTrue           = 41
-	JsonTemplateParserESCAPED_STRING = 42
-	JsonTemplateParserSTRING         = 43
-	JsonTemplateParserNUMBER         = 44
-	JsonTemplateParserWS             = 45
+	JsonTemplateParserLess           = 1
+	JsonTemplateParserLessOrEqual    = 2
+	JsonTemplateParserEqual          = 3
+	JsonTemplateParserGreater        = 4
+	JsonTemplateParserGreaterOrEqual = 5
+	JsonTemplateParserNotEqual       = 6
+	JsonTemplateParserAnd            = 7
+	JsonTemplateParserOr             = 8
+	JsonTemplateParserNot            = 9
+	JsonTemplateParserAdd            = 10
+	JsonTemplateParserSubtract       = 11
+	JsonTemplateParserMultiply       = 12
+	JsonTemplateParserDivide         = 13
+	JsonTemplateParserLeftParen      = 14
+	JsonTemplateParserRightParen     = 15
+	JsonTemplateParserLeftBracket    = 16
+	JsonTemplateParserRightBracket   = 17
+	JsonTemplateParserIteration      = 18
+	JsonTemplateParserQuestion       = 19
+	JsonTemplateParserLiteral        = 20
+	JsonTemplateParserNullCoalescing = 21
+	JsonTemplateParserRange          = 22
+	JsonTemplateParserSpread         = 23
+	JsonTemplateParserAs             = 24
+	JsonTemplateParserComma          = 25
+	JsonTemplateParserArrow          = 26
+	JsonTemplateParserColon          = 27
+	JsonTemplateParserSemicolon      = 28
+	JsonTemplateParserDot            = 29
+	JsonTemplateParserLeftBrace      = 30
+	JsonTemplateParserRightBrace     = 31
+	JsonTemplateParserNull           = 32
+	JsonTemplateParserFalse          = 33
+	JsonTemplateParserTrue           = 34
+	JsonTemplateParserReturn         = 35
+	JsonTemplateParserFor            = 36
+	JsonTemplateParserIn             = 37
+	JsonTemplateParserIf             = 38
+	JsonTemplateParserElse           = 39
+	JsonTemplateParserWhile          = 40
+	JsonTemplateParserDo             = 41
+	JsonTemplateParserBreak          = 42
+	JsonTemplateParserContinue       = 43
+	JsonTemplateParserESCAPED_STRING = 44
+	JsonTemplateParserSTRING         = 45
+	JsonTemplateParserNUMBER         = 46
+	JsonTemplateParserWS             = 47
 )
 
 // JsonTemplateParser rules.
@@ -446,7 +451,7 @@ func (p *JsonTemplateParser) Script() (localctx IScriptContext) {
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&34772141736364) != 0 {
+	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&140047072446976) != 0 {
 		{
 			p.SetState(26)
 			p.Statement()
@@ -498,6 +503,47 @@ func NewStatementContext(parser antlr.Parser, parent antlr.ParserRuleContext, in
 
 func (s *StatementContext) GetParser() antlr.Parser { return s.parser }
 
+func (s *StatementContext) AllStatements() []IStatementsContext {
+	children := s.GetChildren()
+	len := 0
+	for _, ctx := range children {
+		if _, ok := ctx.(IStatementsContext); ok {
+			len++
+		}
+	}
+
+	tst := make([]IStatementsContext, len)
+	i := 0
+	for _, ctx := range children {
+		if t, ok := ctx.(IStatementsContext); ok {
+			tst[i] = t.(IStatementsContext)
+			i++
+		}
+	}
+
+	return tst
+}
+
+func (s *StatementContext) Statements(i int) IStatementsContext {
+	var t antlr.RuleContext
+	j := 0
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IStatementsContext); ok {
+			if j == i {
+				t = ctx.(antlr.RuleContext)
+				break
+			}
+			j++
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IStatementsContext)
+}
+
 func (s *StatementContext) AllField() []IFieldContext {
 	children := s.GetChildren()
 	len := 0
@@ -539,45 +585,28 @@ func (s *StatementContext) Field(i int) IFieldContext {
 	return t.(IFieldContext)
 }
 
-func (s *StatementContext) AllStatements() []IStatementsContext {
-	children := s.GetChildren()
-	len := 0
-	for _, ctx := range children {
-		if _, ok := ctx.(IStatementsContext); ok {
-			len++
-		}
-	}
-
-	tst := make([]IStatementsContext, len)
-	i := 0
-	for _, ctx := range children {
-		if t, ok := ctx.(IStatementsContext); ok {
-			tst[i] = t.(IStatementsContext)
-			i++
-		}
-	}
-
-	return tst
+func (s *StatementContext) Semicolon() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserSemicolon, 0)
 }
 
-func (s *StatementContext) Statements(i int) IStatementsContext {
-	var t antlr.RuleContext
-	j := 0
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IStatementsContext); ok {
-			if j == i {
-				t = ctx.(antlr.RuleContext)
-				break
-			}
-			j++
-		}
-	}
+func (s *StatementContext) Return() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserReturn, 0)
+}
 
-	if t == nil {
-		return nil
-	}
+func (s *StatementContext) Break() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserBreak, 0)
+}
 
-	return t.(IStatementsContext)
+func (s *StatementContext) Continue() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserContinue, 0)
+}
+
+func (s *StatementContext) For() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserFor, 0)
+}
+
+func (s *StatementContext) In() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserIn, 0)
 }
 
 func (s *StatementContext) AllName() []INameContext {
@@ -621,12 +650,32 @@ func (s *StatementContext) Name(i int) INameContext {
 	return t.(INameContext)
 }
 
-func (s *StatementContext) AllComma() []antlr.TerminalNode {
-	return s.GetTokens(JsonTemplateParserComma)
+func (s *StatementContext) Comma() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserComma, 0)
 }
 
-func (s *StatementContext) Comma(i int) antlr.TerminalNode {
-	return s.GetToken(JsonTemplateParserComma, i)
+func (s *StatementContext) AllIf() []antlr.TerminalNode {
+	return s.GetTokens(JsonTemplateParserIf)
+}
+
+func (s *StatementContext) If(i int) antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserIf, i)
+}
+
+func (s *StatementContext) AllElse() []antlr.TerminalNode {
+	return s.GetTokens(JsonTemplateParserElse)
+}
+
+func (s *StatementContext) Else(i int) antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserElse, i)
+}
+
+func (s *StatementContext) While() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserWhile, 0)
+}
+
+func (s *StatementContext) Do() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserDo, 0)
 }
 
 func (s *StatementContext) GetRuleContext() antlr.RuleContext {
@@ -685,182 +734,207 @@ func (p *JsonTemplateParser) Statement() (localctx IStatementContext) {
 
 	var _alt int
 
-	p.SetState(81)
+	p.SetState(82)
 	p.GetErrorHandler().Sync(p)
-
-	switch p.GetTokenStream().LA(1) {
-	case JsonTemplateParserNot, JsonTemplateParserSubtract, JsonTemplateParserLeftParen, JsonTemplateParserLeftBracket, JsonTemplateParserLeftBrace, JsonTemplateParserNull, JsonTemplateParserFalse, JsonTemplateParserTrue, JsonTemplateParserESCAPED_STRING, JsonTemplateParserSTRING, JsonTemplateParserNUMBER:
+	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 5, p.GetParserRuleContext()) {
+	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(32)
-			p.field(0)
-		}
-		{
-			p.SetState(33)
-			p.Match(JsonTemplateParserT__0)
+			p.Statements()
 		}
 
-	case JsonTemplateParserT__1:
+	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(35)
-			p.Match(JsonTemplateParserT__1)
-		}
-		{
-			p.SetState(36)
+			p.SetState(33)
 			p.field(0)
 		}
 		{
-			p.SetState(37)
-			p.Match(JsonTemplateParserT__0)
+			p.SetState(34)
+			p.Match(JsonTemplateParserSemicolon)
 		}
 
-	case JsonTemplateParserT__2:
+	case 3:
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(39)
-			p.Match(JsonTemplateParserT__2)
+			p.SetState(36)
+			p.Match(JsonTemplateParserReturn)
 		}
-		p.SetState(48)
+		p.SetState(38)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
-		if _la == JsonTemplateParserSTRING {
+		if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&123176440908288) != 0 {
 			{
-				p.SetState(40)
+				p.SetState(37)
+				p.field(0)
+			}
+
+		}
+		{
+			p.SetState(40)
+			p.Match(JsonTemplateParserSemicolon)
+		}
+
+	case 4:
+		p.EnterOuterAlt(localctx, 4)
+		{
+			p.SetState(41)
+			p.Match(JsonTemplateParserBreak)
+		}
+		{
+			p.SetState(42)
+			p.Match(JsonTemplateParserSemicolon)
+		}
+
+	case 5:
+		p.EnterOuterAlt(localctx, 5)
+		{
+			p.SetState(43)
+			p.Match(JsonTemplateParserContinue)
+		}
+		{
+			p.SetState(44)
+			p.Match(JsonTemplateParserSemicolon)
+		}
+
+	case 6:
+		p.EnterOuterAlt(localctx, 6)
+		{
+			p.SetState(45)
+			p.Match(JsonTemplateParserFor)
+		}
+
+		{
+			p.SetState(46)
+			p.Name()
+		}
+		p.SetState(49)
+		p.GetErrorHandler().Sync(p)
+		_la = p.GetTokenStream().LA(1)
+
+		if _la == JsonTemplateParserComma {
+			{
+				p.SetState(47)
+				p.Match(JsonTemplateParserComma)
+			}
+			{
+				p.SetState(48)
 				p.Name()
 			}
-			p.SetState(45)
-			p.GetErrorHandler().Sync(p)
-			_la = p.GetTokenStream().LA(1)
-
-			for _la == JsonTemplateParserComma {
-				{
-					p.SetState(41)
-					p.Match(JsonTemplateParserComma)
-				}
-				{
-					p.SetState(42)
-					p.Name()
-				}
-
-				p.SetState(47)
-				p.GetErrorHandler().Sync(p)
-				_la = p.GetTokenStream().LA(1)
-			}
 
 		}
-		{
-			p.SetState(50)
-			p.Match(JsonTemplateParserT__3)
-		}
+
 		{
 			p.SetState(51)
-			p.field(0)
+			p.Match(JsonTemplateParserIn)
 		}
 		{
 			p.SetState(52)
-			p.Statements()
-		}
-
-	case JsonTemplateParserT__4:
-		p.EnterOuterAlt(localctx, 4)
-		{
-			p.SetState(54)
-			p.Match(JsonTemplateParserT__4)
-		}
-		{
-			p.SetState(55)
 			p.field(0)
 		}
 		{
-			p.SetState(56)
+			p.SetState(53)
 			p.Statements()
 		}
-		p.SetState(64)
+
+	case 7:
+		p.EnterOuterAlt(localctx, 7)
+		{
+			p.SetState(55)
+			p.Match(JsonTemplateParserIf)
+		}
+		{
+			p.SetState(56)
+			p.field(0)
+		}
+		{
+			p.SetState(57)
+			p.Statements()
+		}
+		p.SetState(65)
 		p.GetErrorHandler().Sync(p)
 		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 3, p.GetParserRuleContext())
 
 		for _alt != 2 && _alt != antlr.ATNInvalidAltNumber {
 			if _alt == 1 {
 				{
-					p.SetState(57)
-					p.Match(JsonTemplateParserT__5)
-				}
-				{
 					p.SetState(58)
-					p.Match(JsonTemplateParserT__4)
+					p.Match(JsonTemplateParserElse)
 				}
 				{
 					p.SetState(59)
-					p.field(0)
+					p.Match(JsonTemplateParserIf)
 				}
 				{
 					p.SetState(60)
+					p.field(0)
+				}
+				{
+					p.SetState(61)
 					p.Statements()
 				}
 
 			}
-			p.SetState(66)
+			p.SetState(67)
 			p.GetErrorHandler().Sync(p)
 			_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 3, p.GetParserRuleContext())
 		}
-		p.SetState(69)
+		p.SetState(70)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
-		if _la == JsonTemplateParserT__5 {
-			{
-				p.SetState(67)
-				p.Match(JsonTemplateParserT__5)
-			}
+		if _la == JsonTemplateParserElse {
 			{
 				p.SetState(68)
+				p.Match(JsonTemplateParserElse)
+			}
+			{
+				p.SetState(69)
 				p.Statements()
 			}
 
 		}
 
-	case JsonTemplateParserT__6:
-		p.EnterOuterAlt(localctx, 5)
-		{
-			p.SetState(71)
-			p.Match(JsonTemplateParserT__6)
-		}
+	case 8:
+		p.EnterOuterAlt(localctx, 8)
 		{
 			p.SetState(72)
-			p.field(0)
+			p.Match(JsonTemplateParserWhile)
 		}
 		{
 			p.SetState(73)
-			p.Statements()
-		}
-
-	case JsonTemplateParserT__7:
-		p.EnterOuterAlt(localctx, 6)
-		{
-			p.SetState(75)
-			p.Match(JsonTemplateParserT__7)
-		}
-		{
-			p.SetState(76)
-			p.Statements()
-		}
-		{
-			p.SetState(77)
-			p.Match(JsonTemplateParserT__6)
-		}
-		{
-			p.SetState(78)
 			p.field(0)
 		}
 		{
-			p.SetState(79)
-			p.Match(JsonTemplateParserT__0)
+			p.SetState(74)
+			p.Statements()
 		}
 
-	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
+	case 9:
+		p.EnterOuterAlt(localctx, 9)
+		{
+			p.SetState(76)
+			p.Match(JsonTemplateParserDo)
+		}
+		{
+			p.SetState(77)
+			p.Statements()
+		}
+		{
+			p.SetState(78)
+			p.Match(JsonTemplateParserWhile)
+		}
+		{
+			p.SetState(79)
+			p.field(0)
+		}
+		{
+			p.SetState(80)
+			p.Match(JsonTemplateParserSemicolon)
+		}
+
 	}
 
 	return localctx
@@ -1009,25 +1083,25 @@ func (p *JsonTemplateParser) Statements() (localctx IStatementsContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(83)
+		p.SetState(84)
 		p.Match(JsonTemplateParserLeftBrace)
 	}
-	p.SetState(87)
+	p.SetState(88)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
-	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&34772141736364) != 0 {
+	for (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&140047072446976) != 0 {
 		{
-			p.SetState(84)
+			p.SetState(85)
 			p.Statement()
 		}
 
-		p.SetState(89)
+		p.SetState(90)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 	}
 	{
-		p.SetState(90)
+		p.SetState(91)
 		p.Match(JsonTemplateParserRightBrace)
 	}
 
@@ -1223,211 +1297,211 @@ func (p *JsonTemplateParser) Expression() (localctx IExpressionContext) {
 		}
 	}()
 
-	p.SetState(147)
+	p.SetState(148)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 17, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
-		p.SetState(94)
+		p.SetState(95)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserLeftBrace {
 			{
-				p.SetState(92)
+				p.SetState(93)
 				p.Match(JsonTemplateParserLeftBrace)
 			}
 			{
-				p.SetState(93)
+				p.SetState(94)
 				p.Match(JsonTemplateParserLeftBrace)
 			}
 
 		}
 		{
-			p.SetState(96)
+			p.SetState(97)
 			p.Match(JsonTemplateParserIteration)
 		}
 		{
-			p.SetState(97)
+			p.SetState(98)
 			p.field(0)
 		}
-		p.SetState(104)
+		p.SetState(105)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserAs {
 			{
-				p.SetState(98)
+				p.SetState(99)
 				p.Match(JsonTemplateParserAs)
 			}
 			{
-				p.SetState(99)
+				p.SetState(100)
 				p.Name()
 			}
-			p.SetState(102)
+			p.SetState(103)
 			p.GetErrorHandler().Sync(p)
 			_la = p.GetTokenStream().LA(1)
 
 			if _la == JsonTemplateParserComma {
 				{
-					p.SetState(100)
+					p.SetState(101)
 					p.Match(JsonTemplateParserComma)
 				}
 				{
-					p.SetState(101)
+					p.SetState(102)
 					p.Name()
 				}
 
 			}
 
 		}
-		p.SetState(108)
+		p.SetState(109)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserRightBrace {
 			{
-				p.SetState(106)
+				p.SetState(107)
 				p.Match(JsonTemplateParserRightBrace)
 			}
 			{
-				p.SetState(107)
+				p.SetState(108)
 				p.Match(JsonTemplateParserRightBrace)
 			}
 
 		}
 		{
-			p.SetState(110)
+			p.SetState(111)
 			p.Match(JsonTemplateParserEOF)
 		}
 
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
-		p.SetState(114)
+		p.SetState(115)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserLeftBrace {
 			{
-				p.SetState(112)
+				p.SetState(113)
 				p.Match(JsonTemplateParserLeftBrace)
 			}
 			{
-				p.SetState(113)
+				p.SetState(114)
 				p.Match(JsonTemplateParserLeftBrace)
 			}
 
 		}
 		{
-			p.SetState(116)
+			p.SetState(117)
 			p.Match(JsonTemplateParserQuestion)
 		}
 		{
-			p.SetState(117)
+			p.SetState(118)
 			p.field(0)
 		}
-		p.SetState(120)
+		p.SetState(121)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserRightBrace {
 			{
-				p.SetState(118)
+				p.SetState(119)
 				p.Match(JsonTemplateParserRightBrace)
 			}
 			{
-				p.SetState(119)
+				p.SetState(120)
 				p.Match(JsonTemplateParserRightBrace)
 			}
 
 		}
 		{
-			p.SetState(122)
+			p.SetState(123)
 			p.Match(JsonTemplateParserEOF)
 		}
 
 	case 3:
 		p.EnterOuterAlt(localctx, 3)
-		p.SetState(126)
+		p.SetState(127)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserLeftBrace {
 			{
-				p.SetState(124)
+				p.SetState(125)
 				p.Match(JsonTemplateParserLeftBrace)
 			}
 			{
-				p.SetState(125)
+				p.SetState(126)
 				p.Match(JsonTemplateParserLeftBrace)
 			}
 
 		}
 		{
-			p.SetState(128)
+			p.SetState(129)
 			p.Match(JsonTemplateParserLiteral)
 		}
 		{
-			p.SetState(129)
+			p.SetState(130)
 			p.field(0)
 		}
-		p.SetState(132)
+		p.SetState(133)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserRightBrace {
 			{
-				p.SetState(130)
+				p.SetState(131)
 				p.Match(JsonTemplateParserRightBrace)
 			}
 			{
-				p.SetState(131)
+				p.SetState(132)
 				p.Match(JsonTemplateParserRightBrace)
 			}
 
 		}
 		{
-			p.SetState(134)
+			p.SetState(135)
 			p.Match(JsonTemplateParserEOF)
 		}
 
 	case 4:
 		p.EnterOuterAlt(localctx, 4)
-		p.SetState(138)
+		p.SetState(139)
 		p.GetErrorHandler().Sync(p)
 
 		if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 15, p.GetParserRuleContext()) == 1 {
 			{
-				p.SetState(136)
+				p.SetState(137)
 				p.Match(JsonTemplateParserLeftBrace)
 			}
 			{
-				p.SetState(137)
+				p.SetState(138)
 				p.Match(JsonTemplateParserLeftBrace)
 			}
 
 		}
 		{
-			p.SetState(140)
+			p.SetState(141)
 			p.field(0)
 		}
-		p.SetState(143)
+		p.SetState(144)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserRightBrace {
 			{
-				p.SetState(141)
+				p.SetState(142)
 				p.Match(JsonTemplateParserRightBrace)
 			}
 			{
-				p.SetState(142)
+				p.SetState(143)
 				p.Match(JsonTemplateParserRightBrace)
 			}
 
 		}
 		{
-			p.SetState(145)
+			p.SetState(146)
 			p.Match(JsonTemplateParserEOF)
 		}
 
@@ -1605,73 +1679,73 @@ func (p *JsonTemplateParser) Lambda() (localctx ILambdaContext) {
 		}
 	}()
 
-	p.SetState(170)
+	p.SetState(171)
 	p.GetErrorHandler().Sync(p)
 
 	switch p.GetTokenStream().LA(1) {
 	case JsonTemplateParserSTRING:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(149)
+			p.SetState(150)
 			p.Name()
 		}
 		{
-			p.SetState(150)
+			p.SetState(151)
 			p.Match(JsonTemplateParserArrow)
 		}
 		{
-			p.SetState(151)
+			p.SetState(152)
 			p.field(0)
 		}
 
 	case JsonTemplateParserLeftParen:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(153)
+			p.SetState(154)
 			p.Match(JsonTemplateParserLeftParen)
 		}
-		p.SetState(164)
+		p.SetState(165)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == JsonTemplateParserSTRING {
 			{
-				p.SetState(154)
+				p.SetState(155)
 				p.Name()
 			}
-			p.SetState(159)
+			p.SetState(160)
 			p.GetErrorHandler().Sync(p)
 			_la = p.GetTokenStream().LA(1)
 
 			for _la == JsonTemplateParserComma {
 				{
-					p.SetState(155)
+					p.SetState(156)
 					p.Match(JsonTemplateParserComma)
 				}
 				{
-					p.SetState(156)
+					p.SetState(157)
 					p.Name()
 				}
 
-				p.SetState(161)
+				p.SetState(162)
 				p.GetErrorHandler().Sync(p)
 				_la = p.GetTokenStream().LA(1)
 			}
 
-			p.SetState(166)
+			p.SetState(167)
 			p.GetErrorHandler().Sync(p)
 			_la = p.GetTokenStream().LA(1)
 		}
 		{
-			p.SetState(167)
+			p.SetState(168)
 			p.Match(JsonTemplateParserRightParen)
 		}
 		{
-			p.SetState(168)
+			p.SetState(169)
 			p.Match(JsonTemplateParserArrow)
 		}
 		{
-			p.SetState(169)
+			p.SetState(170)
 			p.field(0)
 		}
 
@@ -1810,31 +1884,31 @@ func (p *JsonTemplateParser) Function_param() (localctx IFunction_paramContext) 
 		}
 	}()
 
-	p.SetState(177)
+	p.SetState(178)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 22, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
-		p.SetState(173)
+		p.SetState(174)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserSpread {
 			{
-				p.SetState(172)
+				p.SetState(173)
 				p.Match(JsonTemplateParserSpread)
 			}
 
 		}
 		{
-			p.SetState(175)
+			p.SetState(176)
 			p.field(0)
 		}
 
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(176)
+			p.SetState(177)
 			p.Lambda()
 		}
 
@@ -2062,6 +2136,10 @@ func (s *FieldContext) Literal() antlr.TerminalNode {
 	return s.GetToken(JsonTemplateParserLiteral, 0)
 }
 
+func (s *FieldContext) Dot() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserDot, 0)
+}
+
 func (s *FieldContext) Question() antlr.TerminalNode {
 	return s.GetToken(JsonTemplateParserQuestion, 0)
 }
@@ -2139,6 +2217,10 @@ func (s *FieldContext) Comma(i int) antlr.TerminalNode {
 	return s.GetToken(JsonTemplateParserComma, i)
 }
 
+func (s *FieldContext) Colon() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserColon, 0)
+}
+
 func (s *FieldContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
@@ -2205,89 +2287,89 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 	var _alt int
 
 	p.EnterOuterAlt(localctx, 1)
-	p.SetState(196)
+	p.SetState(197)
 	p.GetErrorHandler().Sync(p)
 
 	switch p.GetTokenStream().LA(1) {
 	case JsonTemplateParserLeftParen:
 		{
-			p.SetState(180)
+			p.SetState(181)
 			p.Match(JsonTemplateParserLeftParen)
 		}
 		{
-			p.SetState(181)
+			p.SetState(182)
 			p.field(0)
 		}
 		{
-			p.SetState(182)
+			p.SetState(183)
 			p.Match(JsonTemplateParserRightParen)
 		}
 
 	case JsonTemplateParserTrue:
 		{
-			p.SetState(184)
+			p.SetState(185)
 			p.Match(JsonTemplateParserTrue)
 		}
 
 	case JsonTemplateParserFalse:
 		{
-			p.SetState(185)
+			p.SetState(186)
 			p.Match(JsonTemplateParserFalse)
 		}
 
 	case JsonTemplateParserNull:
 		{
-			p.SetState(186)
+			p.SetState(187)
 			p.Match(JsonTemplateParserNull)
 		}
 
 	case JsonTemplateParserNUMBER:
 		{
-			p.SetState(187)
+			p.SetState(188)
 			p.Match(JsonTemplateParserNUMBER)
 		}
 
 	case JsonTemplateParserESCAPED_STRING:
 		{
-			p.SetState(188)
+			p.SetState(189)
 			p.Match(JsonTemplateParserESCAPED_STRING)
 		}
 
 	case JsonTemplateParserLeftBracket:
 		{
-			p.SetState(189)
+			p.SetState(190)
 			p.Array()
 		}
 
 	case JsonTemplateParserLeftBrace:
 		{
-			p.SetState(190)
+			p.SetState(191)
 			p.Object()
 		}
 
 	case JsonTemplateParserSTRING:
 		{
-			p.SetState(191)
+			p.SetState(192)
 			p.Name()
 		}
 
 	case JsonTemplateParserSubtract:
 		{
-			p.SetState(192)
+			p.SetState(193)
 			p.Match(JsonTemplateParserSubtract)
 		}
 		{
-			p.SetState(193)
+			p.SetState(194)
 			p.field(16)
 		}
 
 	case JsonTemplateParserNot:
 		{
-			p.SetState(194)
+			p.SetState(195)
 			p.Match(JsonTemplateParserNot)
 		}
 		{
-			p.SetState(195)
+			p.SetState(196)
 			p.field(15)
 		}
 
@@ -2295,7 +2377,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
 	}
 	p.GetParserRuleContext().SetStop(p.GetTokenStream().LT(-1))
-	p.SetState(273)
+	p.SetState(274)
 	p.GetErrorHandler().Sync(p)
 	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 30, p.GetParserRuleContext())
 
@@ -2305,19 +2387,19 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.TriggerExitRuleEvent()
 			}
 			_prevctx = localctx
-			p.SetState(271)
+			p.SetState(272)
 			p.GetErrorHandler().Sync(p)
 			switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 29, p.GetParserRuleContext()) {
 			case 1:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(198)
+				p.SetState(199)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 14)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 14)", ""))
 				}
 				{
-					p.SetState(199)
+					p.SetState(200)
 					_la = p.GetTokenStream().LA(1)
 
 					if !(_la == JsonTemplateParserMultiply || _la == JsonTemplateParserDivide) {
@@ -2328,20 +2410,20 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 					}
 				}
 				{
-					p.SetState(200)
+					p.SetState(201)
 					p.field(15)
 				}
 
 			case 2:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(201)
+				p.SetState(202)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 13)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 13)", ""))
 				}
 				{
-					p.SetState(202)
+					p.SetState(203)
 					_la = p.GetTokenStream().LA(1)
 
 					if !(_la == JsonTemplateParserAdd || _la == JsonTemplateParserSubtract) {
@@ -2352,331 +2434,331 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 					}
 				}
 				{
-					p.SetState(203)
+					p.SetState(204)
 					p.field(14)
 				}
 
 			case 3:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(204)
+				p.SetState(205)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 12)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 12)", ""))
 				}
 				{
-					p.SetState(205)
+					p.SetState(206)
 					p.Match(JsonTemplateParserRange)
 				}
 				{
-					p.SetState(206)
+					p.SetState(207)
 					p.field(13)
 				}
 
 			case 4:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(207)
+				p.SetState(208)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 11)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 11)", ""))
 				}
 				{
-					p.SetState(208)
+					p.SetState(209)
 					p.Match(JsonTemplateParserNullCoalescing)
 				}
 				{
-					p.SetState(209)
+					p.SetState(210)
 					p.field(12)
 				}
 
 			case 5:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(210)
+				p.SetState(211)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 10)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 10)", ""))
 				}
 				{
-					p.SetState(211)
+					p.SetState(212)
 					p.Match(JsonTemplateParserEqual)
 				}
 				{
-					p.SetState(212)
+					p.SetState(213)
 					p.field(11)
 				}
 
 			case 6:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(213)
+				p.SetState(214)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 9)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 9)", ""))
 				}
 				{
-					p.SetState(214)
+					p.SetState(215)
 					p.Match(JsonTemplateParserLess)
 				}
 				{
-					p.SetState(215)
+					p.SetState(216)
 					p.field(10)
 				}
 
 			case 7:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(216)
+				p.SetState(217)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 8)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 8)", ""))
 				}
 				{
-					p.SetState(217)
+					p.SetState(218)
 					p.Match(JsonTemplateParserLessOrEqual)
 				}
 				{
-					p.SetState(218)
+					p.SetState(219)
 					p.field(9)
 				}
 
 			case 8:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(219)
+				p.SetState(220)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 7)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 7)", ""))
 				}
 				{
-					p.SetState(220)
+					p.SetState(221)
 					p.Match(JsonTemplateParserGreater)
 				}
 				{
-					p.SetState(221)
+					p.SetState(222)
 					p.field(8)
 				}
 
 			case 9:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(222)
+				p.SetState(223)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 6)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 6)", ""))
 				}
 				{
-					p.SetState(223)
+					p.SetState(224)
 					p.Match(JsonTemplateParserGreaterOrEqual)
 				}
 				{
-					p.SetState(224)
+					p.SetState(225)
 					p.field(7)
 				}
 
 			case 10:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(225)
+				p.SetState(226)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 5)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 5)", ""))
 				}
 				{
-					p.SetState(226)
+					p.SetState(227)
 					p.Match(JsonTemplateParserNotEqual)
 				}
 				{
-					p.SetState(227)
+					p.SetState(228)
 					p.field(6)
 				}
 
 			case 11:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(228)
+				p.SetState(229)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 4)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 4)", ""))
 				}
 				{
-					p.SetState(229)
+					p.SetState(230)
 					p.Match(JsonTemplateParserAnd)
 				}
 				{
-					p.SetState(230)
+					p.SetState(231)
 					p.field(5)
 				}
 
 			case 12:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(231)
+				p.SetState(232)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 3)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 3)", ""))
 				}
 				{
-					p.SetState(232)
+					p.SetState(233)
 					p.Match(JsonTemplateParserOr)
 				}
 				{
-					p.SetState(233)
+					p.SetState(234)
 					p.field(4)
 				}
 
 			case 13:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(234)
+				p.SetState(235)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 1)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 1)", ""))
 				}
 				{
-					p.SetState(235)
+					p.SetState(236)
 					p.Match(JsonTemplateParserLiteral)
 				}
 				{
-					p.SetState(236)
+					p.SetState(237)
 					p.field(2)
 				}
 
 			case 14:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(237)
+				p.SetState(238)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 19)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 19)", ""))
 				}
 
-				p.SetState(239)
+				p.SetState(240)
 				p.GetErrorHandler().Sync(p)
 				_la = p.GetTokenStream().LA(1)
 
 				if _la == JsonTemplateParserQuestion {
 					{
-						p.SetState(238)
+						p.SetState(239)
 						p.Match(JsonTemplateParserQuestion)
 					}
 
 				}
 				{
-					p.SetState(241)
-					p.Match(JsonTemplateParserT__8)
+					p.SetState(242)
+					p.Match(JsonTemplateParserDot)
 				}
 				{
-					p.SetState(242)
+					p.SetState(243)
 					p.Name()
 				}
 
 			case 15:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(243)
+				p.SetState(244)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 18)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 18)", ""))
 				}
 
-				p.SetState(245)
+				p.SetState(246)
 				p.GetErrorHandler().Sync(p)
 				_la = p.GetTokenStream().LA(1)
 
 				if _la == JsonTemplateParserQuestion {
 					{
-						p.SetState(244)
+						p.SetState(245)
 						p.Match(JsonTemplateParserQuestion)
 					}
 
 				}
 				{
-					p.SetState(247)
+					p.SetState(248)
 					p.Match(JsonTemplateParserLeftBracket)
 				}
 				{
-					p.SetState(248)
+					p.SetState(249)
 					p.Index()
 				}
 				{
-					p.SetState(249)
+					p.SetState(250)
 					p.Match(JsonTemplateParserRightBracket)
 				}
 
 			case 16:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(251)
+				p.SetState(252)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 17)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 17)", ""))
 				}
 				{
-					p.SetState(252)
+					p.SetState(253)
 					p.Match(JsonTemplateParserLeftParen)
 				}
-				p.SetState(261)
+				p.SetState(262)
 				p.GetErrorHandler().Sync(p)
 				_la = p.GetTokenStream().LA(1)
 
-				if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&34780731670528) != 0 {
+				if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&123176449296896) != 0 {
 					{
-						p.SetState(253)
+						p.SetState(254)
 						p.Function_param()
 					}
-					p.SetState(258)
+					p.SetState(259)
 					p.GetErrorHandler().Sync(p)
 					_la = p.GetTokenStream().LA(1)
 
 					for _la == JsonTemplateParserComma {
 						{
-							p.SetState(254)
+							p.SetState(255)
 							p.Match(JsonTemplateParserComma)
 						}
 						{
-							p.SetState(255)
+							p.SetState(256)
 							p.Function_param()
 						}
 
-						p.SetState(260)
+						p.SetState(261)
 						p.GetErrorHandler().Sync(p)
 						_la = p.GetTokenStream().LA(1)
 					}
 
 				}
 				{
-					p.SetState(263)
+					p.SetState(264)
 					p.Match(JsonTemplateParserRightParen)
 				}
 
 			case 17:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(264)
+				p.SetState(265)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 2)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 2)", ""))
 				}
 				{
-					p.SetState(265)
+					p.SetState(266)
 					p.Match(JsonTemplateParserQuestion)
 				}
 				{
-					p.SetState(266)
+					p.SetState(267)
 					p.field(0)
 				}
-				p.SetState(269)
+				p.SetState(270)
 				p.GetErrorHandler().Sync(p)
 
 				if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 28, p.GetParserRuleContext()) == 1 {
 					{
-						p.SetState(267)
-						p.Match(JsonTemplateParserT__9)
+						p.SetState(268)
+						p.Match(JsonTemplateParserColon)
 					}
 					{
-						p.SetState(268)
+						p.SetState(269)
 						p.field(0)
 					}
 
@@ -2685,7 +2767,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 			}
 
 		}
-		p.SetState(275)
+		p.SetState(276)
 		p.GetErrorHandler().Sync(p)
 		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 30, p.GetParserRuleContext())
 	}
@@ -2844,40 +2926,40 @@ func (p *JsonTemplateParser) Array() (localctx IArrayContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(276)
+		p.SetState(277)
 		p.Match(JsonTemplateParserLeftBracket)
 	}
-	p.SetState(285)
+	p.SetState(286)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
-	if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&34780731670528) != 0 {
+	if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&123176449296896) != 0 {
 		{
-			p.SetState(277)
+			p.SetState(278)
 			p.Spread_field()
 		}
-		p.SetState(282)
+		p.SetState(283)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == JsonTemplateParserComma {
 			{
-				p.SetState(278)
+				p.SetState(279)
 				p.Match(JsonTemplateParserComma)
 			}
 			{
-				p.SetState(279)
+				p.SetState(280)
 				p.Spread_field()
 			}
 
-			p.SetState(284)
+			p.SetState(285)
 			p.GetErrorHandler().Sync(p)
 			_la = p.GetTokenStream().LA(1)
 		}
 
 	}
 	{
-		p.SetState(287)
+		p.SetState(288)
 		p.Match(JsonTemplateParserRightBracket)
 	}
 
@@ -2997,19 +3079,19 @@ func (p *JsonTemplateParser) Spread_field() (localctx ISpread_fieldContext) {
 	}()
 
 	p.EnterOuterAlt(localctx, 1)
-	p.SetState(290)
+	p.SetState(291)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == JsonTemplateParserSpread {
 		{
-			p.SetState(289)
+			p.SetState(290)
 			p.Match(JsonTemplateParserSpread)
 		}
 
 	}
 	{
-		p.SetState(292)
+		p.SetState(293)
 		p.field(0)
 	}
 
@@ -3167,40 +3249,40 @@ func (p *JsonTemplateParser) Object() (localctx IObjectContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(294)
+		p.SetState(295)
 		p.Match(JsonTemplateParserLeftBrace)
 	}
-	p.SetState(303)
+	p.SetState(304)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
-	if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&34780731670528) != 0 {
+	if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&123176449296896) != 0 {
 		{
-			p.SetState(295)
+			p.SetState(296)
 			p.Object_field()
 		}
-		p.SetState(300)
+		p.SetState(301)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == JsonTemplateParserComma {
 			{
-				p.SetState(296)
+				p.SetState(297)
 				p.Match(JsonTemplateParserComma)
 			}
 			{
-				p.SetState(297)
+				p.SetState(298)
 				p.Object_field()
 			}
 
-			p.SetState(302)
+			p.SetState(303)
 			p.GetErrorHandler().Sync(p)
 			_la = p.GetTokenStream().LA(1)
 		}
 
 	}
 	{
-		p.SetState(305)
+		p.SetState(306)
 		p.Match(JsonTemplateParserRightBrace)
 	}
 
@@ -3259,6 +3341,10 @@ func (s *Object_fieldContext) Name() INameContext {
 	}
 
 	return t.(INameContext)
+}
+
+func (s *Object_fieldContext) Colon() antlr.TerminalNode {
+	return s.GetToken(JsonTemplateParserColon, 0)
 }
 
 func (s *Object_fieldContext) Field() IFieldContext {
@@ -3339,54 +3425,54 @@ func (p *JsonTemplateParser) Object_field() (localctx IObject_fieldContext) {
 		}
 	}()
 
-	p.SetState(318)
+	p.SetState(319)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 37, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(307)
+			p.SetState(308)
 			p.Name()
 		}
 		{
-			p.SetState(308)
-			p.Match(JsonTemplateParserT__9)
+			p.SetState(309)
+			p.Match(JsonTemplateParserColon)
 		}
 		{
-			p.SetState(309)
+			p.SetState(310)
 			p.field(0)
 		}
 
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(311)
+			p.SetState(312)
 			p.Match(JsonTemplateParserESCAPED_STRING)
 		}
 		{
-			p.SetState(312)
-			p.Match(JsonTemplateParserT__9)
+			p.SetState(313)
+			p.Match(JsonTemplateParserColon)
 		}
 		{
-			p.SetState(313)
+			p.SetState(314)
 			p.field(0)
 		}
 
 	case 3:
 		p.EnterOuterAlt(localctx, 3)
-		p.SetState(315)
+		p.SetState(316)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserSpread {
 			{
-				p.SetState(314)
+				p.SetState(315)
 				p.Match(JsonTemplateParserSpread)
 			}
 
 		}
 		{
-			p.SetState(317)
+			p.SetState(318)
 			p.field(0)
 		}
 
@@ -3492,7 +3578,7 @@ func (p *JsonTemplateParser) Name() (localctx INameContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(320)
+		p.SetState(321)
 		p.Match(JsonTemplateParserSTRING)
 	}
 
@@ -3614,27 +3700,27 @@ func (p *JsonTemplateParser) Index() (localctx IIndexContext) {
 		}
 	}()
 
-	p.SetState(325)
+	p.SetState(326)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 38, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(322)
+			p.SetState(323)
 			p.field(0)
 		}
 
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(323)
+			p.SetState(324)
 			p.Match(JsonTemplateParserNUMBER)
 		}
 
 	case 3:
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(324)
+			p.SetState(325)
 			p.Match(JsonTemplateParserESCAPED_STRING)
 		}
 

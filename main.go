@@ -311,6 +311,37 @@ func main() {
 		},
 	})
 	app.Action(Action{
+		Name:  "script",
+		Usage: "Evaluate a JSON expression or run a REPL",
+		Function: func(args []string) error {
+			functions.SetCacheAll(cacheAll)
+			object, err := getScope(scope, -1)
+			if err != nil {
+				return burrito.WrapError(err, "An error occurred while reading the scope")
+			}
+			if len(args) == 0 {
+				return burrito.WrapErrorf(err, "No script file specified")
+			} else {
+				file, err := os.ReadFile(args[0])
+				if err != nil {
+					return burrito.WrapErrorf(err, "An error occurred while reading the script file")
+				}
+				file, err = json.ConvertToUTF8(file)
+				if err != nil {
+					return burrito.WrapErrorf(err, "An error occurred while reading the script file")
+				}
+				s := deque.Deque[*types.JsonObject]{}
+				s.PushBack(object)
+				value, err := jsonte.EvalScript(string(file), s, "#")
+				if err != nil {
+					return burrito.WrapErrorf(err, "An error occurred while running the script")
+				}
+				fmt.Println(types.ToPrettyString(value.Value))
+			}
+			return nil
+		},
+	})
+	app.Action(Action{
 		Name:  "version",
 		Usage: "Print the version info",
 		Function: func(args []string) error {
@@ -391,7 +422,7 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, error) {
 					if err != nil {
 						return burrito.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
 					}
-					err = jsonte.VerifyReservedNames(json, path + "#/")
+					err = jsonte.VerifyReservedNames(json, path+"#/")
 					result = types.MergeObject(result, json, false, "#")
 				} else if strings.HasSuffix(path, ".assert") {
 					file, err := os.ReadFile(path)
@@ -486,20 +517,22 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 func repl(scope *types.JsonObject) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("> ")
+	s := deque.Deque[*types.JsonObject]{}
+	s.PushBack(scope)
 	for {
 		read, _ := reader.ReadString('\n')
 		text := strings.TrimRight(read, "\n\r")
 		if text == "exit" {
 			break
 		}
-
-		s := deque.Deque[*types.JsonObject]{}
-		s.PushBack(scope)
 		eval, err := jsonte.Eval(text, s, "#/")
 		if err != nil {
 			fmt.Println(err)
 		} else {
 			fmt.Println(types.ToString(eval.Value))
+		}
+		if !eval.VariableScope.IsEmpty() {
+			s.PushBack(eval.VariableScope)
 		}
 		fmt.Print("> ")
 	}

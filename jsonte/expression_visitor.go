@@ -50,6 +50,8 @@ func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) 
 		return v.VisitStatement(val)
 	case *parser.StatementsContext:
 		return v.VisitStatements(val)
+	case *parser.ScriptContext:
+		return v.VisitScript(val)
 	}
 	utils.BadDeveloperError("Unknown tree type " + reflect.TypeOf(tree).String())
 	return nil, nil
@@ -127,6 +129,11 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 			StackTarget: v.variableScope,
 		}
 	}
+	if v.variableScope.ContainsKey(name) {
+		get := v.variableScope.Get(name)
+		get.UpdateParent(v.variableScope, types.NewString(name))
+		return get
+	}
 	for i := v.scope.Len() - 1; i >= 0; i-- {
 		m := v.scope.At(i)
 		if m.ContainsKey(name) {
@@ -138,14 +145,163 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 	return types.NullWithParent(v.variableScope, types.NewString(name))
 }
 
+func (v *ExpressionVisitor) VisitScript(ctx *parser.ScriptContext) (types.JsonType, error) {
+	for _, statement := range ctx.AllStatement() {
+		visit, err := v.Visit(statement)
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		if types.IsReturn(visit) {
+			return visit, nil
+		}
+		if visit == types.Break || visit == types.Continue {
+			return types.Null, burrito.WrappedErrorf("%s outside of loop", visit.StringValue())
+		}
+	}
+	return types.Null, nil
+}
+
 func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.JsonType, error) {
-	utils.BadDeveloperError("Not yet implemented")
-	return nil, nil
+	if ctx.Return() != nil {
+		if len(ctx.AllField()) == 0 {
+			return types.NewReturn(types.Null), nil
+		}
+		visit, err := v.Visit(ctx.Field(0))
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		return types.NewReturn(visit), nil
+	} else if ctx.Break() != nil {
+		return types.Break, nil
+	} else if ctx.Continue() != nil {
+		return types.Continue, nil
+	} else if ctx.For() != nil && ctx.In() != nil {
+		arr, err := v.Visit(ctx.Field(0))
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		if _, ok := arr.(*types.JsonArray); !ok {
+			return types.Null, burrito.WrappedErrorf("Cannot iterate over %s", arr.StringValue())
+		}
+		valueName := ctx.Name(0).GetText()
+		indexName := ""
+		hasIndex := false
+		if len(ctx.AllName()) > 1 {
+			indexName = ctx.Name(1).GetText()
+			hasIndex = true
+		}
+		for i, value := range arr.(*types.JsonArray).Value {
+			v.pushScopePair(valueName, value)
+			if hasIndex {
+				v.pushScopePair(indexName, types.AsNumber(i))
+			}
+			val, err := v.Visit(ctx.Statements(0))
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			if hasIndex {
+				v.popScope()
+			}
+			v.popScope()
+			if val != nil && types.IsReturn(val) {
+				return val, nil
+			}
+			if val == types.Break {
+				break
+			}
+			if val == types.Continue {
+				continue
+			}
+		}
+	} else if len(ctx.AllIf()) > 0 {
+		for i := range ctx.AllIf() {
+			condition, err := v.Visit(ctx.Field(i))
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			if condition.BoolValue() {
+				val, err := v.Visit(ctx.Statements(i))
+				if err != nil {
+					return types.Null, burrito.PassError(err)
+				}
+				return val, nil
+			}
+		}
+		if len(ctx.AllElse()) == len(ctx.AllIf()) {
+			val, err := v.Visit(ctx.Statements(len(ctx.AllIf())))
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			return val, nil
+		}
+	} else if ctx.Do() != nil {
+		for {
+			val, err := v.Visit(ctx.Statements(0))
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			if val != nil && types.IsReturn(val) {
+				return val, nil
+			}
+			if val == types.Break {
+				break
+			}
+			if val == types.Continue {
+				continue
+			}
+			condition, err := v.Visit(ctx.Field(0))
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			if !condition.BoolValue() {
+				return types.Null, nil
+			}
+		}
+	} else if ctx.While() != nil {
+		for {
+			condition, err := v.Visit(ctx.Field(0))
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			if !condition.BoolValue() {
+				return types.Null, nil
+			}
+			val, err := v.Visit(ctx.Statements(0))
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			if val != nil && types.IsReturn(val) {
+				return val, nil
+			}
+			if val == types.Break {
+				break
+			}
+			if val == types.Continue {
+				continue
+			}
+		}
+	} else if len(ctx.AllField()) == 1 {
+		return v.Visit(ctx.Field(0))
+	} else if len(ctx.AllStatements()) == 1 {
+		return v.Visit(ctx.Statements(0))
+	}
+	return types.Null, nil
 }
 
 func (v *ExpressionVisitor) VisitStatements(ctx *parser.StatementsContext) (types.JsonType, error) {
-	utils.BadDeveloperError("Not yet implemented")
-	return nil, nil
+	for _, statement := range ctx.AllStatement() {
+		v, err := v.Visit(statement)
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		if types.IsReturn(v) {
+			return v, nil
+		}
+		if v == types.Break || v == types.Continue {
+			return v, nil
+		}
+	}
+	return types.Null, nil
 }
 
 func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) (types.JsonType, error) {
@@ -189,21 +345,22 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	if context.Not() != nil {
 		visit, err := v.Visit(context.Field(0))
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		return types.AsBool(!visit.BoolValue()), nil
 	}
 	if context.Literal() != nil {
 		left, err := v.Visit(context.Field(0))
 		if err != nil {
-			return nil, burrito.WrapErrorf(err, "Error resolving left side of the statement")
+			return types.Null, burrito.WrapErrorf(err, "Error resolving left side of the statement")
 		}
 		right, err := v.Visit(context.Field(1))
 		if err != nil {
-			return nil, burrito.WrapErrorf(err, "Error resolving right side of the statement")
+			return types.Null, burrito.WrapErrorf(err, "Error resolving right side of the statement")
 		}
+		right = types.Box(right.Unbox())
 		if left.Parent() == nil {
-			return nil, burrito.WrappedErrorf("Cannot assign a value to this expression")
+			return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
 		}
 		if left.ParentIndex() == nil {
 			utils.BadDeveloperError("Invalid parent index type")
@@ -227,7 +384,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 					b.Value[index] = right
 					return right, nil
 				} else {
-					return nil, burrito.WrappedErrorf("Index out of bounds: %d", index)
+					return types.Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
 				}
 			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
 				return i.Set(left.Parent(), right)
@@ -244,27 +401,27 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 					b.Path[index] = right
 					return right, nil
 				} else {
-					return nil, burrito.WrappedErrorf("Index out of bounds: %d", index)
+					return types.Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
 				}
 			} else {
 				utils.BadDeveloperError("Invalid parent index type")
 			}
 		} else {
-			return nil, burrito.WrappedErrorf("Cannot assign a value to this expression")
+			return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
 		}
 	}
 	// process field composed of two other fields
 	if len(context.AllField()) == 2 {
 		f1, err := v.Visit(context.Field(0))
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		// Move AND and OR here to make those operators short-circuiting
 		if context.And() != nil {
 			if f1.BoolValue() {
 				f2, err := v.Visit(context.Field(1))
 				if err != nil {
-					return types.Null, err
+					return types.Null, burrito.PassError(err)
 				}
 				return types.AsBool(f2.BoolValue()), nil
 			} else {
@@ -274,7 +431,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			if !f1.BoolValue() {
 				f2, err := v.Visit(context.Field(1))
 				if err != nil {
-					return types.Null, err
+					return types.Null, burrito.PassError(err)
 				}
 				return types.AsBool(f2.BoolValue()), nil
 			} else {
@@ -283,7 +440,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		}
 		f2, err := v.Visit(context.Field(1))
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		if context.NullCoalescing() != nil {
 			if types.IsNull(f1) {
@@ -300,25 +457,25 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		} else if context.Less() != nil {
 			than, err := f1.LessThan(f2)
 			if err != nil {
-				return types.Null, err
+				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(than), nil
 		} else if context.Greater() != nil {
 			than, err := f1.LessThan(f2)
 			if err != nil {
-				return types.Null, err
+				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(!than && !f1.Equals(f2)), nil
 		} else if context.LessOrEqual() != nil {
 			than, err := f1.LessThan(f2)
 			if err != nil {
-				return types.Null, err
+				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(than || f1.Equals(f2)), nil
 		} else if context.GreaterOrEqual() != nil {
 			than, err := f1.LessThan(f2)
 			if err != nil {
-				return types.Null, err
+				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(!than), nil
 		} else if types.IsNumber(f1) && types.IsNumber(f2) {
@@ -369,7 +526,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if context.Question() != nil {
 			f1, err := v.Visit(context.Field(0))
 			if err != nil {
-				return types.Null, err
+				return types.Null, burrito.PassError(err)
 			}
 			if types.AsBool(f1).BoolValue() {
 				return v.Visit(context.Field(1))
@@ -385,13 +542,13 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	} else if context.LeftParen() != nil && len(context.AllField()) == 1 && context.GetChild(0) == context.Field(0) {
 		lambda, err := v.Visit(context.Field(0))
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		params := make([]types.JsonType, 0)
 		for _, param := range context.AllFunction_param() {
 			p, err := v.Visit(param)
 			if err != nil {
-				return types.Null, err
+				return types.Null, burrito.PassError(err)
 			}
 			if param.(*parser.Function_paramContext).Spread() != nil {
 				if a, ok := p.(*types.JsonArray); ok {
@@ -407,12 +564,12 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			lambdaContext := v.resolveLambdaTree(lambda.StringValue())
 			fun, err := v.Visit(lambdaContext)
 			if err != nil {
-				return types.Null, err
+				return types.Null, burrito.PassError(err)
 			}
 			if f, ok := fun.(*types.JsonLambda); ok {
 				i, err := f.Value(f, params)
 				if err != nil {
-					return types.Null, err
+					return types.Null, burrito.PassError(err)
 				}
 				return i, nil
 			} else {
@@ -421,7 +578,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		} else if l, ok := lambda.(*types.JsonLambda); ok {
 			i, err := l.Value(l, params)
 			if err != nil {
-				return types.Null, err
+				return types.Null, burrito.PassError(err)
 			}
 			return i, nil
 		} else {
@@ -436,7 +593,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			if methodName == nil || !functions.HasFunction(*methodName) {
 				find := functions.FindMisspelling(*methodName)
 				if find != nil {
-					return nil, burrito.WrappedErrorf("Function '%s' not found, did you mean '%s'?", *methodName, *find)
+					return types.Null, burrito.WrappedErrorf("Function '%s' not found, did you mean '%s'?", *methodName, *find)
 				}
 				return types.Null, burrito.WrappedErrorf("Function '%s' not found!", context.Field(0).GetText())
 			}
@@ -452,7 +609,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		text := context.Name().GetText()
 		object, err := v.Visit(context.Field(0))
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		if functions.HasInstanceFunction(reflect.TypeOf(object), text) {
 			return types.NewLambda(
@@ -487,11 +644,11 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	if context.Index() != nil && len(context.AllField()) == 1 {
 		i, err := v.Visit(context.Index())
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		object, err := v.Visit(context.Field(0))
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		index, err := object.Index(i)
 		if err != nil {
@@ -522,7 +679,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	if context.Subtract() != nil && len(context.AllField()) == 1 {
 		f, err := v.Visit(context.Field(0))
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		return f.Negate(), nil
 	}
@@ -563,7 +720,7 @@ func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) (types.Json
 		sf := f.(*parser.Spread_fieldContext)
 		r, err := v.Visit(sf.Field())
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		if sf.Spread() != nil {
 			if _, ok := r.(*types.JsonArray); !ok {
@@ -582,7 +739,7 @@ func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) (types.Js
 	for _, f := range context.AllObject_field() {
 		obj, err := v.Visit(f)
 		if err != nil {
-			return types.Null, err
+			return types.Null, burrito.PassError(err)
 		}
 		u := obj.(*types.JsonObject)
 		for _, key := range u.Keys() {
@@ -603,7 +760,7 @@ func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContex
 	}
 	field, err := v.Visit(context.Field())
 	if err != nil {
-		return types.Null, err
+		return types.Null, burrito.PassError(err)
 	}
 	n := types.NewJsonObject()
 	n.Put(name, field)
@@ -623,7 +780,7 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			}
 			result, err := v.Visit(ctx.Field())
 			if err != nil {
-				return types.Null, err
+				return types.Null, burrito.PassError(err)
 			}
 			for i := 0; i < len(ctx.AllName()); i++ {
 				v.popScope()
