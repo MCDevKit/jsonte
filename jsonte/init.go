@@ -11,12 +11,13 @@ import (
 // LibraryInit initializes jsonte in library mode
 // level is the logging level
 // safeMode is whether to run in safe mode, which disables unsafe functions
-func LibraryInit(level zapcore.Level, safeMode bool) {
+func LibraryInit(level zapcore.Level, safeMode, serverMode bool) {
 	utils.InitLogging(level)
 	color.NoColor = true
 	types.Init()
 	functions.Init()
 	functions.SafeMode = safeMode
+	functions.ServerMode = serverMode
 }
 
 // FetchCache caches the vanilla packs

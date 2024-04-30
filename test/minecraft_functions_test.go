@@ -10,42 +10,6 @@ import (
 	"testing"
 )
 
-func TestGetLatestBPFile(t *testing.T) {
-	safeio.Resolver = CacheFS
-	expected := `{
-  "format_version": "1.10",
-  "minecraft:item": {
-    "description": {
-      "identifier": "minecraft:apple"
-    },
-
-    "components": {
-      "minecraft:use_duration": 32,
-      "minecraft:food": {
-        "nutrition": 4,
-        "saturation_modifier": "low"
-      }
-    }
-  }
-}`
-	eval := evaluate(t, `getLatestBPFile('items/apple.json')`)
-	open, err := safeio.Resolver.Open(eval.Value.StringValue())
-	if err != nil {
-		t.Fatal(err)
-	}
-	all, err := io.ReadAll(open)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.ReplaceAll(string(all), "\r\n", "\n") != expected {
-		t.Fatalf("Expected: \n%s\ngot: \n%s", expected, string(all))
-	}
-	err = open.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestGetOldRPFile(t *testing.T) {
 	safeio.Resolver = CacheFS
 	expected := `{

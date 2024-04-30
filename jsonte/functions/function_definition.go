@@ -34,6 +34,7 @@ var cacheAll = false
 var cacheAllBucket = "all-cache"
 
 var SafeMode = false
+var ServerMode = false
 
 func Init() {
 	if !initialized {

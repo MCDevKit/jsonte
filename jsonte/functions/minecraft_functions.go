@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 )
@@ -406,7 +407,17 @@ var bpFiles = utils.NavigableMap[string, string]{}
 var itemInfos = utils.NavigableMap[string, map[int]interface{}]{}
 var itemInfosByName = utils.NavigableMap[string, interface{}]{}
 
+type CachedRequest struct {
+	Response map[string]interface{}
+	Next     string
+}
+
+var requestCache = map[string]CachedRequest{}
+
 func getMinecraftInstallDir() (*types.JsonString, error) {
+	if ServerMode {
+		return nil, burrito.WrappedErrorf("This function works only in client mode")
+	}
 	if runtime.GOOS != "windows" {
 		return nil, burrito.WrappedErrorf("This function works only on Windows")
 	}
@@ -721,28 +732,43 @@ func findPackVersions(isBp bool, uuid string, version *types.Semver) (utils.Navi
 		if version == nil || version.IsEmpty() {
 			url := "https://api.github.com/repos/Mojang/bedrock-samples/releases/latest"
 			utils.Logger.Infof("Resolving %s", url)
-			resp, _, err := safeio.Resolver.HttpGet(url)
-			if err != nil {
-				return versions, burrito.WrapErrorf(err, "An error occurred while resolving %s", url)
-			}
-			err = json.NewDecoder(resp).Decode(&release)
-			if err != nil {
-				return versions, burrito.WrapErrorf(err, "An error occurred while parsing %s", url)
-			}
-			err = resp.Close()
-			if err != nil {
-				return versions, burrito.WrapErrorf(err, "An error occurred while closing %s", url)
+			if _, ok := requestCache[url]; !ok {
+				resp, _, err := safeio.Resolver.HttpGet(url)
+				if err != nil {
+					return versions, burrito.WrapErrorf(err, "An error occurred while resolving %s", url)
+				}
+				err = json.NewDecoder(resp).Decode(&release)
+				if err != nil {
+					return versions, burrito.WrapErrorf(err, "An error occurred while parsing %s", url)
+				}
+				err = resp.Close()
+				if err != nil {
+					return versions, burrito.WrapErrorf(err, "An error occurred while closing %s", url)
+				}
+				requestCache[url] = CachedRequest{Response: release, Next: ""}
+			} else {
+				release = requestCache[url].Response
 			}
 		} else {
 			url := "https://api.github.com/repos/Mojang/bedrock-samples/releases"
 			if len(releases) == 0 {
+				var fetchedURLs []string
+				counter := 0
+				var fetchedReleases []map[string]interface{}
+			outer:
 				for {
+					counter++
+					if counter > 10 {
+						utils.Logger.Error("Too many redirects")
+						break
+					}
+					fetchedURLs = append(fetchedURLs, url)
 					utils.Logger.Infof("Resolving %s", url)
 					resp, header, err := safeio.Resolver.HttpGet(url)
 					if err != nil {
 						return versions, burrito.WrapErrorf(err, "An error occurred while resolving %s", url)
 					}
-					err = json.NewDecoder(resp).Decode(&releases)
+					err = json.NewDecoder(resp).Decode(&fetchedReleases)
 					if err != nil {
 						return versions, burrito.WrapErrorf(err, "An error occurred while parsing %s", url)
 					}
@@ -750,15 +776,22 @@ func findPackVersions(isBp bool, uuid string, version *types.Semver) (utils.Navi
 					if err != nil {
 						return versions, burrito.WrapErrorf(err, "An error occurred while closing %s", url)
 					}
+					releases = append(releases, fetchedReleases...)
 					if header.Get("link") == "" {
 						break
 					}
-					link := header.Get("link")
-					if strings.Contains(link, `rel="next"`) {
-						url = strings.Trim(strings.Split(strings.Split(link, `rel="next"`)[0], ";")[0], "<> ")
-					} else {
-						break
+					linkHeader := header.Get("link")
+					links := strings.Split(linkHeader, ",")
+					for _, l := range links {
+						if strings.Contains(l, `rel="next"`) {
+							url = strings.Trim(strings.Split(strings.Split(l, `rel="next"`)[0], ";")[0], "<> ")
+							if slices.Contains(fetchedURLs, url) {
+								continue
+							}
+							continue outer
+						}
 					}
+					break
 				}
 			}
 			var closest *types.Semver = nil

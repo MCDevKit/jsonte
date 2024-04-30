@@ -53,6 +53,14 @@ func main() {
 		Usage: "Enable debug mode",
 	}, &debug)
 	app.BoolFlag(Flag{
+		Name:  "safe-mode",
+		Usage: "Enable safe mode",
+	}, &functions.SafeMode)
+	app.BoolFlag(Flag{
+		Name:  "server-mode",
+		Usage: "Enable server mode",
+	}, &functions.ServerMode)
+	app.BoolFlag(Flag{
 		Name:  "silent",
 		Usage: "Enable silent mode",
 	}, &silent)
