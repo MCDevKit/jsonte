@@ -6,7 +6,6 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -145,7 +144,7 @@ var reservedNames = []string{
 	"do",
 }
 
-const variableNamePattern = "^[a-zA-Z_$][a-zA-Z0-9_$]*$"
+//const variableNamePattern = "^[a-zA-Z_$][a-zA-Z0-9_$]*$"
 
 func VerifyReservedNames(o *types.JsonObject, path string) error {
 	for _, key := range o.Value.Keys() {
@@ -195,15 +194,6 @@ func verifyReservedName(key string, path string) error {
 			utils.Logger.Warnf("The key %s at %s is a reserved name. In the future versions, this will fail the compilation.", key, path)
 			//return utils.WrappedJsonErrorf(path, "The key %s is a reserved name", key)
 		}
-	}
-	matched, err := regexp.Match(variableNamePattern, []byte(key))
-	if err != nil {
-		return burrito.WrappedErrorf("Failed to match the variable name %s: %s", key, err)
-	}
-	if !matched {
-		// For now only warn about reserved names
-		utils.Logger.Warnf("The key %s at %s is not a valid variable name. Valid names should match ^[a-zA-Z_$][a-zA-Z0-9_$]*$ regex pattern. In the future versions, this will fail the compilation.", key, path)
-		//return utils.WrappedJsonErrorf(path, "The key %s is not a valid variable name. Valid names should match ^[a-zA-Z_$][a-zA-Z0-9_$]*$ regex pattern.", key)
 	}
 	return nil
 }
