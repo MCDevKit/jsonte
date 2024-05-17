@@ -129,7 +129,7 @@ func ParseLambda(text string) ([]string, []string, error) {
 	p.BuildParseTrees = true
 	tree := p.Lambda()
 	if listener.Error != nil {
-		return nil, nil, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
+		return nil, nil, burrito.WrapErrorf(listener.Error, "Failed to parse lambda \"%s\"", text)
 	}
 	visitor := LambdaVisitor{}
 	visitor.Visit(tree)

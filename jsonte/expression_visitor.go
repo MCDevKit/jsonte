@@ -768,7 +768,10 @@ func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContex
 }
 
 func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonType, error) {
-	vars, args, _ := ParseLambda(ctx.GetText())
+	vars, args, err := ParseLambda(ctx.GetText())
+	if err != nil {
+		return types.Null, burrito.PassError(err)
+	}
 	return types.NewLambda(
 		func(this *types.JsonLambda, o []types.JsonType) (types.JsonType, error) {
 			if len(ctx.AllName()) > len(o) {
