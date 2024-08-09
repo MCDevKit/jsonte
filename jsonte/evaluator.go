@@ -88,7 +88,7 @@ func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) 
 	p.BuildParseTrees = true
 	tree := p.Script()
 	if listener.Error != nil {
-		return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
+		return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse script \"%s\"", text)
 	}
 	visitor := ExpressionVisitor{
 		scope:         scope,
