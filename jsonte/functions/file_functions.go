@@ -68,7 +68,7 @@ func RegisterFileFunctions() {
 {
   "$template": {
     "$comment": "The field below will be an array of all files with .json extension in the data directory",
-    "test": "{{fileList('data', "*.json")}}"
+    "test": "{{fileList('data', '*.json')}}"
   }
 }
 </code>`,
