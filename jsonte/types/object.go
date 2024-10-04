@@ -6,7 +6,6 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
 	"reflect"
-	"regexp"
 	"strings"
 )
 
@@ -306,9 +305,6 @@ func IsEqualObject(a, b utils.NavigableMap[string, JsonType]) bool {
 	}
 	return true
 }
-
-// TODO: This should be moved to a shared package.
-var actionPattern, _ = regexp.Compile("^\\{\\{(?:\\\\.|[^{}])+}}$")
 
 // MergeObject merges two JSON objects into a new JSON object.
 // If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.

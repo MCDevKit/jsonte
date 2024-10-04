@@ -591,9 +591,11 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				}
 			}
 			if methodName == nil || !functions.HasFunction(*methodName) {
-				find := functions.FindMisspelling(*methodName)
-				if find != nil {
-					return types.Null, burrito.WrappedErrorf("Function '%s' not found, did you mean '%s'?", *methodName, *find)
+				if methodName != nil {
+					find := functions.FindMisspelling(*methodName)
+					if find != nil {
+						return types.Null, burrito.WrappedErrorf("Function '%s' not found, did you mean '%s'?", *methodName, *find)
+					}
 				}
 				return types.Null, burrito.WrappedErrorf("Function '%s' not found!", context.Field(0).GetText())
 			}

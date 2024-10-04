@@ -25,7 +25,7 @@ type IOResolver struct {
 }
 
 // Resolver Current Resolver used by jsonte to access IO
-var Resolver IOResolver = DefaultIOResolver
+var Resolver = DefaultIOResolver
 
 // DefaultIOResolver Default IO Resolver, that uses the os package
 var DefaultIOResolver = IOResolver{

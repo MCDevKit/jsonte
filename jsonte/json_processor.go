@@ -7,7 +7,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
-	"io/ioutil"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -357,7 +357,7 @@ func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]J
 			if err != nil {
 				return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to open %s", copyPath.StringValue())
 			}
-			all, err := ioutil.ReadAll(resolve)
+			all, err := io.ReadAll(resolve)
 			if err != nil {
 				return types.NewJsonObject(), utils.WrapJsonErrorf(loopPath, err, "Failed to read %s", copyPath.StringValue())
 			}
@@ -753,7 +753,7 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 			return nil, burrito.WrapErrorf(err, "Error evaluating '%s'", match.EscapedMatch)
 		}
 		if result.Value == nil {
-			return nil, utils.WrappedJsonErrorf(path, "The expression '%s' evaluated to null", match)
+			return nil, utils.WrappedJsonErrorf(path, "The expression '%s' evaluated to null", match.EscapedMatch)
 		}
 		if result.Action == types.Literal {
 			return result.Value, nil

@@ -832,7 +832,7 @@ func findPackVersions(isBp bool, uuid string, version *types.Semver) (utils.Navi
 				if ver.Major != version.Major {
 					continue
 				}
-				if ver.Minor != closest.Minor {
+				if closest != nil && ver.Minor != closest.Minor {
 					continue
 				}
 				if ver.Patch == version.Patch {
@@ -840,7 +840,7 @@ func findPackVersions(isBp bool, uuid string, version *types.Semver) (utils.Navi
 					release = vs1.Get(tag)
 					break
 				}
-				if math.Abs(float64(ver.Patch-version.Patch)) < math.Abs(float64(closest.Patch-version.Patch)) {
+				if closest == nil || math.Abs(float64(ver.Patch-version.Patch)) < math.Abs(float64(closest.Patch-version.Patch)) {
 					closest = ver
 					release = vs1.Get(tag)
 				}

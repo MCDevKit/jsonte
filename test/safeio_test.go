@@ -2,7 +2,7 @@ package test
 
 import (
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
-	"io/ioutil"
+	"io"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -17,7 +17,7 @@ func TestFakeOpen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	all, err := ioutil.ReadAll(open)
+	all, err := io.ReadAll(open)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestFakeCreate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := ioutil.ReadAll(in)
+	data, err := io.ReadAll(in)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestFakeCreate2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := ioutil.ReadAll(in)
+	data, err := io.ReadAll(in)
 	if err != nil {
 		t.Fatal(err)
 	}

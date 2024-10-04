@@ -137,14 +137,12 @@ func (t *JsonPath) Get(x JsonType) (JsonType, error) {
 			return nil, burrito.WrappedErrorf("Cannot get %s from %s", t.StringValue(), x.StringValue())
 		}
 	}
-	var err error
 	for i := 0; i < len(t.Path); i++ {
-		//parent := x
-		x, err = x.Index(t.Path[i])
-		//x.UpdateParent(parent, t.Path[i])
+		y, err := x.Index(t.Path[i])
 		if err != nil {
 			return nil, burrito.WrapErrorf(err, "Cannot get %s from %s", t.StringValue(), x.StringValue())
 		}
+		x = y
 	}
 	return x, nil
 }
@@ -156,12 +154,12 @@ func (t *JsonPath) Set(x, value JsonType) (JsonType, error) {
 			return original, burrito.WrappedErrorf("Cannot set %s in %s", t.StringValue(), x.StringValue())
 		}
 	}
-	var err error
 	for i := 0; i < len(t.Path)-1; i++ {
-		x, err = x.Index(t.Path[i])
+		y, err := x.Index(t.Path[i])
 		if err != nil {
 			return original, burrito.WrapErrorf(err, "Cannot get %s from %s", t.StringValue(), x.StringValue())
 		}
+		x = y
 	}
 	if b, ok := x.(*JsonObject); ok {
 		if k, ok := t.Path[len(t.Path)-1].(*JsonString); ok {

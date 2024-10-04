@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte"
@@ -662,7 +663,7 @@ func TestLambdaInfo(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			vars, args, err := jsonte.ParseLambda(tc.input)
 
-			if err != tc.expectedError {
+			if !errors.Is(err, tc.expectedError) {
 				t.Fatalf("Test case %d (%s) - Expected error: %v, got: %v", idx, tc.name, tc.expectedError, err)
 			}
 

@@ -6,7 +6,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gobwas/glob"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -283,7 +283,7 @@ func load(s *types.JsonString) (*types.JsonObject, error) {
 		if err != nil {
 			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
 		}
-		readAll, err := ioutil.ReadAll(resolver)
+		readAll, err := io.ReadAll(resolver)
 		if err != nil {
 			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read file %s", s.StringValue())
 		}
