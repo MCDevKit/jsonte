@@ -23,6 +23,43 @@ func safeTypeName(v interface{}) string {
 	return n
 }
 
+func compareJson(t *testing.T, expected types.JsonType, actual types.JsonType, path string, checkExtra bool) {
+	if types.IsObject(expected) {
+		if !types.IsObject(actual) {
+			t.Errorf("Field %s is not an object (expected %s, got %s)", path, types.ToString(expected), types.ToString(actual))
+		}
+		compareJsonObject(t, expected.(*types.JsonObject), actual.(*types.JsonObject), path, checkExtra)
+	} else if types.IsArray(expected) {
+		if !types.IsArray(actual) {
+			t.Errorf("Field %s is not an array (expected %s, got %s)", path, types.ToString(expected), types.ToString(actual))
+		}
+		compareJsonArray(t, expected.(*types.JsonArray), actual.(*types.JsonArray), path)
+	} else if types.IsString(expected) {
+		if !types.IsString(actual) {
+			t.Errorf("Field %s is not a string (expected %s, got %s)", path, types.ToString(expected), types.ToString(actual))
+		}
+		if expected.(*types.JsonString).StringValue() != actual.(*types.JsonString).StringValue() {
+			t.Errorf("Field %s is not correct (expected %s, got %s)", path, types.ToString(expected), types.ToString(actual))
+		}
+	} else if types.IsNumber(expected) {
+		if !types.IsNumber(actual) {
+			t.Errorf("Field %s is not a number (expected %s, got %s)", path, types.ToString(expected), types.ToString(actual))
+		}
+		if expected.(*types.JsonNumber).FloatValue() != actual.(*types.JsonNumber).FloatValue() {
+			t.Errorf("Field %s is not correct (expected %s, got %s)", path, types.ToString(expected), types.ToString(actual))
+		}
+	} else if types.IsBool(expected) {
+		if !types.IsBool(actual) {
+			t.Errorf("Field %s is not a boolean (expected %s, got %s)", path, types.ToString(expected), types.ToString(actual))
+		}
+		if expected.(*types.JsonBool).BoolValue() != actual.(*types.JsonBool).BoolValue() {
+			t.Errorf("Field %s is not correct (expected %s, got %s)", path, types.ToString(expected), types.ToString(actual))
+		}
+	} else {
+		t.Errorf("Field %s is not correct (expected %s, got %s)", path, types.ToString(expected), types.ToString(actual))
+	}
+}
+
 func compareJsonObject(t *testing.T, expected *types.JsonObject, actual *types.JsonObject, path string, checkExtra bool) {
 	for _, key := range expected.Keys() {
 		value1 := expected.Get(key)
@@ -141,7 +178,7 @@ func assertTemplateWithModule(t *testing.T, template, expected string, globalSco
 	if err != nil {
 		t.Fatal(burrito.WrapErrorf(err, "Failed to parse expected result"))
 	}
-	compareJsonObject(t, exp, process.Get("test"), "#", true)
+	compareJson(t, exp, process.Get("test"), "#", true)
 }
 
 func assertTemplate(t *testing.T, template, expected string) {
@@ -149,11 +186,11 @@ func assertTemplate(t *testing.T, template, expected string) {
 	if err != nil {
 		t.Fatal(burrito.WrapErrorf(err, "Failed to process template"))
 	}
-	exp, err := types.ParseJsonObject([]byte(expected))
+	exp, err := types.ParseJsonValue([]byte(expected))
 	if err != nil {
 		t.Fatal(burrito.WrapErrorf(err, "Failed to parse expected result"))
 	}
-	compareJsonObject(t, exp, process.Get("test"), "#", true)
+	compareJson(t, exp, process.Get("test"), "#", true)
 }
 
 func assertTemplateError(t *testing.T, template string, error []string) {
@@ -197,7 +234,7 @@ func assertTemplateMultiple(t *testing.T, template, expected string) {
 			t.Errorf("Missing file %s", key)
 			continue
 		}
-		compareJsonObject(t, value.(*types.JsonObject), process.Get(key), fmt.Sprintf("%s#", key), true)
+		compareJson(t, value, process.Get(key), fmt.Sprintf("%s#", key), true)
 	}
 	for _, key := range process.Keys() {
 		if !exp.ContainsKey(key) {
@@ -1645,4 +1682,65 @@ func TestScopeInheritance(t *testing.T) {
 	}`
 
 	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), dataModule, dataModule2, templateModule)
+}
+
+func TestCopyArray(t *testing.T) {
+	file := `[1, 2, 3]`
+	safeio.Resolver = safeio.CreateFakeFS(map[string]interface{}{
+		"file.json": file,
+	}, false)
+	template := `{
+		"$copy": "file.json",
+		"$template": [
+			"asd"
+		]
+	}`
+	expected := `[
+		1,
+		2,
+		3,
+		"asd"
+	]`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestArrayTemplate(t *testing.T) {
+	template := `{
+		"$template": [
+			{
+				"{{#1..3}}": "{{=value * 2}}"
+			}
+		]
+	}`
+	expected := `[
+		2,
+		4,
+		6
+	]`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestArrayTemplate2(t *testing.T) {
+	template := `{
+		"$template": [
+			{
+				"{{#1..3}}": "{{=value * 2}}"
+			},
+			{
+				"{{#1..3}}": "{{=value}}"
+			}
+		]
+	}`
+	expected := `[
+		2,
+		4,
+		6,
+		1,
+		2,
+		3
+	]`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
 }

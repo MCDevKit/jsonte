@@ -292,8 +292,18 @@ func CreateRange(start, end int32) *JsonArray {
 	return &JsonArray{Value: result}
 }
 
-// DeleteNulls removes all keys with null values from the given JSON object.
-func DeleteNulls(object *JsonObject) *JsonObject {
+// DeleteNulls removes all keys with null values from the given JSON value.
+func DeleteNulls(object JsonType) JsonType {
+	if IsObject(object) {
+		return DeleteNullsFromObject(AsObject(object))
+	} else if IsArray(object) {
+		return DeleteNullsFromArray(AsArray(object))
+	}
+	return object
+}
+
+// DeleteNullsFromObject removes all keys with null values from the given JSON object.
+func DeleteNullsFromObject(object *JsonObject) *JsonObject {
 	keys := make([]string, len(object.Keys()))
 	copy(keys, object.Keys())
 	for _, k := range keys {
@@ -321,6 +331,26 @@ func DeleteNullsFromArray(array *JsonArray) *JsonArray {
 	return array
 }
 
+// ParseJsonValue parses a JSON string into a JSON object. It includes support for comments and detects common syntax errors.
+func ParseJsonValue(str []byte) (JsonType, error) {
+	dat, err := json.UnmarshallJSONC(str)
+	if err != nil {
+		return NewJsonObject(), err
+	}
+	if IsObject(dat) {
+		return AsObject(dat), nil
+	} else if IsArray(dat) {
+		return AsArray(dat), nil
+	} else if IsString(dat) {
+		return AsString(dat), nil
+	} else if IsNumber(dat) {
+		return AsNumber(dat), nil
+	} else if IsBool(dat) {
+		return AsBool(dat), nil
+	}
+	return Null, burrito.WrappedErrorf("JSON must be an object, array, string, number or boolean")
+}
+
 // ParseJsonObject parses a JSON string into a JSON object. It includes support for comments and detects common syntax errors.
 func ParseJsonObject(str []byte) (*JsonObject, error) {
 	dat, err := json.UnmarshallJSONC(str)
@@ -343,6 +373,39 @@ func ParseJsonArray(str []byte) (*JsonArray, error) {
 		return NewJsonArray(), burrito.WrappedErrorf("JSON must be an array")
 	}
 	return AsArray(dat), nil
+}
+
+// MergeValues merges two JSON values into a new JSON value.
+// If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.
+func MergeValues(template, parent JsonType, keepOverrides bool, path string) (JsonType, error) {
+	if IsNull(template) {
+		return parent, nil
+	}
+	if IsNull(parent) {
+		return template, nil
+	}
+	if IsObject(template) {
+		if !IsObject(parent) {
+			return template, burrito.WrappedErrorf("Cannot merge object with non-object")
+		}
+		return MergeObject(AsObject(template), AsObject(parent), keepOverrides, path), nil
+	} else if IsArray(template) {
+		if !IsArray(parent) {
+			return template, burrito.WrappedErrorf("Cannot merge array with non-array")
+		}
+		return MergeArray(AsArray(template), AsArray(parent), keepOverrides, path), nil
+	}
+	return template, nil
+}
+
+// DeepCopyValue creates a deep copy of the given JSON value.
+func DeepCopyValue(object JsonType) JsonType {
+	if IsObject(object) {
+		return DeepCopyObject(AsObject(object))
+	} else if IsArray(object) {
+		return DeepCopyArray(AsArray(object))
+	}
+	return Box(object.Unbox())
 }
 
 // JsonAction is an enum for the different actions that can be performed via jsonte.
