@@ -429,7 +429,6 @@ func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]J
 }
 
 var templatePattern, _ = regexp.Compile("\\{\\{(?:\\\\.|[^{}])+}}")
-var actionPattern, _ = regexp.Compile("^\\{\\{(?:\\\\.|[^{}])+}}$")
 
 func extendTemplate(extend types.JsonType, template *types.JsonObject, visitor *TemplateVisitor, modules map[string]JsonModule) (*types.JsonObject, []string, error) {
 	resolvedModules := make([]string, 0)
@@ -455,7 +454,11 @@ func extendTemplate(extend types.JsonType, template *types.JsonObject, visitor *
 		if !isString {
 			path += "[" + strconv.Itoa(i) + "]"
 		}
-		if templatePattern.MatchString(str) {
+		matches, err := FindTemplateMatches(str, "{", "}")
+		if err != nil {
+			return types.NewJsonObject(), resolvedModules, utils.WrapJsonErrorf(path, err, "Failed to parse template %s", str)
+		}
+		if len(matches) > 0 {
 			eval, err := visitor.visitString(str, path)
 			if err != nil {
 				return types.NewJsonObject(), resolvedModules, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", path)
@@ -561,7 +564,7 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 			}
 			continue
 		}
-		if actionPattern.MatchString(key) {
+		if strings.HasPrefix(key, "{{") && strings.HasSuffix(key, "}}") && (key[2] == '#' || key[2] == '?') {
 			eval, err := Eval(key, v.getScope(), fmt.Sprintf("%s/%s", path, key))
 			if err != nil {
 				return nil, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", key)
@@ -632,28 +635,34 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 			default:
 				return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", eval.Action.String())
 			}
-		} else if templatePattern.MatchString(key) {
-			k, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
-			if err != nil {
-				return nil, burrito.PassError(err)
-			}
-			r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
-			if err != nil {
-				return nil, burrito.PassError(err)
-			}
-			err = PutValue(result, k.StringValue(), r, path)
-			if err != nil {
-				return nil, burrito.PassError(err)
-			}
 		} else {
-			var err error
-			r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
+			matches, err := FindTemplateMatches(key, "{", "}")
 			if err != nil {
-				return nil, burrito.PassError(err)
+				return nil, utils.WrapJsonErrorf(path, err, "Failed to parse template %s", key)
 			}
-			err = PutValue(result, key, r, path)
-			if err != nil {
-				return nil, burrito.PassError(err)
+			if len(matches) > 0 {
+				k, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
+				if err != nil {
+					return nil, burrito.PassError(err)
+				}
+				r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
+				if err != nil {
+					return nil, burrito.PassError(err)
+				}
+				err = PutValue(result, k.StringValue(), r, path)
+				if err != nil {
+					return nil, burrito.PassError(err)
+				}
+			} else {
+				var err error
+				r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
+				if err != nil {
+					return nil, burrito.PassError(err)
+				}
+				err = PutValue(result, key, r, path)
+				if err != nil {
+					return nil, burrito.PassError(err)
+				}
 			}
 		}
 	}
@@ -705,7 +714,7 @@ func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element type
 		if len(filteredKeys) == 1 || obj.Size() == 1 {
 			for _, key := range obj.Keys() {
 				value := obj.Get(key)
-				if actionPattern.MatchString(key) {
+				if strings.HasPrefix(key, "{{") && strings.HasSuffix(key, "}}") && (key[2] == '#' || key[2] == '?') {
 					eval, err := Eval(key, v.getScope(), path)
 					if err != nil {
 						return array, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", key)

@@ -1744,3 +1744,21 @@ func TestArrayTemplate2(t *testing.T) {
 	assertTemplate(t, template, expected)
 	safeio.Resolver = safeio.DefaultIOResolver
 }
+
+func TestEmptyObjectInTemplate(t *testing.T) {
+	template := `{
+		"$template": {
+			"{{#keys({})}}": {
+				"oh": "no"
+			},
+			"test": "{{=keys({})}}",
+			"{{'broken'}}_{{'test'}}": "asd"
+		}
+	}`
+	expected := `{
+		"test": [],
+		"broken_test": "asd"
+}`
+	assertTemplate(t, template, expected)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
