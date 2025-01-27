@@ -412,6 +412,14 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, error) {
 	assertionFiles := map[string]string{}
 	result := types.NewJsonObject()
 	for _, path := range scope {
+		if strings.HasPrefix(path, "{") {
+			json, err := types.ParseJsonObject([]byte(path))
+			if err != nil {
+				return types.NewJsonObject(), burrito.WrapErrorf(err, "An error occurred while parsing inline scope '%s'", path)
+			}
+			result = types.MergeObject(result, json, false, "#")
+			continue
+		}
 		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				if os.IsNotExist(err) {
