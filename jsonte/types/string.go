@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"strconv"
 	"strings"
@@ -105,6 +106,24 @@ func AsString(obj interface{}) *JsonString {
 	}
 	if b, ok := obj.(float32); ok && b != 0 {
 		return NewString(strconv.FormatFloat(float64(b), 'f', -1, 64))
+	}
+	if b, ok := obj.(int32); ok && b != 0 {
+		return NewString(strconv.FormatInt(int64(b), 10))
+	}
+	if b, ok := obj.(int64); ok && b != 0 {
+		return NewString(strconv.FormatInt(b, 10))
+	}
+	if b, ok := obj.(uint); ok && b != 0 {
+		return NewString(strconv.FormatUint(uint64(b), 10))
+	}
+	if b, ok := obj.(uint32); ok && b != 0 {
+		return NewString(strconv.FormatUint(uint64(b), 10))
+	}
+	if b, ok := obj.(uint64); ok && b != 0 {
+		return NewString(strconv.FormatUint(b, 10))
+	}
+	if b, ok := obj.(json.Number); ok {
+		return NewString(string(b))
 	}
 	if b, ok := obj.(string); ok {
 		return NewString(b)
