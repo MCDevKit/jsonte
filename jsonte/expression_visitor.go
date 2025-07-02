@@ -26,34 +26,50 @@ type ExpressionVisitor struct {
 }
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) {
+	var result types.JsonType
+	var err error
 	switch val := tree.(type) {
 	case *parser.FieldContext:
-		return v.VisitField(val)
+		result, err = v.VisitField(val)
+		break
 	case *parser.ArrayContext:
-		return v.VisitArray(val)
+		result, err = v.VisitArray(val)
+		break
 	case *parser.ObjectContext:
-		return v.VisitObject(val)
+		result, err = v.VisitObject(val)
+		break
 	case *parser.Object_fieldContext:
-		return v.VisitObject_field(val)
+		result, err = v.VisitObject_field(val)
+		break
 	case *parser.ExpressionContext:
-		return v.VisitExpression(val)
+		result, err = v.VisitExpression(val)
+		break
 	case *parser.Function_paramContext:
-		return v.VisitFunction_param(val)
+		result, err = v.VisitFunction_param(val)
+		break
 	case *parser.LambdaContext:
-		return v.VisitLambda(val)
+		result, err = v.VisitLambda(val)
+		break
 	case *parser.NameContext:
-		return v.VisitName(val)
+		result, err = v.VisitName(val)
+		break
 	case *parser.IndexContext:
-		return v.VisitIndex(val)
+		result, err = v.VisitIndex(val)
+		break
 	case *parser.StatementContext:
-		return v.VisitStatement(val)
+		result, err = v.VisitStatement(val)
+		break
 	case *parser.StatementsContext:
-		return v.VisitStatements(val)
+		result, err = v.VisitStatements(val)
+		break
 	case *parser.ScriptContext:
-		return v.VisitScript(val)
+		result, err = v.VisitScript(val)
+		break
+	default:
+		utils.BadDeveloperError("Unknown tree type " + reflect.TypeOf(tree).String())
 	}
-	utils.BadDeveloperError("Unknown tree type " + reflect.TypeOf(tree).String())
-	return nil, nil
+	//utils.Logger.Debugf("Expression %s evaluated to %s", tree.GetText(), result.StringValue())
+	return result, err
 }
 
 func treeMatches(context antlr.Tree, matchFunction func(ctx, parent antlr.Tree) bool) bool {
