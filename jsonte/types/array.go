@@ -197,7 +197,7 @@ func AsArray(obj interface{}) *JsonArray {
 
 // MergeArray merges two JSON arrays into a new JSON array.
 func MergeArray(template, parent *JsonArray, keepOverrides bool, path string) *JsonArray {
-	var result = NewJsonArray()
+	result := &JsonArray{Value: make([]JsonType, 0, len(template.Value)+len(parent.Value))}
 	for i, v := range template.Value {
 		if IsObject(v) {
 			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s[%d]", path, i))
