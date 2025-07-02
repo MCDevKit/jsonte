@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 func RegisterStringFunctions() {
@@ -713,15 +714,15 @@ func regexReplace(str, pattern, repl *types.JsonString) (*types.JsonString, erro
 }
 
 func chars(str *types.JsonString) *types.JsonArray {
-	arr := make([]types.JsonType, len([]rune(str.StringValue())))
-	for i, c := range str.StringValue() {
-		arr[i] = types.NewString(string(c))
+	arr := make([]types.JsonType, 0, utf8.RuneCountInString(str.StringValue()))
+	for _, r := range str.StringValue() {
+		arr = append(arr, types.NewString(string(r)))
 	}
 	return &types.JsonArray{Value: arr}
 }
 
 func length(str *types.JsonString) *types.JsonNumber {
-	return types.AsNumber(len([]rune(str.StringValue())))
+	return types.AsNumber(utf8.RuneCountInString(str.StringValue()))
 }
 
 func trim(str *types.JsonString) *types.JsonString {
