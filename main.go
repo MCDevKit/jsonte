@@ -13,12 +13,16 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
 	"github.com/gobwas/glob"
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -46,6 +50,7 @@ func main() {
 	exclude := make([]string, 0)
 	ipcName := "jsonte"
 	seed := time.Now().UnixNano()
+	workers := int64(1)
 	cacheAll := false
 	app := NewApp()
 	app.BoolFlag(Flag{
@@ -100,6 +105,10 @@ func main() {
 		Name:  "seed",
 		Usage: "Seed for the random number generator",
 	}, &seed)
+	app.IntFlag(Flag{
+		Name:  "workers",
+		Usage: "Maximum number of concurrent workers",
+	}, &workers)
 	app.BoolFlag(Flag{
 		Name:  "cache-all",
 		Usage: "Cache all function calls",
@@ -133,163 +142,316 @@ func main() {
 			if err != nil {
 				return err
 			}
-			// Process modules
+			w := int(workers)
+			if w <= 0 {
+				w = runtime.NumCPU()
+			}
+			utils.Logger.Debugf("Using %d workers", w)
+			sem := make(chan struct{}, w)
+			var errMu, moduleMu sync.Mutex
+			var errs error
+			appendErr := func(e error) {
+				errMu.Lock()
+				defer errMu.Unlock()
+				errs = multierr.Append(errs, e)
+			}
 			modules := map[string]jsonte.JsonModule{}
+			var wg sync.WaitGroup
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".modl") {
-						bytes, err := os.ReadFile(file)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while reading the module file %s", file)
-						}
-						module, err := jsonte.LoadModule(string(bytes), object, -1)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while loading the module file %s", file)
-						}
-						modules[module.Name.StringValue()] = module
-						rel, err := filepath.Rel(base, file)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while relativizing the output file name")
-						}
-						utils.Logger.Infof("Loaded module %s", rel)
-						if removeSrc {
-							err = os.Remove(file)
+						wg.Add(1)
+						go func(base, file string) {
+							defer wg.Done()
+							sem <- struct{}{}
+							defer func() { <-sem }()
+							bytes, err := os.ReadFile(file)
 							if err != nil {
-								return burrito.WrapErrorf(err, "An error occurred while removing the module file %s", file)
+								appendErr(burrito.WrapErrorf(err, "An error occurred while reading the module file %s", file))
+								return
 							}
-						}
+							module, err := jsonte.LoadModule(string(bytes), object, -1)
+							if err != nil {
+								appendErr(burrito.WrapErrorf(err, "An error occurred while loading the module file %s", file))
+								return
+							}
+							moduleMu.Lock()
+							modules[module.Name.StringValue()] = module
+							moduleMu.Unlock()
+							rel, err := filepath.Rel(base, file)
+							if err != nil {
+								appendErr(burrito.WrapErrorf(err, "An error occurred while relativizing the output file name"))
+								return
+							}
+							utils.Logger.Infof("Loaded module %s", rel)
+							if removeSrc {
+								if err := os.Remove(file); err != nil {
+									appendErr(burrito.WrapErrorf(err, "An error occurred while removing the module file %s", file))
+								}
+							}
+						}(base, file)
 					}
 				}
 			}
-			// Process templates
+			wg.Wait()
+			if errs != nil {
+				return errs
+			}
+
+			type templRes struct {
+				base     string
+				file     string
+				template utils.NavigableMap[string, types.JsonType]
+			}
+
+			templCh := make(chan templRes)
+			wg = sync.WaitGroup{}
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".templ") {
-						utils.Logger.Infof("Templating file %s", file)
-						bytes, err := os.ReadFile(file)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while reading the template file %s", file)
-						}
-						template, err := jsonte.Process(strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)), string(bytes), object, modules, -1)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while processing the template file %s", file)
-						}
-						toString := types.ToPrettyString
-						if minify {
-							toString = types.ToString
-						}
-						for _, fileName := range template.Keys() {
-							content := template.Get(fileName)
-							filename := filepath.Dir(file) + "/" + fileName + ".json"
-							if outFile != "" {
-								filename, err = filepath.Rel(base, filename)
-								if err != nil {
-									return burrito.WrapErrorf(err, "An error occurred while creating the output file name")
+						wg.Add(1)
+						go func(base, file string) {
+							defer wg.Done()
+							sem <- struct{}{}
+							defer func() { <-sem }()
+							utils.Logger.Infof("Templating file %s", file)
+							bytes, err := os.ReadFile(file)
+							if err != nil {
+								appendErr(burrito.WrapErrorf(err, "An error occurred while reading the template file %s", file))
+								return
+							}
+							template, err := jsonte.Process(strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)), string(bytes), object, modules, -1)
+							if err != nil {
+								appendErr(burrito.WrapErrorf(err, "An error occurred while processing the template file %s", file))
+								return
+							}
+							templCh <- templRes{base: base, file: file, template: template}
+							if removeSrc {
+								if err := os.Remove(file); err != nil {
+									appendErr(burrito.WrapErrorf(err, "An error occurred while removing the template file %s", file))
 								}
-								filename = filepath.Join(outFile, base, filename)
-								rel, err := filepath.Rel(outFile, filename)
-								if err != nil {
-									return burrito.WrapErrorf(err, "An error occurred while relativizing the output file name")
-								}
-								utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
-							} else {
-								utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
 							}
-							err = os.MkdirAll(filepath.Dir(filename), 0755)
-							if err != nil {
-								return burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
-							}
-							err = os.WriteFile(filename, []byte(toString(content)), 0644)
-							if err != nil {
-								return burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
-							}
-						}
-						if removeSrc {
-							err = os.Remove(file)
-							if err != nil {
-								return burrito.WrapErrorf(err, "An error occurred while removing the template file %s", file)
-							}
-						}
+						}(base, file)
 					}
 				}
 			}
-			//Process functions
+			go func() {
+				wg.Wait()
+				close(templCh)
+			}()
+			templates := make([]templRes, 0)
+			for t := range templCh {
+				templates = append(templates, t)
+			}
+			sort.SliceStable(templates, func(i, j int) bool {
+				if templates[i].base == templates[j].base {
+					return templates[i].file < templates[j].file
+				}
+				return templates[i].base < templates[j].base
+			})
+			toString := types.ToPrettyString
+			if minify {
+				toString = types.ToString
+			}
+			for _, t := range templates {
+				for _, fileName := range t.template.Keys() {
+					content := t.template.Get(fileName)
+					filename := filepath.Dir(t.file) + "/" + fileName + ".json"
+					if outFile != "" {
+						var err error
+						filename, err = filepath.Rel(t.base, filename)
+						if err != nil {
+							appendErr(burrito.WrapErrorf(err, "An error occurred while creating the output file name"))
+							continue
+						}
+						filename = filepath.Join(outFile, t.base, filename)
+						rel, err := filepath.Rel(outFile, filename)
+						if err != nil {
+							appendErr(burrito.WrapErrorf(err, "An error occurred while relativizing the output file name"))
+							continue
+						}
+						utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
+					} else {
+						utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
+					}
+					if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+						appendErr(burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename)))
+						continue
+					}
+					if err := os.WriteFile(filename, []byte(toString(content)), 0644); err != nil {
+						appendErr(burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename))
+					}
+				}
+			}
+			if errs != nil {
+				return errs
+			}
+
+			type fnRes struct {
+				base string
+				file string
+				out  string
+				data string
+			}
+
+			fnCh := make(chan fnRes)
+			wg = sync.WaitGroup{}
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".mcfunction") {
-						bytes, err := os.ReadFile(file)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file)
-						}
-						fileName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-						output, err := jsonte.ProcessMCFunction(string(bytes), object)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while processing the mcfunction file %s", file)
-						}
-						filename := filepath.Dir(file) + "/" + fileName + ".mcfunction"
-						if outFile != "" {
-							filename, err = filepath.Rel(base, filename)
+						wg.Add(1)
+						go func(base, file string) {
+							defer wg.Done()
+							sem <- struct{}{}
+							defer func() { <-sem }()
+							bytes, err := os.ReadFile(file)
 							if err != nil {
-								return burrito.WrapErrorf(err, "An error occurred while creating the output file name")
+								appendErr(burrito.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file))
+								return
 							}
-							filename = filepath.Join(outFile, base, filename)
-							rel, err := filepath.Rel(outFile, filename)
+							output, err := jsonte.ProcessMCFunction(string(bytes), object)
 							if err != nil {
-								return burrito.WrapErrorf(err, "An error occurred while relativizing the output file name")
+								appendErr(burrito.WrapErrorf(err, "An error occurred while processing the mcfunction file %s", file))
+								return
 							}
-							utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
-						} else {
-							utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
-						}
-						err = os.MkdirAll(filepath.Dir(filename), 0755)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
-						}
-						err = os.WriteFile(filename, []byte(output), 0644)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
-						}
+							fileName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+							filename := filepath.Dir(file) + "/" + fileName + ".mcfunction"
+							fnCh <- fnRes{base: base, file: filename, data: output}
+							if removeSrc {
+								if err := os.Remove(file); err != nil {
+									appendErr(burrito.WrapErrorf(err, "An error occurred while removing the mcfunction file %s", file))
+								}
+							}
+						}(base, file)
 					}
 				}
 			}
-			//Process lang files
+			go func() {
+				wg.Wait()
+				close(fnCh)
+			}()
+			fnResults := make([]fnRes, 0)
+			for r := range fnCh {
+				fnResults = append(fnResults, r)
+			}
+			sort.SliceStable(fnResults, func(i, j int) bool {
+				if fnResults[i].base == fnResults[j].base {
+					return fnResults[i].file < fnResults[j].file
+				}
+				return fnResults[i].base < fnResults[j].base
+			})
+			for _, r := range fnResults {
+				filename := r.file
+				if outFile != "" {
+					var err error
+					filename, err = filepath.Rel(r.base, filename)
+					if err != nil {
+						appendErr(burrito.WrapErrorf(err, "An error occurred while creating the output file name"))
+						continue
+					}
+					filename = filepath.Join(outFile, r.base, filename)
+					rel, err := filepath.Rel(outFile, filename)
+					if err != nil {
+						appendErr(burrito.WrapErrorf(err, "An error occurred while relativizing the output file name"))
+						continue
+					}
+					utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
+				} else {
+					utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
+				}
+				if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+					appendErr(burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename)))
+					continue
+				}
+				if err := os.WriteFile(filename, []byte(r.data), 0644); err != nil {
+					appendErr(burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename))
+				}
+			}
+			if errs != nil {
+				return errs
+			}
+
+			type langRes struct {
+				base string
+				file string
+				data string
+			}
+
+			langCh := make(chan langRes)
+			wg = sync.WaitGroup{}
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".lang") {
-						bytes, err := os.ReadFile(file)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file)
-						}
-						fileName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-						output, err := jsonte.ProcessLangFile(string(bytes), object)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while processing the mcfunction file %s", file)
-						}
-						filename := filepath.Dir(file) + "/" + fileName + ".lang"
-						if outFile != "" {
-							filename, err = filepath.Rel(base, filename)
+						wg.Add(1)
+						go func(base, file string) {
+							defer wg.Done()
+							sem <- struct{}{}
+							defer func() { <-sem }()
+							bytes, err := os.ReadFile(file)
 							if err != nil {
-								return burrito.WrapErrorf(err, "An error occurred while creating the output file name")
+								appendErr(burrito.WrapErrorf(err, "An error occurred while reading the mcfunction file %s", file))
+								return
 							}
-							filename = filepath.Join(outFile, base, filename)
-							rel, err := filepath.Rel(outFile, filename)
+							output, err := jsonte.ProcessLangFile(string(bytes), object)
 							if err != nil {
-								return burrito.WrapErrorf(err, "An error occurred while relativizing the output file name")
+								appendErr(burrito.WrapErrorf(err, "An error occurred while processing the mcfunction file %s", file))
+								return
 							}
-							utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
-						} else {
-							utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
-						}
-						err = os.MkdirAll(filepath.Dir(filename), 0755)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename))
-						}
-						err = os.WriteFile(filename, []byte(output), 0644)
-						if err != nil {
-							return burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename)
-						}
+							fileName := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+							filename := filepath.Dir(file) + "/" + fileName + ".lang"
+							langCh <- langRes{base: base, file: filename, data: output}
+							if removeSrc {
+								if err := os.Remove(file); err != nil {
+									appendErr(burrito.WrapErrorf(err, "An error occurred while removing the mcfunction file %s", file))
+								}
+							}
+						}(base, file)
 					}
 				}
+			}
+			go func() {
+				wg.Wait()
+				close(langCh)
+			}()
+			langResults := make([]langRes, 0)
+			for r := range langCh {
+				langResults = append(langResults, r)
+			}
+			sort.SliceStable(langResults, func(i, j int) bool {
+				if langResults[i].base == langResults[j].base {
+					return langResults[i].file < langResults[j].file
+				}
+				return langResults[i].base < langResults[j].base
+			})
+			for _, r := range langResults {
+				filename := r.file
+				if outFile != "" {
+					var err error
+					filename, err = filepath.Rel(r.base, filename)
+					if err != nil {
+						appendErr(burrito.WrapErrorf(err, "An error occurred while creating the output file name"))
+						continue
+					}
+					filename = filepath.Join(outFile, r.base, filename)
+					rel, err := filepath.Rel(outFile, filename)
+					if err != nil {
+						appendErr(burrito.WrapErrorf(err, "An error occurred while relativizing the output file name"))
+						continue
+					}
+					utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
+				} else {
+					utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
+				}
+				if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+					appendErr(burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename)))
+					continue
+				}
+				if err := os.WriteFile(filename, []byte(r.data), 0644); err != nil {
+					appendErr(burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename))
+				}
+			}
+			if errs != nil {
+				return errs
 			}
 			return nil
 		},
