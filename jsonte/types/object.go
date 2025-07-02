@@ -320,14 +320,12 @@ func MergeObject(template, parent *JsonObject, keepOverrides bool, path string) 
 			result.Put(k, v)
 		}
 	}
-	skipKeys := make([]string, 0)
+	skipKeys := make(map[string]struct{})
 out:
 	for _, k := range parent.Keys() {
 		v := parent.Get(k)
-		for _, key := range skipKeys {
-			if key == k {
-				continue out
-			}
+		if _, ok := skipKeys[k]; ok {
+			continue out
 		}
 		isReversedMerge := strings.HasPrefix(k, "^")
 		k = strings.TrimPrefix(k, "^")
@@ -343,7 +341,7 @@ out:
 					result.Put(strings.TrimPrefix(k, "$"), v)
 				}
 			}
-			skipKeys = append(skipKeys, strings.TrimPrefix(k, "$"))
+			skipKeys[strings.TrimPrefix(k, "$")] = struct{}{}
 		} else if !template.ContainsKey(k) {
 			if IsObject(v) {
 				merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
