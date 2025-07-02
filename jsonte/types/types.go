@@ -304,17 +304,20 @@ func DeleteNulls(object JsonType) JsonType {
 
 // DeleteNullsFromObject removes all keys with null values from the given JSON object.
 func DeleteNullsFromObject(object *JsonObject) *JsonObject {
-	keys := make([]string, len(object.Keys()))
-	copy(keys, object.Keys())
-	for _, k := range keys {
+	keys := object.Keys()
+	toRemove := make([]int, 0)
+	for i, k := range keys {
 		v := object.Get(k)
 		if IsObject(v) {
 			object.Put(k, DeleteNulls(AsObject(v)))
 		} else if IsArray(v) {
 			object.Put(k, DeleteNullsFromArray(AsArray(v)))
 		} else if v == nil || IsNull(v) {
-			object.Remove(k)
+			toRemove = append(toRemove, i)
 		}
+	}
+	for _, idx := range toRemove {
+		object.Remove(keys[idx])
 	}
 	return object
 }
