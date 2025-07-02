@@ -15,6 +15,7 @@ import (
 	"github.com/gobwas/glob"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
+	"io/fs"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -582,7 +583,7 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, error) {
 			result = types.MergeObject(result, json, false, "#")
 			continue
 		}
-		err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				if os.IsNotExist(err) {
 					utils.Logger.Warnf("Skipping non-existent scope file '%s'", path)
@@ -590,7 +591,7 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, error) {
 				}
 				return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
 			}
-			if !info.IsDir() {
+			if !d.IsDir() {
 				if strings.HasSuffix(path, ".json") {
 					file, err := os.ReadFile(path)
 					if err != nil {
@@ -659,11 +660,11 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 			}
 			return nil, burrito.WrapErrorf(err, "An error occurred while reading the path %s", p)
 		}
-		err = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
+		err = filepath.WalkDir(p, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return burrito.WrapErrorf(err, "An error occurred while reading the path %s", p)
 			}
-			if !info.IsDir() {
+			if !d.IsDir() {
 				if !strings.HasSuffix(path, ".templ") && !strings.HasSuffix(path, ".modl") && !strings.HasSuffix(path, ".mcfunction") && !strings.HasSuffix(path, ".lang") {
 					return nil
 				}
