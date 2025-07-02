@@ -9,9 +9,24 @@ import (
 	"hash/fnv"
 	"regexp"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 )
+
+var regexCache sync.Map
+
+func getCachedRegex(pattern string) (*regexp.Regexp, error) {
+	if cached, ok := regexCache.Load(pattern); ok {
+		return cached.(*regexp.Regexp), nil
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+	regexCache.Store(pattern, re)
+	return re, nil
+}
 
 func RegisterStringFunctions() {
 	const group = "string"
@@ -706,7 +721,7 @@ func endsWith(str, substr *types.JsonString) *types.JsonBool {
 }
 
 func regexReplace(str, pattern, repl *types.JsonString) (*types.JsonString, error) {
-	compile, err := regexp.Compile(pattern.StringValue())
+	compile, err := getCachedRegex(pattern.StringValue())
 	if err != nil {
 		return nil, burrito.WrapErrorf(err, "Failed to compile regex pattern")
 	}
