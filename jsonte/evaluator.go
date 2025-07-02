@@ -6,7 +6,11 @@ import (
 	"github.com/MCDevKit/jsonte/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/gammazero/deque"
+	"sync"
 )
+
+// expressionCache stores parsed expression trees keyed by their original text.
+var expressionCache sync.Map
 
 // Result is the result of evaluating an expression
 type Result struct {
@@ -32,6 +36,21 @@ func QuickEval(text string, path string) (Result, error) {
 	return Eval(text, deque.Deque[*types.JsonObject]{}, path)
 }
 
+// ClearExpressionCache removes all cached parse trees. Mainly intended for tests.
+func ClearExpressionCache() {
+	expressionCache = sync.Map{}
+}
+
+// ExpressionCacheSize returns the number of cached parse trees.
+func ExpressionCacheSize() int {
+	size := 0
+	expressionCache.Range(func(_, _ interface{}) bool {
+		size++
+		return true
+	})
+	return size
+}
+
 // CollectingErrorListener is an error listener that collects all errors by appending them to the Error field
 type CollectingErrorListener struct {
 	*antlr.DefaultErrorListener
@@ -44,19 +63,25 @@ func (l *CollectingErrorListener) SyntaxError(recognizer antlr.Recognizer, offen
 
 // Eval evaluates the given expression and returns the result
 func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Result, error) {
-	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
-	is := antlr.NewInputStream(text)
-	lexer := parser.NewJsonTemplateLexer(is)
-	lexer.RemoveErrorListeners()
-	lexer.AddErrorListener(&listener)
-	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplateParser(stream)
-	p.RemoveErrorListeners()
-	p.AddErrorListener(&listener)
-	p.BuildParseTrees = true
-	tree := p.Expression()
-	if listener.Error != nil {
-		return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
+	var tree antlr.ParseTree
+	if cached, ok := expressionCache.Load(text); ok {
+		tree = cached.(antlr.ParseTree)
+	} else {
+		listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
+		is := antlr.NewInputStream(text)
+		lexer := parser.NewJsonTemplateLexer(is)
+		lexer.RemoveErrorListeners()
+		lexer.AddErrorListener(&listener)
+		stream := antlr.NewCommonTokenStream(lexer, 0)
+		p := parser.NewJsonTemplateParser(stream)
+		p.RemoveErrorListeners()
+		p.AddErrorListener(&listener)
+		p.BuildParseTrees = true
+		tree = p.Expression()
+		if listener.Error != nil {
+			return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
+		}
+		expressionCache.Store(text, tree)
 	}
 	visitor := ExpressionVisitor{
 		scope:         scope,

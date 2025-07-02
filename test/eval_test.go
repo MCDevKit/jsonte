@@ -759,3 +759,22 @@ func TestNullCoalesce(t *testing.T) {
 	eval := evaluateWithScope(t, `a?.asd ?? false`, utils.ToNavigableMap("a", types.NewJsonObject()))
 	assertBool(t, eval, false)
 }
+
+func TestExpressionCache(t *testing.T) {
+	jsonte.ClearExpressionCache()
+	if jsonte.ExpressionCacheSize() != 0 {
+		t.Fatalf("cache should be empty")
+	}
+	evaluate(t, "1 + 2")
+	if jsonte.ExpressionCacheSize() != 1 {
+		t.Fatalf("expected cache size 1 after first eval, got %d", jsonte.ExpressionCacheSize())
+	}
+	evaluate(t, "1 + 2")
+	if jsonte.ExpressionCacheSize() != 1 {
+		t.Fatalf("cache size should remain 1 when expression is reused, got %d", jsonte.ExpressionCacheSize())
+	}
+	evaluate(t, "2 + 2")
+	if jsonte.ExpressionCacheSize() != 2 {
+		t.Fatalf("cache size should grow for new expressions, got %d", jsonte.ExpressionCacheSize())
+	}
+}
