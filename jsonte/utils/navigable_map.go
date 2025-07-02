@@ -47,10 +47,10 @@ func (m *NavigableMap[K, V]) Get(key K) V {
 
 // Put puts the value associated with the key.
 func (m *NavigableMap[K, V]) Put(key K, value V) {
-	m.data[key] = value
 	if !m.ContainsKey(key) {
 		m.keys = append(m.keys, key)
 	}
+	m.data[key] = value
 }
 
 // Remove removes the value associated with the key.
@@ -66,12 +66,8 @@ func (m *NavigableMap[K, V]) Remove(key K) {
 
 // ContainsKey returns true if the key exists.
 func (m *NavigableMap[K, V]) ContainsKey(key K) bool {
-	for _, k := range m.keys {
-		if k == key {
-			return true
-		}
-	}
-	return false
+	_, ok := m.data[key]
+	return ok
 }
 
 // ContainsMatchingKey returns true if the matching key exists.
