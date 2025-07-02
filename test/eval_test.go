@@ -749,3 +749,13 @@ func TestEqualsStrings2(t *testing.T) {
 	eval := evaluate(t, `"hello" == "world"`)
 	assertBool(t, eval, false)
 }
+
+func TestNullCoalesceOnIndexAccessor(t *testing.T) {
+	eval := evaluateWithScope(t, `a?['asd'] ?? false`, utils.ToNavigableMap("a", types.NewJsonObject()))
+	assertBool(t, eval, false)
+}
+
+func TestNullCoalesce(t *testing.T) {
+	eval := evaluateWithScope(t, `a?.asd ?? false`, utils.ToNavigableMap("a", types.NewJsonObject()))
+	assertBool(t, eval, false)
+}

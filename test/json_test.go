@@ -1361,6 +1361,27 @@ func TestArrayMergeAndOverride(t *testing.T) {
 	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
 }
 
+func TestStackedArrayMergeAndOverride(t *testing.T) {
+	module := `{
+		"$module": "simple",
+		"$template": {
+			"arr": [1, 2, 3]
+		}
+	}`
+	template := `{
+		"$extend": "simple",
+		"$template": {
+			"$arr": [1, 2, 3, 4, 5, 6],
+			"^arr": [0],
+			"arr": [100]
+		}
+	}`
+	expected := `{
+		"arr": []
+	}`
+	assertTemplateWithModule(t, template, expected, types.NewJsonObject(), module)
+}
+
 func TestOverrideNestedFields(t *testing.T) {
 	file := `{
 		"minecraft:client_entity": {
