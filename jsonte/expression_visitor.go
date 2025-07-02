@@ -1,7 +1,6 @@
 package jsonte
 
 import (
-	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"github.com/MCDevKit/jsonte/jsonte/types"
@@ -372,7 +371,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
 				return i.Set(left.Parent(), right)
 			} else {
-				utils.BadDeveloperError(fmt.Sprintf("Invalid parent index type. Expected string, but got %s", reflect.TypeOf(left.ParentIndex()).String()))
+				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected string or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
 			}
 		} else if b, ok := (left.Parent()).(*types.JsonArray); ok {
 			if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
@@ -389,7 +388,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
 				return i.Set(left.Parent(), right)
 			} else {
-				utils.BadDeveloperError("Invalid parent index type")
+				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected number or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
 			}
 		} else if b, ok := (left.Parent()).(*types.JsonPath); ok {
 			if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
