@@ -15,6 +15,7 @@ type JsonFunction struct {
 	Name       string
 	Args       []reflect.Type
 	Body       interface{}
+	Value      reflect.Value
 	WithError  bool
 	IsInstance bool
 	IsUnsafe   bool
@@ -70,6 +71,7 @@ func RegisterFunction(fn JsonFunction) {
 	if of.Kind() != reflect.Func {
 		utils.BadDeveloperError("Function body must be a function!")
 	}
+	fn.Value = of
 	if of.Type().NumIn() == 0 && fn.IsInstance {
 		utils.BadDeveloperError("Registered instance function doesn't have an instance parameter!")
 	}
@@ -249,7 +251,7 @@ func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType, re
 		for i, arg := range args {
 			vArgs[i] = reflect.ValueOf(arg)
 		}
-		call := reflect.ValueOf(fn.Body).Call(vArgs)
+		call := fn.Value.Call(vArgs)
 		if fn.WithError && call[len(call)-1].Interface() != nil {
 			return nil, call[len(call)-1].Interface().(error)
 		}
