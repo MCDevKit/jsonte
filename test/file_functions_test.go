@@ -4,6 +4,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/types"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"path/filepath"
 	"testing"
 )
@@ -125,5 +126,17 @@ func TestFileDoesntExist(t *testing.T) {
 	prepareFS()
 	eval := evaluate(t, `fileExists('aaaaa.txt')`)
 	assertBool(t, eval, false)
+	safeio.Resolver = safeio.DefaultIOResolver
+}
+
+func TestLoadCaching(t *testing.T) {
+	prepareFS()
+	evaluate(t, `load('test.json')`)
+	cached := utils.GetCache("fileCache", "test.json")
+	if cached == nil {
+		t.Fatalf("cache should contain entry after load")
+	}
+	// Clean up
+	utils.EvictCache("fileCache", "test.json")
 	safeio.Resolver = safeio.DefaultIOResolver
 }

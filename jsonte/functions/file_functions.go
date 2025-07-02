@@ -292,7 +292,7 @@ func load(s *types.JsonString) (*types.JsonObject, error) {
 			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to close file %s", s.StringValue())
 		}
 		object, err := types.ParseJsonObject(readAll)
-		if err != nil {
+		if err == nil {
 			utils.PutCache(fileCache, s.StringValue(), object)
 		}
 		return object, err
