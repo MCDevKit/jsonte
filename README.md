@@ -55,6 +55,18 @@ cd ..
 go build github.com/MCDevKit/jsonte
 ```
 
+### Testing
+
+```powershell
+go test ./...
+```
+
+Testing without network access:
+
+```powershell
+go test -tags=quick ./...
+```
+
 ### Notes
 
 Before any modifications to `grammar/JsonTemplate.g4` can be made, 
