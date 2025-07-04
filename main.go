@@ -583,7 +583,7 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, error) {
 			result = types.MergeObject(result, json, false, "#")
 			continue
 		}
-		err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		err := utils.WalkDirFollowSymlinks(path, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				if os.IsNotExist(err) {
 					utils.Logger.Warnf("Skipping non-existent scope file '%s'", path)
@@ -660,7 +660,7 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 			}
 			return nil, burrito.WrapErrorf(err, "An error occurred while reading the path %s", p)
 		}
-		err = filepath.WalkDir(p, func(path string, d fs.DirEntry, err error) error {
+		err = utils.WalkDirFollowSymlinks(p, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return burrito.WrapErrorf(err, "An error occurred while reading the path %s", p)
 			}

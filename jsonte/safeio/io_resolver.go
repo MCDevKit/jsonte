@@ -2,6 +2,7 @@ package safeio
 
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"io"
 	"io/fs"
 	"net/http"
@@ -34,11 +35,11 @@ var DefaultIOResolver = IOResolver{
 	},
 	OpenDirRecursive: func(path string) ([]string, error) {
 		var files []string
-		err := filepath.Walk(path, func(p string, info fs.FileInfo, err error) error {
+		err := utils.WalkDirFollowSymlinks(path, func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return burrito.WrapErrorf(err, "Failed to walk path %s", p)
 			}
-			if info.IsDir() {
+			if d.IsDir() {
 				return nil
 			}
 			rel, err := filepath.Rel(path, p)
