@@ -8,6 +8,92 @@ import (
 	"sort"
 )
 
+// valueIndexArgs stores scratch space for invoking predicates that take a value
+// and an optional index. It lets us reuse stack memory instead of allocating a
+// new slice on each iteration.
+type valueIndexArgs struct {
+	args [2]types.JsonType
+}
+
+func newValueIndexArgs() valueIndexArgs {
+	return valueIndexArgs{}
+}
+
+func (a *valueIndexArgs) call(predicate *types.JsonLambda, value types.JsonType, index int) (types.JsonType, error) {
+	a.args[0] = value
+	argCount := len(predicate.Arguments)
+	if argCount <= 0 {
+		return predicate.Value(predicate, nil)
+	}
+	if argCount == 1 {
+		return predicate.Value(predicate, a.args[:1])
+	}
+	a.args[1] = types.AsNumber(index)
+	if argCount > 2 {
+		argCount = 2
+	}
+	return predicate.Value(predicate, a.args[:argCount])
+}
+
+// accumulatorArgs is the equivalent helper for predicates that consume
+// accumulator, value, and optional index (e.g. reduce).
+type accumulatorArgs struct {
+	args [3]types.JsonType
+}
+
+func newAccumulatorArgs() accumulatorArgs {
+	return accumulatorArgs{}
+}
+
+func (a *accumulatorArgs) call(predicate *types.JsonLambda, previous types.JsonType, value types.JsonType, index int) (types.JsonType, error) {
+	argCount := len(predicate.Arguments)
+	if argCount <= 0 {
+		return predicate.Value(predicate, nil)
+	}
+	a.args[0] = previous
+	if argCount == 1 {
+		return predicate.Value(predicate, a.args[:1])
+	}
+	a.args[1] = value
+	if argCount == 2 {
+		return predicate.Value(predicate, a.args[:2])
+	}
+	a.args[2] = types.AsNumber(index)
+	if argCount > 3 {
+		argCount = 3
+	}
+	return predicate.Value(predicate, a.args[:argCount])
+}
+
+type sortPair struct {
+	index int
+	key   types.JsonType
+}
+
+// boolValue returns a primitive boolean representation without allocating when
+// the predicate already produced a JsonBool.
+func boolValue(value types.JsonType) bool {
+	switch v := value.(type) {
+	case *types.JsonBool:
+		return v.BoolValue()
+	case nil:
+		return false
+	default:
+		return types.AsBool(v).BoolValue()
+	}
+}
+
+// floatValue returns the numeric value from a predicate without forcing extra
+// boxing when the result is already a JsonNumber.
+func floatValue(value types.JsonType) float64 {
+	switch v := value.(type) {
+	case *types.JsonNumber:
+		return v.FloatValue()
+	default:
+		return types.AsNumber(v).FloatValue()
+	}
+}
+
 func RegisterArrayFunctions() {
 	const group = "array"
 	RegisterGroup(Group{
@@ -1074,21 +1160,22 @@ func sort_(arr *types.JsonArray) *types.JsonArray {
 }
 
 func sortMap(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonArray, error) {
-	mapped := make([][]interface{}, len(arr.Value))
+	mapped := make([]sortPair, len(arr.Value))
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		a, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		key, err := args.call(predicate, v, i)
 		if err != nil {
 			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while mapping the values for sorting the array")
 		}
-		mapped[i] = []interface{}{i, a}
+		mapped[i] = sortPair{index: i, key: key}
 	}
 	result := make([]types.JsonType, len(arr.Value))
 	sort.SliceStable(mapped, func(i, j int) bool {
-		than, _ := mapped[i][1].(types.JsonType).LessThan(mapped[j][1].(types.JsonType))
+		than, _ := mapped[i].key.LessThan(mapped[j].key)
 		return than
 	})
-	for i, v := range mapped {
-		result[i] = arr.Value[v[0].(int)]
+	for i, pair := range mapped {
+		result[i] = arr.Value[pair.index]
 	}
 	return &types.JsonArray{Value: result}, nil
 }
@@ -1121,12 +1208,13 @@ func arrayLastIndexOf(arr *types.JsonArray, value types.JsonType) *types.JsonNum
 }
 
 func any_(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonBool, error) {
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		b, err := args.call(predicate, v, i)
 		if err != nil {
 			return types.False(), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `any` at index %d", i)
 		}
-		if types.AsBool(b).BoolValue() {
+		if boolValue(b) {
 			return types.True(), nil
 		}
 	}
@@ -1134,12 +1222,13 @@ func any_(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonBool, e
 }
 
 func all(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonBool, error) {
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		b, err := args.call(predicate, v, i)
 		if err != nil {
 			return types.False(), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `all` at index %d", i)
 		}
-		if !types.AsBool(b).BoolValue() {
+		if !boolValue(b) {
 			return types.False(), nil
 		}
 	}
@@ -1147,12 +1236,13 @@ func all(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonBool, er
 }
 
 func none(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonBool, error) {
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		b, err := args.call(predicate, v, i)
 		if err != nil {
 			return types.False(), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `none` at index %d", i)
 		}
-		if types.AsBool(b).BoolValue() {
+		if boolValue(b) {
 			return types.False(), nil
 		}
 	}
@@ -1160,13 +1250,14 @@ func none(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonBool, e
 }
 
 func filter(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonArray, error) {
-	result := make([]types.JsonType, 0)
+	result := make([]types.JsonType, 0, len(arr.Value))
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		b, err := args.call(predicate, v, i)
 		if err != nil {
 			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `filter` at index %d", i)
 		}
-		if types.AsBool(b).BoolValue() {
+		if boolValue(b) {
 			result = append(result, v)
 		}
 	}
@@ -1175,8 +1266,9 @@ func filter(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonArray
 
 func map_(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonArray, error) {
 	result := make([]types.JsonType, len(arr.Value))
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		b, err := args.call(predicate, v, i)
 		if err != nil {
 			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `map` at index %d", i)
 		}
@@ -1186,9 +1278,10 @@ func map_(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonArray, 
 }
 
 func flatMap(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonArray, error) {
-	result := make([]types.JsonType, 0)
+	result := make([]types.JsonType, 0, len(arr.Value))
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		b, err := args.call(predicate, v, i)
 		if err != nil {
 			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `flatMap` at index %d", i)
 		}
@@ -1215,12 +1308,13 @@ func flatMapSimple(arr *types.JsonArray) *types.JsonArray {
 
 func countFilter(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonNumber, error) {
 	count := 0
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		b, err := args.call(predicate, v, i)
 		if err != nil {
 			return types.AsNumber(0), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `count` at index %d", i)
 		}
-		if types.AsBool(b).BoolValue() {
+		if boolValue(b) {
 			count++
 		}
 	}
@@ -1236,12 +1330,13 @@ func range_(arr *types.JsonArray) *types.JsonArray {
 }
 
 func findFirstFilter(arr *types.JsonArray, predicate *types.JsonLambda) (types.JsonType, error) {
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		b, err := args.call(predicate, v, i)
 		if err != nil {
 			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `findFirst` at index %d", i)
 		}
-		if b.BoolValue() {
+		if boolValue(b) {
 			return v, nil
 		}
 	}
@@ -1262,15 +1357,19 @@ func encode(arr *types.JsonArray, space *types.JsonNumber, predicate *types.Json
 	}
 	var result int32 = 0
 	bitsPerElement := int(math.Log(float64(space.IntValue())) / math.Log(2))
+	args := newValueIndexArgs()
 	for i := 0; i < int(math.Min(float64(len(arr.Value)), float64(32/bitsPerElement))); i++ {
-		i2, err := predicate.Value(predicate, paramsForLambda([]interface{}{arr.Value[i], i}))
+		i2, err := args.call(predicate, arr.Value[i], i)
 		if err != nil {
 			return types.AsNumber(0), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `encode` at index %d", i)
 		}
-		if !types.IsNumber(i2) {
-			return types.AsNumber(0), burrito.WrappedError("Predicate must return a number!")
+		number, ok := i2.(*types.JsonNumber)
+		if !ok {
+			if !types.IsNumber(i2) {
+				return types.AsNumber(0), burrito.WrappedError("Predicate must return a number!")
+			}
+			number = types.AsNumber(i2)
 		}
-		number := types.AsNumber(i2)
 		if number.IntValue() < 0 || number.IntValue() >= space.IntValue() {
 			return types.AsNumber(0), burrito.WrappedErrorf("Number %d is out of range 0..%d", number.IntValue(), space.IntValue()-1)
 		}
@@ -1304,17 +1403,21 @@ func sublistStart(arr *types.JsonArray, start *types.JsonNumber) *types.JsonArra
 }
 
 func maxArray(arr *types.JsonArray, predicate *types.JsonLambda) (types.JsonType, error) {
-	max, err := predicate.Value(predicate, paramsForLambda([]interface{}{arr.Value[0], 0}))
+	args := newValueIndexArgs()
+	max, err := args.call(predicate, arr.Value[0], 0)
 	if err != nil {
 		return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `max` at index %d", 0)
 	}
-	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+	maxVal := floatValue(max)
+	for i := 1; i < len(arr.Value); i++ {
+		b, err := args.call(predicate, arr.Value[i], i)
 		if err != nil {
 			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `max` at index %d", i)
 		}
-		if types.AsNumber(b).FloatValue() > types.AsNumber(max).FloatValue() {
+		candidate := floatValue(b)
+		if candidate > maxVal {
 			max = b
+			maxVal = candidate
 		}
 	}
 	return max, nil
@@ -1334,20 +1437,21 @@ func minArray(arr *types.JsonArray, predicate *types.JsonLambda) (types.JsonType
 	if len(arr.Value) == 0 {
 		return types.Null, nil
 	}
-	min, err := predicate.Value(predicate, paramsForLambda([]interface{}{arr.Value[0], 0}))
+	args := newValueIndexArgs()
+	min, err := args.call(predicate, arr.Value[0], 0)
 	if err != nil {
 		return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `min` at index %d", 0)
 	}
-	for i, v := range arr.Value {
-		if i == 0 {
-			continue
-		}
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+	minVal := floatValue(min)
+	for i := 1; i < len(arr.Value); i++ {
+		b, err := args.call(predicate, arr.Value[i], i)
 		if err != nil {
 			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `min` at index %d", i)
 		}
-		if types.AsNumber(b).FloatValue() < types.AsNumber(min).FloatValue() {
+		candidate := floatValue(b)
+		if candidate < minVal {
 			min = b
+			minVal = candidate
 		}
 	}
 	return min, nil
@@ -1365,12 +1469,13 @@ func minArraySimple(arr *types.JsonArray) types.JsonType {
 
 func sumMap(arr *types.JsonArray, predicate *types.JsonLambda) (*types.JsonNumber, error) {
 	s := 0.0
+	args := newValueIndexArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{v, i}))
+		b, err := args.call(predicate, v, i)
 		if err != nil {
 			return types.AsNumber(0), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `sum` at index %d", i)
 		}
-		s = s + types.AsNumber(b).FloatValue()
+		s += floatValue(b)
 	}
 	return types.AsNumber(s), nil
 }
@@ -1389,8 +1494,9 @@ func reduce(arr *types.JsonArray, predicate *types.JsonLambda) (types.JsonType, 
 
 func reduceInit(arr *types.JsonArray, predicate *types.JsonLambda, initialValue types.JsonType) (types.JsonType, error) {
 	var prev = initialValue
+	args := newAccumulatorArgs()
 	for i, v := range arr.Value {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{prev, v, i}))
+		b, err := args.call(predicate, prev, v, i)
 		if err != nil {
 			return types.AsNumber(0), burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `reduce` at index %d", i)
 		}
@@ -1400,12 +1506,13 @@ func reduceInit(arr *types.JsonArray, predicate *types.JsonLambda, initialValue 
 }
 
 func findLastFilter(arr *types.JsonArray, predicate *types.JsonLambda) (types.JsonType, error) {
+	args := newValueIndexArgs()
 	for i := len(arr.Value) - 1; i >= 0; i-- {
-		b, err := predicate.Value(predicate, paramsForLambda([]interface{}{arr.Value[i], i}))
+		b, err := args.call(predicate, arr.Value[i], i)
 		if err != nil {
 			return nil, burrito.WrapErrorf(err, "An error occurred while evaluating the predicate for `findLast` at index %d", i)
 		}
-		if b.BoolValue() {
+		if boolValue(b) {
 			return arr.Value[i], nil
 		}
 	}

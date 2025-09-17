@@ -67,6 +67,15 @@ Testing without network access:
 go test -tags=quick ./...
 ```
 
+### Benchmarking
+
+```powershell
+go test ./bench -bench . -benchmem
+```
+
+The command above executes the benchmark suite located in `bench/bench_test.go`. Adjust
+flags such as `-count`, `-benchtime`, or a narrower `-bench` expression to focus on specific scenarios.
+
 ### Notes
 
 Before any modifications to `grammar/JsonTemplate.g4` can be made, 

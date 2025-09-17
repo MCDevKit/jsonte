@@ -10,3 +10,6 @@ docs/
 /test_parsing
 /test/parser_test.go
 *.jsonte
+/.idea
+/gen
+data.json
