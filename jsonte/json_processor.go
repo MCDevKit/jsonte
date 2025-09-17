@@ -547,7 +547,7 @@ func (v *TemplateVisitor) visit(obj types.JsonType, path string) (types.JsonType
 }
 
 func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types.JsonType, error) {
-	var result = types.NewJsonObject()
+	var result = types.NewJsonObjectWithCapacity(obj.Size())
 	for _, key := range obj.Keys() {
 		err := checkDeadline(v.deadline)
 		if err != nil {
@@ -687,7 +687,7 @@ func PutValue(result *types.JsonObject, key string, r types.JsonType, path strin
 }
 
 func (v *TemplateVisitor) visitArray(arr *types.JsonArray, path string) (types.JsonType, error) {
-	var result = make([]types.JsonType, 0)
+	var result = make([]types.JsonType, 0, len(arr.Value))
 	for i, value := range arr.Value {
 		err := checkDeadline(v.deadline)
 		if err != nil {
@@ -705,7 +705,7 @@ func (v *TemplateVisitor) visitArray(arr *types.JsonArray, path string) (types.J
 // Special visitor for cases when the array element is an object, that generates multiple values
 func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element types.JsonType, path string) ([]types.JsonType, error) {
 	if obj, ok := element.(*types.JsonObject); ok {
-		filteredKeys := make([]string, 0)
+		filteredKeys := make([]string, 0, obj.Size())
 		for _, key := range obj.Keys() {
 			if key != "$assert" && key != "$comment" {
 				filteredKeys = append(filteredKeys, key)

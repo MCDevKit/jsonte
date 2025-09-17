@@ -398,6 +398,12 @@ func NewJsonObject() *JsonObject {
 	return &JsonObject{&navigableMap, nil, nil, nil, nil}
 }
 
+// NewJsonObjectWithCapacity creates a JsonObject preallocating internal storage.
+func NewJsonObjectWithCapacity(capacity int) *JsonObject {
+	navigableMap := utils.NewNavigableMapWithCapacity[string, JsonType](capacity)
+	return &JsonObject{&navigableMap, nil, nil, nil, nil}
+}
+
 func IsReservedKey(k string) bool {
 	return strings.EqualFold(k, "$comment") || strings.EqualFold(k, "$assert")
 }

@@ -11,10 +11,18 @@ type NavigableMap[K comparable, V any] struct {
 
 // NewNavigableMap creates a new NavigableMap.
 func NewNavigableMap[K comparable, V any]() NavigableMap[K, V] {
+	return NewNavigableMapWithCapacity[K, V](0)
+}
+
+// NewNavigableMapWithCapacity creates a new NavigableMap with preallocated storage.
+func NewNavigableMapWithCapacity[K comparable, V any](capacity int) NavigableMap[K, V] {
+	if capacity < 0 {
+		capacity = 0
+	}
 	return NavigableMap[K, V]{
-		data:  map[K]V{},
-		keys:  []K{},
-		index: map[K]int{},
+		data:  make(map[K]V, capacity),
+		keys:  make([]K, 0, capacity),
+		index: make(map[K]int, capacity),
 	}
 }
 

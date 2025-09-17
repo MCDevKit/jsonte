@@ -13,3 +13,4 @@ docs/
 /.idea
 /gen
 data.json
+*.out
