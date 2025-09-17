@@ -576,10 +576,10 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 				}
 				if arr, ok := eval.Value.(*types.JsonArray); ok {
 					for i, val := range arr.Value {
-						v.pushScope(types.AsObject(map[string]interface{}{
-							eval.IndexName: types.AsNumber(i),
-							eval.Name:      val,
-						}))
+						scopeObj := types.NewJsonObjectWithCapacity(2)
+						scopeObj.Put(eval.IndexName, types.AsNumber(i))
+						scopeObj.Put(eval.Name, val)
+						v.pushScope(scopeObj)
 						if obj, ok := val.(*types.JsonObject); ok {
 							v.pushScope(obj)
 						}
@@ -673,15 +673,36 @@ func PutValue(result *types.JsonObject, key string, r types.JsonType, path strin
 	if r == nil || types.IsNull(r) {
 		result.Put(key, types.Null)
 	} else {
-		if strings.HasPrefix(key, "$") && result.ContainsKey(key) && !types.IsReservedKey(key) {
+		existing, hasExisting := result.TryGet(key)
+		if !hasExisting || existing == nil || types.IsNull(existing) {
 			result.Put(key, r)
-		} else {
-			json, err := types.MergeJSON(result.Get(key), r, true)
+			return nil
+		}
+
+		if strings.HasPrefix(key, "$") && !types.IsReservedKey(key) {
+			result.Put(key, r)
+			return nil
+		}
+
+		if types.IsObject(existing) && types.IsObject(r) {
+			merged, err := types.MergeJSON(existing, r, true)
 			if err != nil {
 				return utils.WrapJsonErrorf(path, err, "Failed to merge %s", key)
 			}
-			result.Put(key, json)
+			result.Put(key, merged)
+			return nil
 		}
+
+		if types.IsArray(existing) && types.IsArray(r) {
+			merged, err := types.MergeJSON(existing, r, true)
+			if err != nil {
+				return utils.WrapJsonErrorf(path, err, "Failed to merge %s", key)
+			}
+			result.Put(key, merged)
+			return nil
+		}
+
+		result.Put(key, r)
 	}
 	return nil
 }
@@ -723,10 +744,10 @@ func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element type
 					case types.Iteration:
 						if arr, ok := eval.Value.(*types.JsonArray); ok {
 							for i, val := range arr.Value {
-								v.pushScope(types.AsObject(map[string]interface{}{
-									eval.IndexName: types.AsNumber(i),
-									eval.Name:      val,
-								}))
+								scopeObj := types.NewJsonObjectWithCapacity(2)
+								scopeObj.Put(eval.IndexName, types.AsNumber(i))
+								scopeObj.Put(eval.Name, val)
+								v.pushScope(scopeObj)
 								if obj, ok := val.(*types.JsonObject); ok {
 									v.pushScope(obj)
 								}

@@ -57,6 +57,12 @@ func (m *NavigableMap[K, V]) Get(key K) V {
 	return m.data[key]
 }
 
+// TryGet returns the value and whether it exists.
+func (m *NavigableMap[K, V]) TryGet(key K) (V, bool) {
+	value, ok := m.data[key]
+	return value, ok
+}
+
 // Put puts the value associated with the key.
 func (m *NavigableMap[K, V]) Put(key K, value V) {
 	if !m.ContainsKey(key) {

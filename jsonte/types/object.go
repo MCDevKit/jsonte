@@ -41,20 +41,27 @@ func (t *JsonObject) Keys() []string {
 }
 
 func (t *JsonObject) Get(key string) JsonType {
-	if t.Value != nil && t.ContainsKey(key) {
-		return t.Value.Get(key)
+	if val, ok := t.TryGet(key); ok {
+		return val
+	}
+	return Null
+}
+
+func (t *JsonObject) TryGet(key string) (JsonType, bool) {
+	if t.Value != nil {
+		return t.Value.TryGet(key)
 	}
 	if t.StackValue != nil {
 		if t.StackTarget.ContainsKey(key) {
-			return t.StackTarget.Get(key)
+			return t.StackTarget.Get(key), true
 		}
 		for i := t.StackValue.Len() - 1; i >= 0; i-- {
 			if t.StackValue.At(i).ContainsKey(key) {
-				return t.StackValue.At(i).Get(key)
+				return t.StackValue.At(i).Get(key), true
 			}
 		}
 	}
-	return Null
+	return Null, false
 }
 
 func (t *JsonObject) Put(key string, value JsonType) {
