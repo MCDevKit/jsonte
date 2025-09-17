@@ -76,6 +76,10 @@ go test ./bench -bench . -benchmem
 The command above executes the benchmark suite located in `bench/bench_test.go`. Adjust
 flags such as `-count`, `-benchtime`, or a narrower `-bench` expression to focus on specific scenarios.
 
+Useful subsets:
+- Array primitives: `go test ./bench -bench Array -benchmem`
+- JSON processing pipeline: `go test ./bench -bench JSON -benchmem`
+
 ### Notes
 
 Before any modifications to `grammar/JsonTemplate.g4` can be made, 
