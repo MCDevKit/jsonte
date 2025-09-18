@@ -203,20 +203,12 @@ func MergeArray(template, parent *JsonArray, keepOverrides bool, path string) *J
 		parent = NewJsonArray()
 	}
 	result := &JsonArray{Value: make([]JsonType, 0, len(template.Value)+len(parent.Value))}
-	for idx, v := range template.Value {
+	for _, v := range template.Value {
 		switch typed := v.(type) {
 		case *JsonObject:
-			childCapacity := 0
-			if typed != nil {
-				childCapacity = typed.Size()
-			}
-			result.Value = append(result.Value, MergeObject(NewJsonObjectWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
+			result.Value = append(result.Value, DeepCopyObject(typed))
 		case *JsonArray:
-			childCapacity := 0
-			if typed != nil {
-				childCapacity = len(typed.Value)
-			}
-			result.Value = append(result.Value, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
+			result.Value = append(result.Value, DeepCopyArray(typed))
 		default:
 			result.Value = append(result.Value, v)
 		}
@@ -228,13 +220,21 @@ func MergeArray(template, parent *JsonArray, keepOverrides bool, path string) *J
 			if typed != nil {
 				childCapacity = typed.Size()
 			}
-			result.Value = append(result.Value, MergeObject(NewJsonObjectWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
+			if typed != nil && objectNeedsMergeProcessing(typed) {
+				result.Value = append(result.Value, MergeObject(NewJsonObjectWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
+			} else {
+				result.Value = append(result.Value, DeepCopyObject(typed))
+			}
 		case *JsonArray:
 			childCapacity := 0
 			if typed != nil {
 				childCapacity = len(typed.Value)
 			}
-			result.Value = append(result.Value, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
+			if typed != nil && arrayNeedsMergeProcessing(typed) {
+				result.Value = append(result.Value, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
+			} else {
+				result.Value = append(result.Value, DeepCopyArray(typed))
+			}
 		default:
 			result.Value = append(result.Value, v)
 		}
