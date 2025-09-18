@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"reflect"
 )
@@ -200,10 +199,10 @@ func MergeArray(template, parent *JsonArray, keepOverrides bool, path string) *J
 	result := &JsonArray{Value: make([]JsonType, 0, len(template.Value)+len(parent.Value))}
 	for i, v := range template.Value {
 		if IsObject(v) {
-			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s[%d]", path, i))
+			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, joinArrayPath(path, i))
 			result.Value = append(result.Value, merge)
 		} else if IsArray(v) {
-			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, fmt.Sprintf("%s[%d]", path, i))
+			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, joinArrayPath(path, i))
 			result.Value = append(result.Value, merge)
 		} else {
 			result.Value = append(result.Value, v)
@@ -211,10 +210,10 @@ func MergeArray(template, parent *JsonArray, keepOverrides bool, path string) *J
 	}
 	for i, v := range parent.Value {
 		if IsObject(v) {
-			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s[%d]", path, i))
+			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, joinArrayPath(path, i))
 			result.Value = append(result.Value, merge)
 		} else if IsArray(v) {
-			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, fmt.Sprintf("%s[%d]", path, i))
+			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, joinArrayPath(path, i))
 			result.Value = append(result.Value, merge)
 		} else {
 			result.Value = append(result.Value, v)

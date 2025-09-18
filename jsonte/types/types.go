@@ -172,21 +172,51 @@ func MergeJSON(template, parent JsonType, keepOverrides bool) (JsonType, error) 
 	if parent == nil || IsNull(parent) {
 		return template, nil
 	}
-	if IsObject(template) && IsObject(parent) {
-		templateMap := AsObject(template)
-		parentMap := AsObject(parent)
-		return MergeObject(templateMap, parentMap, keepOverrides, "#"), nil
+
+	templateObj, templateIsJsonObject := template.(*JsonObject)
+	parentObj, parentIsJsonObject := parent.(*JsonObject)
+	if templateIsJsonObject && parentIsJsonObject {
+		return MergeObject(templateObj, parentObj, keepOverrides, "#"), nil
 	}
-	if IsArray(template) && IsArray(parent) {
-		templateArray := AsArray(template)
-		parentArray := AsArray(parent)
+
+	templateArray, templateIsJsonArray := template.(*JsonArray)
+	parentArray, parentIsJsonArray := parent.(*JsonArray)
+	if templateIsJsonArray && parentIsJsonArray {
 		return MergeArray(templateArray, parentArray, keepOverrides, "#"), nil
 	}
-	if IsObject(template) != IsObject(parent) {
-		return nil, burrito.WrappedErrorf("Cannot merge %s and %s", TypeName(template), TypeName(parent))
+
+	templateIsObject := templateIsJsonObject
+	if !templateIsObject {
+		templateIsObject = IsObject(template)
 	}
-	if IsArray(template) != IsArray(parent) {
-		return nil, burrito.WrappedErrorf("Cannot merge %s and %s", TypeName(template), TypeName(parent))
+	parentIsObject := parentIsJsonObject
+	if !parentIsObject {
+		parentIsObject = IsObject(parent)
+	}
+	if templateIsObject || parentIsObject {
+		if templateIsObject && parentIsObject {
+			return MergeObject(AsObject(template), AsObject(parent), keepOverrides, "#"), nil
+		}
+		templateType := TypeName(template)
+		parentType := TypeName(parent)
+		return nil, burrito.WrappedErrorf("Cannot merge %s and %s", templateType, parentType)
+	}
+
+	templateIsArray := templateIsJsonArray
+	if !templateIsArray {
+		templateIsArray = IsArray(template)
+	}
+	parentIsArray := parentIsJsonArray
+	if !parentIsArray {
+		parentIsArray = IsArray(parent)
+	}
+	if templateIsArray || parentIsArray {
+		if templateIsArray && parentIsArray {
+			return MergeArray(AsArray(template), AsArray(parent), keepOverrides, "#"), nil
+		}
+		templateType := TypeName(template)
+		parentType := TypeName(parent)
+		return nil, burrito.WrappedErrorf("Cannot merge %s and %s", templateType, parentType)
 	}
 
 	return parent, nil

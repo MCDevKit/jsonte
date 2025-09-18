@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
@@ -337,31 +336,32 @@ out:
 		isReversedMerge := strings.HasPrefix(k, "^")
 		k = strings.TrimPrefix(k, "^")
 		if strings.HasPrefix(k, "$") && !IsReservedKey(k) {
+			trimmedKey := strings.TrimPrefix(k, "$")
 			if keepOverrides {
 				result.Put(k, v)
 			} else {
 				if IsObject(v) {
-					result.Put(strings.TrimPrefix(k, "$"), MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s/%s", path, k)))
+					result.Put(trimmedKey, MergeObject(NewJsonObject(), AsObject(v), keepOverrides, joinObjectPath(path, k)))
 				} else if IsArray(v) {
-					result.Put(strings.TrimPrefix(k, "$"), MergeArray(NewJsonArray(), AsArray(v), keepOverrides, fmt.Sprintf("%s/%s", path, k)))
+					result.Put(trimmedKey, MergeArray(NewJsonArray(), AsArray(v), keepOverrides, joinObjectPath(path, k)))
 				} else {
-					result.Put(strings.TrimPrefix(k, "$"), v)
+					result.Put(trimmedKey, v)
 				}
 			}
-			skipKeys[strings.TrimPrefix(k, "$")] = struct{}{}
+			skipKeys[trimmedKey] = struct{}{}
 		} else if !template.ContainsKey(k) {
 			if IsObject(v) {
-				merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
+				merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, joinObjectPath(path, k))
 				result.Put(k, merge)
 			} else if IsArray(v) {
-				merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
+				merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, joinObjectPath(path, k))
 				result.Put(k, merge)
 			} else {
 				result.Put(k, v)
 			}
 		} else {
 			if IsObject(v) && IsObject(result.Get(k)) {
-				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
+				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides, joinObjectPath(path, k))
 				result.Put(k, merge)
 			} else if IsArray(v) && IsArray(template.Get(k)) {
 				var merge, v1 *JsonArray
@@ -371,9 +371,9 @@ out:
 					v1 = AsArray(template.Get(k))
 				}
 				if isReversedMerge {
-					merge = MergeArray(AsArray(v), v1, keepOverrides, fmt.Sprintf("%s/%s", path, k))
+					merge = MergeArray(AsArray(v), v1, keepOverrides, joinObjectPath(path, k))
 				} else {
-					merge = MergeArray(v1, AsArray(v), keepOverrides, fmt.Sprintf("%s/%s", path, k))
+					merge = MergeArray(v1, AsArray(v), keepOverrides, joinObjectPath(path, k))
 				}
 				result.Put(k, merge)
 			} else {
