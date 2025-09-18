@@ -16,6 +16,19 @@ type JsonObject struct {
 	parentIndex JsonType
 }
 
+func forEachEntry(obj *JsonObject, fn func(string, JsonType)) {
+	if obj == nil || fn == nil {
+		return
+	}
+	if obj.Value != nil && obj.StackValue == nil {
+		obj.Value.ForEach(fn)
+		return
+	}
+	for _, key := range obj.Keys() {
+		fn(key, obj.Get(key))
+	}
+}
+
 func (t *JsonObject) Keys() []string {
 	if t.Value != nil {
 		return t.Value.Keys()
@@ -330,8 +343,7 @@ func MergeObject(template, parent *JsonObject, keepOverrides bool, path string) 
 		parentCapacity = parent.Value.Size()
 	}
 	result := NewJsonObjectWithCapacity(templateCapacity + parentCapacity)
-	for _, key := range template.Keys() {
-		value := template.Get(key)
+	forEachEntry(template, func(key string, value JsonType) {
 		switch typed := value.(type) {
 		case *JsonObject:
 			result.Put(key, DeepCopyObject(typed))
@@ -340,32 +352,42 @@ func MergeObject(template, parent *JsonObject, keepOverrides bool, path string) 
 		default:
 			result.Put(key, value)
 		}
-	}
-	skipKeys := make(map[string]struct{}, parentCapacity)
-	for _, rawKey := range parent.Keys() {
-		if _, ok := skipKeys[rawKey]; ok {
-			continue
+	})
+	var skipKeys map[string]struct{}
+	forEachEntry(parent, func(rawKey string, value JsonType) {
+		if rawKey == "" {
+			return
 		}
-		value := parent.Get(rawKey)
-		isReversedMerge := len(rawKey) > 0 && rawKey[0] == '^'
+		if skipKeys != nil {
+			if _, ok := skipKeys[rawKey]; ok {
+				return
+			}
+		}
+		isReversedMerge := rawKey[0] == '^'
 		key := rawKey
 		if isReversedMerge {
+			if len(key) == 1 {
+				return
+			}
 			key = rawKey[1:]
 		}
 		if len(key) == 0 {
-			continue
+			return
 		}
 		if key[0] == '$' && !IsReservedKey(key) {
 			trimmedKey := key[1:]
 			if keepOverrides {
 				result.Put(key, value)
 			} else {
-				childPath := joinObjectPath(path, key)
+				childPath := ""
 				switch typed := value.(type) {
 				case *JsonObject:
 					childCapacity := 0
 					if typed != nil {
 						childCapacity = typed.Size()
+					}
+					if typed != nil {
+						childPath = joinObjectPath(path, key)
 					}
 					result.Put(trimmedKey, MergeObject(NewJsonObjectWithCapacity(childCapacity), typed, keepOverrides, childPath))
 				case *JsonArray:
@@ -373,22 +395,34 @@ func MergeObject(template, parent *JsonObject, keepOverrides bool, path string) 
 					if typed != nil {
 						childCapacity = len(typed.Value)
 					}
+					if typed != nil {
+						childPath = joinObjectPath(path, key)
+					}
 					result.Put(trimmedKey, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, childPath))
 				default:
 					result.Put(trimmedKey, value)
 				}
+				if result.ContainsKey(key) {
+					result.Remove(key)
+				}
+			}
+			if skipKeys == nil {
+				skipKeys = make(map[string]struct{}, parentCapacity)
 			}
 			skipKeys[trimmedKey] = struct{}{}
-			continue
+			return
 		}
-		templateValue, exists := template.TryGet(key)
+		baseValue, exists := result.TryGet(key)
 		if !exists {
-			childPath := joinObjectPath(path, key)
+			childPath := ""
 			switch typed := value.(type) {
 			case *JsonObject:
 				childCapacity := 0
 				if typed != nil {
 					childCapacity = typed.Size()
+				}
+				if typed != nil {
+					childPath = joinObjectPath(path, key)
 				}
 				result.Put(key, MergeObject(NewJsonObjectWithCapacity(childCapacity), typed, keepOverrides, childPath))
 			case *JsonArray:
@@ -396,23 +430,27 @@ func MergeObject(template, parent *JsonObject, keepOverrides bool, path string) 
 				if typed != nil {
 					childCapacity = len(typed.Value)
 				}
+				if typed != nil {
+					childPath = joinObjectPath(path, key)
+				}
 				result.Put(key, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, childPath))
 			default:
 				result.Put(key, value)
 			}
-			continue
+			return
 		}
-		childPath := joinObjectPath(path, key)
 		switch typed := value.(type) {
 		case *JsonObject:
-			if templateObj, ok := templateValue.(*JsonObject); ok {
+			if templateObj, ok := baseValue.(*JsonObject); ok {
+				childPath := joinObjectPath(path, key)
 				result.Put(key, MergeObject(templateObj, typed, keepOverrides, childPath))
 			} else {
 				result.Put(key, value)
 			}
 		case *JsonArray:
-			if _, ok := templateValue.(*JsonArray); ok {
+			if _, ok := baseValue.(*JsonArray); ok {
 				base := AsArray(result.Get(key))
+				childPath := joinObjectPath(path, key)
 				if isReversedMerge {
 					result.Put(key, MergeArray(typed, base, keepOverrides, childPath))
 				} else {
@@ -424,7 +462,7 @@ func MergeObject(template, parent *JsonObject, keepOverrides bool, path string) 
 		default:
 			result.Put(key, value)
 		}
-	}
+	})
 	return result
 }
 

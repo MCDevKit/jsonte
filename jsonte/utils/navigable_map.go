@@ -123,6 +123,18 @@ func (m *NavigableMap[K, V]) Values() []V {
 	return values
 }
 
+// ForEach executes fn for every key/value pair that is currently present.
+func (m *NavigableMap[K, V]) ForEach(fn func(K, V)) {
+	if m == nil || fn == nil {
+		return
+	}
+	for idx, k := range m.keys {
+		if i, ok := m.index[k]; ok && i == idx {
+			fn(k, m.data[k])
+		}
+	}
+}
+
 // Size returns the size of the map.
 func (m *NavigableMap[K, V]) Size() int {
 	return len(m.data)

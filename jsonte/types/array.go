@@ -202,29 +202,39 @@ func MergeArray(template, parent *JsonArray, keepOverrides bool, path string) *J
 	if parent == nil {
 		parent = NewJsonArray()
 	}
-	templateLen := len(template.Value)
-	result := &JsonArray{Value: make([]JsonType, 0, templateLen+len(parent.Value))}
-	for _, v := range template.Value {
+	result := &JsonArray{Value: make([]JsonType, 0, len(template.Value)+len(parent.Value))}
+	for idx, v := range template.Value {
 		switch typed := v.(type) {
 		case *JsonObject:
-			result.Value = append(result.Value, DeepCopyObject(typed))
-		case *JsonArray:
-			result.Value = append(result.Value, DeepCopyArray(typed))
-		default:
-			result.Value = append(result.Value, v)
-		}
-	}
-	for i, v := range parent.Value {
-		childPath := joinArrayPath(path, i)
-		switch typed := v.(type) {
-		case *JsonObject:
-			result.Value = append(result.Value, MergeObject(NewJsonObjectWithCapacity(typed.Size()), typed, keepOverrides, childPath))
+			childCapacity := 0
+			if typed != nil {
+				childCapacity = typed.Size()
+			}
+			result.Value = append(result.Value, MergeObject(NewJsonObjectWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
 		case *JsonArray:
 			childCapacity := 0
 			if typed != nil {
 				childCapacity = len(typed.Value)
 			}
-			result.Value = append(result.Value, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, childPath))
+			result.Value = append(result.Value, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
+		default:
+			result.Value = append(result.Value, v)
+		}
+	}
+	for idx, v := range parent.Value {
+		switch typed := v.(type) {
+		case *JsonObject:
+			childCapacity := 0
+			if typed != nil {
+				childCapacity = typed.Size()
+			}
+			result.Value = append(result.Value, MergeObject(NewJsonObjectWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
+		case *JsonArray:
+			childCapacity := 0
+			if typed != nil {
+				childCapacity = len(typed.Value)
+			}
+			result.Value = append(result.Value, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, joinArrayPath(path, idx)))
 		default:
 			result.Value = append(result.Value, v)
 		}
