@@ -315,70 +315,114 @@ func IsEqualObject(a, b utils.NavigableMap[string, JsonType]) bool {
 // MergeObject merges two JSON objects into a new JSON object.
 // If the same value, that is not an object or an array exists in both objects, the value from the second object will be used.
 func MergeObject(template, parent *JsonObject, keepOverrides bool, path string) *JsonObject {
-	result := NewJsonObject()
-	for _, k := range template.Keys() {
-		v := template.Get(k)
-		if IsObject(v) {
-			result.Put(k, DeepCopyObject(AsObject(v)))
-		} else if IsArray(v) {
-			result.Put(k, DeepCopyArray(AsArray(v)))
-		} else {
-			result.Put(k, v)
+	if template == nil {
+		template = NewJsonObject()
+	}
+	if parent == nil {
+		parent = NewJsonObject()
+	}
+	templateCapacity := 0
+	if template.Value != nil {
+		templateCapacity = template.Value.Size()
+	}
+	parentCapacity := 0
+	if parent.Value != nil {
+		parentCapacity = parent.Value.Size()
+	}
+	result := NewJsonObjectWithCapacity(templateCapacity + parentCapacity)
+	for _, key := range template.Keys() {
+		value := template.Get(key)
+		switch typed := value.(type) {
+		case *JsonObject:
+			result.Put(key, DeepCopyObject(typed))
+		case *JsonArray:
+			result.Put(key, DeepCopyArray(typed))
+		default:
+			result.Put(key, value)
 		}
 	}
-	skipKeys := make(map[string]struct{})
-out:
-	for _, k := range parent.Keys() {
-		v := parent.Get(k)
-		if _, ok := skipKeys[k]; ok {
-			continue out
+	skipKeys := make(map[string]struct{}, parentCapacity)
+	for _, rawKey := range parent.Keys() {
+		if _, ok := skipKeys[rawKey]; ok {
+			continue
 		}
-		isReversedMerge := strings.HasPrefix(k, "^")
-		k = strings.TrimPrefix(k, "^")
-		if strings.HasPrefix(k, "$") && !IsReservedKey(k) {
-			trimmedKey := strings.TrimPrefix(k, "$")
+		value := parent.Get(rawKey)
+		isReversedMerge := len(rawKey) > 0 && rawKey[0] == '^'
+		key := rawKey
+		if isReversedMerge {
+			key = rawKey[1:]
+		}
+		if len(key) == 0 {
+			continue
+		}
+		if key[0] == '$' && !IsReservedKey(key) {
+			trimmedKey := key[1:]
 			if keepOverrides {
-				result.Put(k, v)
+				result.Put(key, value)
 			} else {
-				if IsObject(v) {
-					result.Put(trimmedKey, MergeObject(NewJsonObject(), AsObject(v), keepOverrides, joinObjectPath(path, k)))
-				} else if IsArray(v) {
-					result.Put(trimmedKey, MergeArray(NewJsonArray(), AsArray(v), keepOverrides, joinObjectPath(path, k)))
-				} else {
-					result.Put(trimmedKey, v)
+				childPath := joinObjectPath(path, key)
+				switch typed := value.(type) {
+				case *JsonObject:
+					childCapacity := 0
+					if typed != nil {
+						childCapacity = typed.Size()
+					}
+					result.Put(trimmedKey, MergeObject(NewJsonObjectWithCapacity(childCapacity), typed, keepOverrides, childPath))
+				case *JsonArray:
+					childCapacity := 0
+					if typed != nil {
+						childCapacity = len(typed.Value)
+					}
+					result.Put(trimmedKey, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, childPath))
+				default:
+					result.Put(trimmedKey, value)
 				}
 			}
 			skipKeys[trimmedKey] = struct{}{}
-		} else if !template.ContainsKey(k) {
-			if IsObject(v) {
-				merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, joinObjectPath(path, k))
-				result.Put(k, merge)
-			} else if IsArray(v) {
-				merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, joinObjectPath(path, k))
-				result.Put(k, merge)
-			} else {
-				result.Put(k, v)
-			}
-		} else {
-			if IsObject(v) && IsObject(result.Get(k)) {
-				merge := MergeObject(AsObject(template.Get(k)), AsObject(v), keepOverrides, joinObjectPath(path, k))
-				result.Put(k, merge)
-			} else if IsArray(v) && IsArray(template.Get(k)) {
-				var merge, v1 *JsonArray
-				if result.ContainsKey(k) {
-					v1 = AsArray(result.Get(k))
-				} else {
-					v1 = AsArray(template.Get(k))
+			continue
+		}
+		templateValue, exists := template.TryGet(key)
+		if !exists {
+			childPath := joinObjectPath(path, key)
+			switch typed := value.(type) {
+			case *JsonObject:
+				childCapacity := 0
+				if typed != nil {
+					childCapacity = typed.Size()
 				}
+				result.Put(key, MergeObject(NewJsonObjectWithCapacity(childCapacity), typed, keepOverrides, childPath))
+			case *JsonArray:
+				childCapacity := 0
+				if typed != nil {
+					childCapacity = len(typed.Value)
+				}
+				result.Put(key, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, childPath))
+			default:
+				result.Put(key, value)
+			}
+			continue
+		}
+		childPath := joinObjectPath(path, key)
+		switch typed := value.(type) {
+		case *JsonObject:
+			if templateObj, ok := templateValue.(*JsonObject); ok {
+				result.Put(key, MergeObject(templateObj, typed, keepOverrides, childPath))
+			} else {
+				result.Put(key, value)
+			}
+		case *JsonArray:
+			if _, ok := templateValue.(*JsonArray); ok {
+				base := AsArray(result.Get(key))
 				if isReversedMerge {
-					merge = MergeArray(AsArray(v), v1, keepOverrides, joinObjectPath(path, k))
+					result.Put(key, MergeArray(typed, base, keepOverrides, childPath))
 				} else {
-					merge = MergeArray(v1, AsArray(v), keepOverrides, joinObjectPath(path, k))
+					result.Put(key, MergeArray(base, typed, keepOverrides, childPath))
 				}
-				result.Put(k, merge)
 			} else {
-				result.Put(k, v)
+				result.Put(key, value)
 			}
+		default:
+			result.Put(key, value)
 		}
 	}
 	return result
@@ -386,14 +430,18 @@ out:
 
 // DeepCopyObject creates a deep copy of the given JSON object.
 func DeepCopyObject(object *JsonObject) *JsonObject {
-	result := NewJsonObject()
+	if object == nil {
+		return NewJsonObject()
+	}
+	result := NewJsonObjectWithCapacity(object.Size())
 	for _, k := range object.Keys() {
 		v := object.Get(k)
-		if IsObject(v) {
-			result.Put(k, DeepCopyObject(AsObject(v)))
-		} else if IsArray(v) {
-			result.Put(k, DeepCopyArray(AsArray(v)))
-		} else {
+		switch typed := v.(type) {
+		case *JsonObject:
+			result.Put(k, DeepCopyObject(typed))
+		case *JsonArray:
+			result.Put(k, DeepCopyArray(typed))
+		default:
 			result.Put(k, v)
 		}
 	}

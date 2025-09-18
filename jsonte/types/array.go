@@ -196,26 +196,36 @@ func AsArray(obj interface{}) *JsonArray {
 
 // MergeArray merges two JSON arrays into a new JSON array.
 func MergeArray(template, parent *JsonArray, keepOverrides bool, path string) *JsonArray {
-	result := &JsonArray{Value: make([]JsonType, 0, len(template.Value)+len(parent.Value))}
-	for i, v := range template.Value {
-		if IsObject(v) {
-			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, joinArrayPath(path, i))
-			result.Value = append(result.Value, merge)
-		} else if IsArray(v) {
-			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, joinArrayPath(path, i))
-			result.Value = append(result.Value, merge)
-		} else {
+	if template == nil {
+		template = NewJsonArray()
+	}
+	if parent == nil {
+		parent = NewJsonArray()
+	}
+	templateLen := len(template.Value)
+	result := &JsonArray{Value: make([]JsonType, 0, templateLen+len(parent.Value))}
+	for _, v := range template.Value {
+		switch typed := v.(type) {
+		case *JsonObject:
+			result.Value = append(result.Value, DeepCopyObject(typed))
+		case *JsonArray:
+			result.Value = append(result.Value, DeepCopyArray(typed))
+		default:
 			result.Value = append(result.Value, v)
 		}
 	}
 	for i, v := range parent.Value {
-		if IsObject(v) {
-			merge := MergeObject(NewJsonObject(), AsObject(v), keepOverrides, joinArrayPath(path, i))
-			result.Value = append(result.Value, merge)
-		} else if IsArray(v) {
-			merge := MergeArray(NewJsonArray(), AsArray(v), keepOverrides, joinArrayPath(path, i))
-			result.Value = append(result.Value, merge)
-		} else {
+		childPath := joinArrayPath(path, i)
+		switch typed := v.(type) {
+		case *JsonObject:
+			result.Value = append(result.Value, MergeObject(NewJsonObjectWithCapacity(typed.Size()), typed, keepOverrides, childPath))
+		case *JsonArray:
+			childCapacity := 0
+			if typed != nil {
+				childCapacity = len(typed.Value)
+			}
+			result.Value = append(result.Value, MergeArray(NewJsonArrayWithCapacity(childCapacity), typed, keepOverrides, childPath))
+		default:
 			result.Value = append(result.Value, v)
 		}
 	}
@@ -224,13 +234,25 @@ func MergeArray(template, parent *JsonArray, keepOverrides bool, path string) *J
 
 // DeepCopyArray creates a deep copy of the given JSON array.
 func DeepCopyArray(object *JsonArray) *JsonArray {
-	var result = NewJsonArray()
+	if object == nil {
+		return NewJsonArray()
+	}
+	result := NewJsonArrayWithCapacity(len(object.Value))
 	for _, v := range object.Value {
-		if IsObject(v) {
-			result.Value = append(result.Value, DeepCopyObject(AsObject(v)))
-		} else if IsArray(v) {
-			result.Value = append(result.Value, DeepCopyArray(AsArray(v)))
-		} else {
+		switch typed := v.(type) {
+		case *JsonObject:
+			if typed == nil {
+				result.Value = append(result.Value, Null)
+				continue
+			}
+			result.Value = append(result.Value, DeepCopyObject(typed))
+		case *JsonArray:
+			if typed == nil {
+				result.Value = append(result.Value, Null)
+				continue
+			}
+			result.Value = append(result.Value, DeepCopyArray(typed))
+		default:
 			result.Value = append(result.Value, v)
 		}
 	}
@@ -238,5 +260,12 @@ func DeepCopyArray(object *JsonArray) *JsonArray {
 }
 
 func NewJsonArray() *JsonArray {
-	return &JsonArray{Value: make([]JsonType, 0)}
+	return NewJsonArrayWithCapacity(0)
+}
+
+func NewJsonArrayWithCapacity(capacity int) *JsonArray {
+	if capacity < 0 {
+		capacity = 0
+	}
+	return &JsonArray{Value: make([]JsonType, 0, capacity)}
 }
