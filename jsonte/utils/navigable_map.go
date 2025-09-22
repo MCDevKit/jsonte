@@ -65,7 +65,13 @@ func (m *NavigableMap[K, V]) TryGet(key K) (V, bool) {
 
 // Put puts the value associated with the key.
 func (m *NavigableMap[K, V]) Put(key K, value V) {
-	if !m.ContainsKey(key) {
+	if m.data == nil {
+		m.data = make(map[K]V)
+	}
+	if m.index == nil {
+		m.index = make(map[K]int)
+	}
+	if _, exists := m.data[key]; !exists {
 		m.keys = append(m.keys, key)
 		m.index[key] = len(m.keys) - 1
 	}
@@ -93,14 +99,18 @@ func (m *NavigableMap[K, V]) ContainsKey(key K) bool {
 
 // ContainsMatchingKey returns true if the matching key exists.
 func (m *NavigableMap[K, V]) ContainsMatchingKey(matchFunc func(K) bool) bool {
-	for idx, k := range m.keys {
-		if i, ok := m.index[k]; ok && i == idx {
-			if matchFunc(k) {
-				return true
-			}
-		}
+	if m == nil || matchFunc == nil {
+		return false
 	}
-	return false
+	found := false
+	m.ForEachUntil(func(key K, _ V) bool {
+		if matchFunc(key) {
+			found = true
+			return true
+		}
+		return false
+	})
+	return found
 }
 
 // Keys returns the keys in order.
@@ -128,9 +138,22 @@ func (m *NavigableMap[K, V]) ForEach(fn func(K, V)) {
 	if m == nil || fn == nil {
 		return
 	}
+	m.ForEachUntil(func(key K, value V) bool {
+		fn(key, value)
+		return false
+	})
+}
+
+// ForEachUntil executes fn for every key/value pair until fn returns true.
+func (m *NavigableMap[K, V]) ForEachUntil(fn func(K, V) bool) {
+	if m == nil || fn == nil {
+		return
+	}
 	for idx, k := range m.keys {
 		if i, ok := m.index[k]; ok && i == idx {
-			fn(k, m.data[k])
+			if fn(k, m.data[k]) {
+				return
+			}
 		}
 	}
 }

@@ -5,6 +5,19 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/fs"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"runtime/debug"
+	"runtime/pprof"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
@@ -15,16 +28,6 @@ import (
 	"github.com/gobwas/glob"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
-	"io/fs"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"regexp"
-	"runtime"
-	"sort"
-	"strings"
-	"sync"
-	"time"
 )
 
 var (
@@ -38,9 +41,9 @@ func main() {
 	types.Init()
 	functions.Init()
 	env, b := os.LookupEnv("DEBUG")
-	debug := false
+	isDebug := false
 	if b && (env == "true" || env == "1") {
-		debug = true
+		isDebug = true
 	}
 	silent := false
 	removeSrc := false
@@ -53,11 +56,13 @@ func main() {
 	seed := time.Now().UnixNano()
 	workers := int64(1)
 	cacheAll := false
+	cpuProfile := false
+	noGc := false
 	app := NewApp()
 	app.BoolFlag(Flag{
 		Name:  "debug",
 		Usage: "Enable debug mode",
-	}, &debug)
+	}, &isDebug)
 	app.BoolFlag(Flag{
 		Name:  "safe-mode",
 		Usage: "Enable safe mode",
@@ -114,9 +119,40 @@ func main() {
 		Name:  "cache-all",
 		Usage: "Cache all function calls",
 	}, &cacheAll)
+	app.BoolFlag(Flag{
+		Name:  "cpu-profile",
+		Usage: "Creates a CPU profile file",
+	}, &cpuProfile)
+	app.BoolFlag(Flag{
+		Name:  "no-gc",
+		Usage: "Disables garbage collector",
+	}, &noGc)
 	app.Action(Action{
 		Name: "compile",
 		Function: func(args []string) error {
+			if noGc {
+				debug.SetGCPercent(-1)
+			}
+			var cpuFile *os.File
+			if cpuProfile {
+				var err error
+				fullPath, err := filepath.Abs("./cpu.prof")
+				if err != nil {
+					return burrito.WrapError(err, "An error occurred while creating the CPU profile file path")
+				}
+				cpuFile, err = os.Create(fullPath)
+				if err != nil {
+					return burrito.WrapErrorf(err, "An error occurred while creating the CPU profile file %s", fullPath)
+				}
+				if err := pprof.StartCPUProfile(cpuFile); err != nil {
+					return burrito.WrapErrorf(err, "An error occurred while starting the CPU profile")
+				}
+				defer func() {
+					pprof.StopCPUProfile()
+					_ = cpuFile.Close()
+					utils.Logger.Infof("CPU profile saved to %s", fullPath)
+				}()
+			}
 			functions.SetCacheAll(cacheAll)
 			outFile := ""
 			if out != "" {
@@ -550,10 +586,10 @@ func main() {
 		},
 	})
 	err := app.Run(os.Args, func() {
-		if debug && silent {
+		if isDebug && silent {
 			utils.InitLogging(zap.DebugLevel)
 			utils.Logger.Warn("--debug and --silent are mutually exclusive")
-		} else if debug {
+		} else if isDebug {
 			utils.InitLogging(zap.DebugLevel)
 		} else if silent {
 			utils.InitLogging(zap.WarnLevel)

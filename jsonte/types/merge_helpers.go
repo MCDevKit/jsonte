@@ -23,22 +23,31 @@ func objectNeedsMergeProcessing(obj *JsonObject) bool {
 		if current == nil {
 			continue
 		}
-		keys := current.Keys()
-		for _, key := range keys {
+
+		needsProcessing := false
+		forEachObjectEntryUntil(current, func(key string, value JsonType) bool {
 			if key == "" {
-				continue
+				return false
 			}
 			if key[0] == '^' || (key[0] == '$' && !IsReservedKey(key)) {
+				needsProcessing = true
 				return true
 			}
-			switch typed := current.Get(key).(type) {
+			switch typed := value.(type) {
 			case *JsonObject:
-				stack = append(stack, typed)
+				if typed != nil {
+					stack = append(stack, typed)
+				}
 			case *JsonArray:
 				if arrayNeedsMergeProcessing(typed) {
+					needsProcessing = true
 					return true
 				}
 			}
+			return false
+		})
+		if needsProcessing {
+			return true
 		}
 	}
 	return false
@@ -55,6 +64,7 @@ func arrayNeedsMergeProcessing(arr *JsonArray) bool {
 		if current == nil {
 			continue
 		}
+
 		for _, item := range current.Value {
 			switch typed := item.(type) {
 			case *JsonObject:
@@ -62,9 +72,28 @@ func arrayNeedsMergeProcessing(arr *JsonArray) bool {
 					return true
 				}
 			case *JsonArray:
-				stack = append(stack, typed)
+				if typed != nil && len(typed.Value) > 0 {
+					stack = append(stack, typed)
+				}
 			}
 		}
 	}
 	return false
+}
+
+func forEachObjectEntryUntil(obj *JsonObject, fn func(string, JsonType) bool) {
+	if obj == nil || fn == nil {
+		return
+	}
+	if obj.Value != nil && obj.StackValue == nil {
+		obj.Value.ForEachUntil(func(key string, value JsonType) bool {
+			return fn(key, value)
+		})
+		return
+	}
+	for _, key := range obj.Keys() {
+		if fn(key, obj.Get(key)) {
+			return
+		}
+	}
 }
