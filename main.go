@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"runtime/debug"
 	"runtime/pprof"
 	"sort"
 	"strings"
@@ -57,7 +56,6 @@ func main() {
 	workers := int64(1)
 	cacheAll := false
 	cpuProfile := false
-	noGc := false
 	app := NewApp()
 	app.BoolFlag(Flag{
 		Name:  "debug",
@@ -123,16 +121,9 @@ func main() {
 		Name:  "cpu-profile",
 		Usage: "Creates a CPU profile file",
 	}, &cpuProfile)
-	app.BoolFlag(Flag{
-		Name:  "no-gc",
-		Usage: "Disables garbage collector",
-	}, &noGc)
 	app.Action(Action{
 		Name: "compile",
 		Function: func(args []string) error {
-			if noGc {
-				debug.SetGCPercent(-1)
-			}
 			var cpuFile *os.File
 			if cpuProfile {
 				var err error
