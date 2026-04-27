@@ -14,3 +14,6 @@ docs/
 /gen
 data.json
 *.out
+*.prof
+nda_*
+memory
