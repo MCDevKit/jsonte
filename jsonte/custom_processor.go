@@ -6,6 +6,7 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/gammazero/deque"
 	"strings"
+	"sync"
 )
 
 // ProcessLangFile processes a lang file replacing all the jsonte expressions with their values
@@ -39,18 +40,21 @@ func ProcessMCFunction(input string, scope *types.JsonObject) (string, error) {
 
 // ProcessString processes a string replacing all the jsonte expressions with their values
 func ProcessString(input string, scope *types.JsonObject, startToken, endToken string) (string, error) {
-	runes := []rune(input)
 	templateMatches, err := FindTemplateMatches(input, startToken, endToken)
 	if err != nil {
 		return "", burrito.PassError(err)
 	}
+	if len(templateMatches) == 0 {
+		return input, nil
+	}
 	globalScope := deque.Deque[*types.JsonObject]{}
 	globalScope.PushBack(scope)
 	var sb strings.Builder
+	sb.Grow(len(input))
 	lastMatchEnd := 0
 	for _, match := range templateMatches {
-		if match.Start > lastMatchEnd {
-			sb.WriteString(string(runes[lastMatchEnd:match.Start]))
+		if match.StartByte > lastMatchEnd {
+			sb.WriteString(input[lastMatchEnd:match.StartByte])
 		}
 		result, err := Eval(match.Match, globalScope, "#")
 		if err != nil {
@@ -61,13 +65,13 @@ func ProcessString(input string, scope *types.JsonObject, startToken, endToken s
 		}
 		if result.Action == types.Value {
 			sb.WriteString(types.ToString(result.Value))
-			lastMatchEnd = match.Start + match.Length + 1
+			lastMatchEnd = match.EndByte
 		} else {
 			return "", burrito.WrappedErrorf("The expression '%s' evaluated to an action.", match.EscapedMatch)
 		}
 	}
-	if lastMatchEnd < len(runes) {
-		sb.WriteString(string(runes[lastMatchEnd:]))
+	if lastMatchEnd < len(input) {
+		sb.WriteString(input[lastMatchEnd:])
 	}
 
 	return sb.String(), nil
@@ -78,11 +82,34 @@ type TemplateMatch struct {
 	EscapedMatch string
 	Start        int
 	Length       int
+	StartByte    int
+	EndByte      int
 }
+
+// templateMatchCache caches FindTemplateMatches results for static strings.
+// Keys are the raw input string (for the common "{"/"}" token pair).
+var templateMatchCache sync.Map
 
 // FindTemplateMatches processes a string replacing all the jsonte expressions with their values
 func FindTemplateMatches(input, startToken, endToken string) ([]TemplateMatch, error) {
+	// Fast-path: avoid expensive rune conversion if no template marker is present.
+	marker := startToken + "{"
+	if !strings.Contains(input, marker) {
+		return nil, nil
+	}
+	// Cache lookup for the common case (standard JSON template tokens).
+	isStandard := startToken == "{" && endToken == "}"
+	if isStandard {
+		if cached, ok := templateMatchCache.Load(input); ok {
+			return cached.([]TemplateMatch), nil
+		}
+	}
 	inputRunes := []rune(input)
+	runeByteOffsets := make([]int, 0, len(inputRunes)+1)
+	for byteOffset := range input {
+		runeByteOffsets = append(runeByteOffsets, byteOffset)
+	}
+	runeByteOffsets = append(runeByteOffsets, len(input))
 	startTokenRunes := []rune(startToken)
 	endTokenRunes := []rune(endToken)
 	inputLen := len(inputRunes)
@@ -145,6 +172,8 @@ outerFor:
 						EscapedMatch: startToken + "{" + debugMatch.String() + "}" + endToken,
 						Start:        startIndex,
 						Length:       i - startIndex,
+						StartByte:    runeByteOffsets[startIndex],
+						EndByte:      runeByteOffsets[i+1],
 					})
 				} else {
 					currentMatch.WriteRune(char)
@@ -160,5 +189,8 @@ outerFor:
 		return matches, burrito.WrappedErrorf("The expression '%s' is not closed.", debugMatch.String())
 	}
 
+	if isStandard {
+		templateMatchCache.Store(input, matches)
+	}
 	return matches, nil
 }
