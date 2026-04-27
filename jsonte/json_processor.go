@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -30,6 +31,10 @@ type TemplateVisitor struct {
 }
 
 const MaxInt64 = int64(^uint64(0) >> 1)
+
+var stringBuilderPool = sync.Pool{
+	New: func() interface{} { return &strings.Builder{} },
+}
 
 // LoadModule loads a module from a file and returns a JsonModule
 func LoadModule(input string, globalScope *types.JsonObject, timeout int64) (JsonModule, error) {
@@ -193,7 +198,7 @@ func Process(name, input string, globalScope *types.JsonObject, modules map[stri
 		if err != nil {
 			return result, utils.WrapJsonErrorf("$files", err, "Invalid array expression")
 		}
-		array, err := Eval((*arrayExpression).StringValue(), visitor.getScope(), "$files.array")
+		array, err := evalWithExtraScope((*arrayExpression).StringValue(), visitor.scope, &visitor.moduleScope, "$files.array")
 		if err != nil {
 			return result, burrito.WrapErrorf(err, "Failed to evaluate $files.array")
 		}
@@ -559,13 +564,14 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 			continue
 		}
 		if strings.EqualFold(key, "$assert") {
-			if err = v.visitAssert(value, fmt.Sprintf("%s/%s", path, "$assert")); err != nil {
+			if err = v.visitAssert(value, path+"/$assert"); err != nil {
 				return result, err
 			}
 			continue
 		}
 		if strings.HasPrefix(key, "{{") && strings.HasSuffix(key, "}}") && (key[2] == '#' || key[2] == '?') {
-			eval, err := Eval(key, v.getScope(), fmt.Sprintf("%s/%s", path, key))
+			keyPath := path + "/" + key
+			eval, err := evalWithExtraScope(key, v.scope, &v.moduleScope, keyPath)
 			if err != nil {
 				return nil, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", key)
 			}
@@ -576,27 +582,45 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 				}
 				if arr, ok := eval.Value.(*types.JsonArray); ok {
 					for i, val := range arr.Value {
-						scopeObj := types.NewJsonObjectWithCapacity(2)
+						scopeObj := getScopeObject()
 						scopeObj.Put(eval.IndexName, types.AsNumber(i))
 						scopeObj.Put(eval.Name, val)
 						v.pushScope(scopeObj)
 						if obj, ok := val.(*types.JsonObject); ok {
 							v.pushScope(obj)
 						}
-						o, err := v.visit(value, fmt.Sprintf("%s/%s[%d]", path, key, i))
-						v.popScope()
+						o, err := v.visit(value, keyPath+"["+strconv.Itoa(i)+"]")
 						if _, ok := val.(*types.JsonObject); ok {
 							v.popScope()
 						}
+						v.popScope()
+						putScopeObject(scopeObj)
 						if err != nil {
 							return nil, burrito.PassError(err)
 						}
 						u := o.(*types.JsonObject)
-						for _, k := range u.Keys() {
-							err = PutValue(result, k, u.Get(k), path)
-							if err != nil {
-								return nil, burrito.PassError(err)
+						iterKeys := 0
+						if u.Value != nil {
+							var iterErr error
+							u.Value.Range(func(k string, v types.JsonType) bool {
+								iterKeys++
+								iterErr = PutValue(result, k, v, path)
+								return iterErr != nil
+							})
+							if iterErr != nil {
+								return nil, burrito.PassError(iterErr)
 							}
+						} else {
+							for _, k := range u.Keys() {
+								iterKeys++
+								err = PutValue(result, k, u.Get(k), path)
+								if err != nil {
+									return nil, burrito.PassError(err)
+								}
+							}
+						}
+						if i == 0 && len(arr.Value) > 1 && iterKeys > 0 && result.Value != nil {
+							result.Value.Reserve((len(arr.Value) - 1) * iterKeys)
 						}
 					}
 				} else {
@@ -604,7 +628,7 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 				}
 			case types.Predicate:
 				if eval.Value.BoolValue() {
-					o, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
+					o, err := v.visit(value, keyPath)
 					if err != nil {
 						return nil, burrito.PassError(err)
 					}
@@ -620,11 +644,11 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 					}
 				}
 			case types.Value:
-				k, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
+				k, err := v.visitString(key, keyPath)
 				if err != nil {
 					return nil, burrito.PassError(err)
 				}
-				r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
+				r, err := v.visit(value, keyPath)
 				if err != nil {
 					return nil, burrito.PassError(err)
 				}
@@ -641,11 +665,12 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 				return nil, utils.WrapJsonErrorf(path, err, "Failed to parse template %s", key)
 			}
 			if len(matches) > 0 {
-				k, err := v.visitString(key, fmt.Sprintf("%s/%s", path, key))
+				keyPath := path + "/" + key
+				k, err := v.visitString(key, keyPath)
 				if err != nil {
 					return nil, burrito.PassError(err)
 				}
-				r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
+				r, err := v.visit(value, keyPath)
 				if err != nil {
 					return nil, burrito.PassError(err)
 				}
@@ -655,7 +680,7 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types
 				}
 			} else {
 				var err error
-				r, err := v.visit(value, fmt.Sprintf("%s/%s", path, key))
+				r, err := v.visit(value, path+"/"+key)
 				if err != nil {
 					return nil, burrito.PassError(err)
 				}
@@ -714,7 +739,7 @@ func (v *TemplateVisitor) visitArray(arr *types.JsonArray, path string) (types.J
 		if err != nil {
 			return &types.JsonArray{Value: result}, err
 		}
-		a, err := v.visitArrayElement(result, value, fmt.Sprintf("%s[%d]", path, i))
+		a, err := v.visitArrayElement(result, value, path+"["+strconv.Itoa(i)+"]")
 		if err != nil {
 			return nil, burrito.PassError(err)
 		}
@@ -736,7 +761,7 @@ func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element type
 			for _, key := range obj.Keys() {
 				value := obj.Get(key)
 				if strings.HasPrefix(key, "{{") && strings.HasSuffix(key, "}}") && (key[2] == '#' || key[2] == '?') {
-					eval, err := Eval(key, v.getScope(), path)
+					eval, err := evalWithExtraScope(key, v.scope, &v.moduleScope, path)
 					if err != nil {
 						return array, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", key)
 					}
@@ -744,19 +769,20 @@ func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element type
 					case types.Iteration:
 						if arr, ok := eval.Value.(*types.JsonArray); ok {
 							for i, val := range arr.Value {
-								scopeObj := types.NewJsonObjectWithCapacity(2)
+								scopeObj := getScopeObject()
 								scopeObj.Put(eval.IndexName, types.AsNumber(i))
 								scopeObj.Put(eval.Name, val)
 								v.pushScope(scopeObj)
 								if obj, ok := val.(*types.JsonObject); ok {
 									v.pushScope(obj)
 								}
-								a, err := v.visitArrayElement(array, value, fmt.Sprintf("%s[%d]", path, i))
+								a, err := v.visitArrayElement(array, value, path+"["+strconv.Itoa(i)+"]")
 								array = a
-								v.popScope()
 								if _, ok := val.(*types.JsonObject); ok {
 									v.popScope()
 								}
+								v.popScope()
+								putScopeObject(scopeObj)
 								if err != nil {
 									return array, burrito.PassError(err)
 								}
@@ -814,14 +840,19 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 	if err != nil {
 		return nil, burrito.WrapErrorf(err, "Failed to parse string '%s'", str)
 	}
-	var sb strings.Builder
+	if len(matches) == 0 {
+		return types.NewString(str), nil
+	}
+	sb := stringBuilderPool.Get().(*strings.Builder)
+	sb.Reset()
+	sb.Grow(len(str))
+	defer stringBuilderPool.Put(sb)
 	lastMatchEnd := 0
-	strRunes := []rune(str)
 	for _, match := range matches {
-		if match.Start > lastMatchEnd {
-			sb.WriteString(string(strRunes[lastMatchEnd:match.Start]))
+		if match.StartByte > lastMatchEnd {
+			sb.WriteString(str[lastMatchEnd:match.StartByte])
 		}
-		result, err := Eval(match.EscapedMatch, v.getScope(), path)
+		result, err := evalWithExtraScope(match.EscapedMatch, v.scope, &v.moduleScope, path)
 		if err != nil {
 			return nil, burrito.WrapErrorf(err, "Error evaluating '%s'", match.EscapedMatch)
 		}
@@ -836,13 +867,13 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 				return result.Value, nil
 			}
 			sb.WriteString(types.ToString(result.Value))
-			lastMatchEnd = match.Start + match.Length + 1
+			lastMatchEnd = match.EndByte
 		} else {
 			return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())
 		}
 	}
-	if lastMatchEnd < len(strRunes) {
-		sb.WriteString(string(strRunes[lastMatchEnd:]))
+	if lastMatchEnd < len(str) {
+		sb.WriteString(str[lastMatchEnd:])
 	}
 	return types.NewString(sb.String()), nil
 }
@@ -850,13 +881,13 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {
 	if arr, ok := value.(*types.JsonArray); ok {
 		for i, i2 := range arr.Value {
-			err := v.visitAssert(i2, fmt.Sprintf("%s[%d]", path, i))
+			err := v.visitAssert(i2, path+"["+strconv.Itoa(i)+"]")
 			if err != nil {
 				return burrito.PassError(err)
 			}
 		}
 	} else if str, ok := value.(*types.JsonString); ok {
-		result, err := Eval(str.StringValue(), v.getScope(), path)
+		result, err := evalWithExtraScope(str.StringValue(), v.scope, &v.moduleScope, path)
 		if err != nil {
 			return utils.WrapJsonErrorf(path, err, "Error evaluating '%s'", str.StringValue())
 		}
@@ -871,7 +902,7 @@ func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {
 		if err != nil {
 			return utils.WrapJsonErrorf(path, err, "Invalid condition")
 		}
-		result, err := Eval((*condition).StringValue(), v.getScope(), path)
+		result, err := evalWithExtraScope((*condition).StringValue(), v.scope, &v.moduleScope, path)
 		if err != nil {
 			return utils.WrapJsonErrorf(path, err, "Error evaluating '%s'", (*condition).StringValue())
 		}
