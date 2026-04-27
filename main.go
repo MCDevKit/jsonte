@@ -736,7 +736,7 @@ func repl(scope *types.JsonObject) {
 			fmt.Println(err)
 		} else {
 			fmt.Println(types.ToString(eval.Value))
-			if !eval.VariableScope.IsEmpty() {
+			if eval.VariableScope != nil && !eval.VariableScope.IsEmpty() {
 				s.PushBack(eval.VariableScope)
 			}
 		}

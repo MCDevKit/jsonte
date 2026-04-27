@@ -100,6 +100,20 @@ func (t *JsonObject) Remove(key string) {
 	}
 }
 
+// Reset clears object entries and parent metadata while keeping allocated storage.
+func (t *JsonObject) Reset() {
+	if t == nil {
+		return
+	}
+	if t.Value != nil {
+		t.Value.Reset()
+	}
+	t.StackValue = nil
+	t.StackTarget = nil
+	t.parent = nil
+	t.parentIndex = nil
+}
+
 func (t *JsonObject) ContainsKey(key string) bool {
 	if t.Value != nil {
 		return t.Value.ContainsKey(key)

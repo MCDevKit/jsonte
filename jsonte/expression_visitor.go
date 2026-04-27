@@ -9,17 +9,48 @@ import (
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/gammazero/deque"
 	"reflect"
+	"sync"
 )
 
 const DefaultName = "value"
 const DefaultIndexName = "index"
 
+// jsonStringInternCache caches *JsonString wrappers for frequently-used identifier names.
+// This avoids repeated allocations in ResolveScope where the same names are looked up
+// thousands of times during array iteration.
+var jsonStringInternCache sync.Map
+
+func internedJsonString(s string) *types.JsonString {
+	if v, ok := jsonStringInternCache.Load(s); ok {
+		return v.(*types.JsonString)
+	}
+	js := types.NewString(s)
+	actual, _ := jsonStringInternCache.LoadOrStore(s, js)
+	return actual.(*types.JsonString)
+}
+
+var scopeObjectPool = sync.Pool{
+	New: func() interface{} { return types.NewJsonObjectWithCapacity(2) },
+}
+
+func getScopeObject() *types.JsonObject {
+	return scopeObjectPool.Get().(*types.JsonObject)
+}
+
+func putScopeObject(obj *types.JsonObject) {
+	obj.Reset()
+	scopeObjectPool.Put(obj)
+}
+
 type ExpressionVisitor struct {
 	parser.BaseJsonTemplateVisitor
-	action        types.JsonAction
-	name          *string
-	indexName     *string
-	scope         deque.Deque[*types.JsonObject]
+	action    types.JsonAction
+	name      string
+	indexName string
+	scope     deque.Deque[*types.JsonObject]
+	// extraScope holds an additional scope layer (e.g. moduleScope from TemplateVisitor)
+	// searched after scope so that scope entries take priority.
+	extraScope    *deque.Deque[*types.JsonObject]
 	path          *string
 	usedVariables []string
 	variableScope *types.JsonObject
@@ -120,9 +151,11 @@ func (v *ExpressionVisitor) pushScope(scope map[string]interface{}) {
 	v.scope.PushBack(types.AsObject(scope))
 }
 
-// pushScopePair pushes a new entry to the stack
+// pushScopePair pushes a single key-value pair onto the scope stack without reflection overhead.
 func (v *ExpressionVisitor) pushScopePair(key string, value interface{}) {
-	v.scope.PushBack(types.AsObject(map[string]interface{}{key: value}))
+	obj := getScopeObject()
+	obj.Put(key, types.Box(value))
+	v.scope.PushBack(obj)
 }
 
 // popScope pops the last scope from the stack
@@ -130,9 +163,23 @@ func (v *ExpressionVisitor) popScope() {
 	v.scope.PopBack()
 }
 
+func (v *ExpressionVisitor) popScopeObject() {
+	obj := v.scope.Back()
+	v.scope.PopBack()
+	putScopeObject(obj)
+}
+
 func isError(v interface{}) bool {
 	_, err := v.(error)
 	return err
+}
+
+// initVarScope lazily initializes the variable scope on first use.
+func (v *ExpressionVisitor) initVarScope() *types.JsonObject {
+	if v.variableScope == nil {
+		v.variableScope = types.NewJsonObject()
+	}
+	return v.variableScope
 }
 
 // ResolveScope resolves a value from the scope by name
@@ -141,23 +188,34 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 		return &types.JsonObject{
 			Value:       nil,
 			StackValue:  &v.scope,
-			StackTarget: v.variableScope,
+			StackTarget: v.initVarScope(),
 		}
 	}
-	if v.variableScope.ContainsKey(name) {
+	nameStr := internedJsonString(name)
+	if v.variableScope != nil && v.variableScope.ContainsKey(name) {
 		get := v.variableScope.Get(name)
-		get.UpdateParent(v.variableScope, types.NewString(name))
+		get.UpdateParent(v.variableScope, nameStr)
 		return get
 	}
 	for i := v.scope.Len() - 1; i >= 0; i-- {
 		m := v.scope.At(i)
 		if m.ContainsKey(name) {
 			get := m.Get(name)
-			get.UpdateParent(m, types.NewString(name))
+			get.UpdateParent(m, nameStr)
 			return get
 		}
 	}
-	return types.NullWithParent(v.variableScope, types.NewString(name))
+	if v.extraScope != nil {
+		for i := v.extraScope.Len() - 1; i >= 0; i-- {
+			m := v.extraScope.At(i)
+			if m.ContainsKey(name) {
+				get := m.Get(name)
+				get.UpdateParent(m, nameStr)
+				return get
+			}
+		}
+	}
+	return types.NullWithParent(v.initVarScope(), nameStr)
 }
 
 func (v *ExpressionVisitor) VisitScript(ctx *parser.ScriptContext) (types.JsonType, error) {
@@ -211,13 +269,13 @@ func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.
 				v.pushScopePair(indexName, types.AsNumber(i))
 			}
 			val, err := v.Visit(ctx.Statements(0))
+			if hasIndex {
+				v.popScopeObject()
+			}
+			v.popScopeObject()
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
-			if hasIndex {
-				v.popScope()
-			}
-			v.popScope()
 			if val != nil && types.IsReturn(val) {
 				return val, nil
 			}
@@ -342,8 +400,8 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) (type
 			indexName = ctx.Name(1).GetText()
 		}
 	}
-	v.name = &name
-	v.indexName = &indexName
+	v.name = name
+	v.indexName = indexName
 	return v.Visit(ctx.Field())
 }
 
@@ -642,15 +700,16 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				[]string{},
 			), nil
 		} else {
-			index, err := object.Index(types.NewString(text))
+			textStr := internedJsonString(text)
+			index, err := object.Index(textStr)
 			if err != nil {
 				if context.Question() != nil || v.action == types.Predicate || isInLeftSideOfAssignment(context) {
-					return types.NullWithParent(object, types.NewString(text)), nil
+					return types.NullWithParent(object, textStr), nil
 				} else {
 					return types.Null, burrito.WrapErrorf(err, "Cannot access %s", context.GetText())
 				}
 			}
-			index.UpdateParent(object, types.NewString(text))
+			index.UpdateParent(object, textStr)
 			return index, nil
 		}
 	}
@@ -799,11 +858,11 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 				v.pushScopePair(context.GetText(), o[i])
 			}
 			result, err := v.Visit(ctx.Field())
+			for i := 0; i < len(ctx.AllName()); i++ {
+				v.popScopeObject()
+			}
 			if err != nil {
 				return types.Null, burrito.PassError(err)
-			}
-			for i := 0; i < len(ctx.AllName()); i++ {
-				v.popScope()
 			}
 			return result, nil
 		},

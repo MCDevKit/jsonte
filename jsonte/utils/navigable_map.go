@@ -174,6 +174,35 @@ func (m *NavigableMap[K, V]) Clear() {
 	m.tombstones = 0
 }
 
+// Reset clears all entries while keeping allocated storage for reuse.
+func (m *NavigableMap[K, V]) Reset() {
+	if m == nil {
+		return
+	}
+	for k := range m.data {
+		delete(m.data, k)
+	}
+	for k := range m.index {
+		delete(m.index, k)
+	}
+	var zk K
+	var zv V
+	for i := range m.keys {
+		m.keys[i] = zk
+	}
+	for i := range m.values {
+		m.values[i] = zv
+	}
+	for i := range m.valid {
+		m.valid[i] = false
+	}
+	m.keys = m.keys[:0]
+	m.values = m.values[:0]
+	m.valid = m.valid[:0]
+	m.live = 0
+	m.tombstones = 0
+}
+
 func (m *NavigableMap[K, V]) Range(fn func(K, V) bool) {
 	if m == nil || fn == nil {
 		return

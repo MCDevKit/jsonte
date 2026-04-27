@@ -85,6 +85,8 @@ func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Resul
 	}
 	visitor := ExpressionVisitor{
 		scope:         scope,
+		name:          DefaultName,
+		indexName:     DefaultIndexName,
 		variableScope: types.NewJsonObject(),
 		path:          &path,
 	}
@@ -92,8 +94,8 @@ func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Resul
 	return Result{
 		Value:         r,
 		Action:        visitor.action,
-		Name:          *visitor.name,
-		IndexName:     *visitor.indexName,
+		Name:          visitor.name,
+		IndexName:     visitor.indexName,
 		VariableScope: visitor.variableScope,
 		Scope:         scope,
 	}, err
@@ -117,6 +119,8 @@ func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) 
 	}
 	visitor := ExpressionVisitor{
 		scope:         scope,
+		name:          DefaultName,
+		indexName:     DefaultIndexName,
 		variableScope: types.NewJsonObject(),
 		path:          &path,
 	}
@@ -124,6 +128,47 @@ func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) 
 	return Result{
 		Value:         r,
 		Action:        visitor.action,
+		VariableScope: visitor.variableScope,
+		Scope:         scope,
+	}, err
+}
+
+// evalWithExtraScope evaluates text using scope as the primary scope and extraScope as secondary,
+// avoiding the allocation of a merged deque copy.
+func evalWithExtraScope(text string, scope deque.Deque[*types.JsonObject], extraScope *deque.Deque[*types.JsonObject], path string) (Result, error) {
+	var tree antlr.ParseTree
+	if cached, ok := expressionCache.Load(text); ok {
+		tree = cached.(antlr.ParseTree)
+	} else {
+		listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
+		is := antlr.NewInputStream(text)
+		lexer := parser.NewJsonTemplateLexer(is)
+		lexer.RemoveErrorListeners()
+		lexer.AddErrorListener(&listener)
+		stream := antlr.NewCommonTokenStream(lexer, 0)
+		p := parser.NewJsonTemplateParser(stream)
+		p.RemoveErrorListeners()
+		p.AddErrorListener(&listener)
+		p.BuildParseTrees = true
+		tree = p.Expression()
+		if listener.Error != nil {
+			return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
+		}
+		expressionCache.Store(text, tree)
+	}
+	visitor := ExpressionVisitor{
+		scope:      scope,
+		extraScope: extraScope,
+		name:       DefaultName,
+		indexName:  DefaultIndexName,
+		path:       &path,
+	}
+	r, err := visitor.Visit(tree)
+	return Result{
+		Value:         r,
+		Action:        visitor.action,
+		Name:          visitor.name,
+		IndexName:     visitor.indexName,
 		VariableScope: visitor.variableScope,
 		Scope:         scope,
 	}, err
