@@ -302,6 +302,14 @@ func paramsForLambda(params []interface{}) []types.JsonType {
 	return args
 }
 
+func GetGroups() map[string]Group {
+	return groups
+}
+
+func GetFunctions() map[string][]JsonFunction {
+	return functions
+}
+
 func typeToString(t reflect.Type) string {
 	if t == nil {
 		return "null"

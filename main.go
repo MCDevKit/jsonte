@@ -680,6 +680,12 @@ func main() {
 		},
 	})
 	app.Action(Action{
+		Name:        "help",
+		Usage:       "Show help for functions",
+		Description: "Usage: jsonte help [functions|<functionName>|<groupName>]",
+		Function:    runHelp,
+	})
+	app.Action(Action{
 		Name:   "docgen",
 		Hidden: true,
 		Usage:  "Generate documentation",
