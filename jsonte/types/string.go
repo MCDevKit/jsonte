@@ -2,9 +2,10 @@ package types
 
 import (
 	"encoding/json"
-	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"strconv"
 	"strings"
+
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 )
 
 // JsonString is a struct that represents a number, that can be either integer or decimal.
@@ -13,6 +14,8 @@ type JsonString struct {
 	parent      JsonType
 	parentIndex JsonType
 }
+
+var EmptyString = NewString("")
 
 func (t *JsonString) Parent() JsonType {
 	return t.parent
@@ -87,7 +90,7 @@ func (t *JsonString) Index(index JsonType) (JsonType, error) {
 // AsString converts an interface to a string.
 func AsString(obj interface{}) *JsonString {
 	if obj == nil {
-		return NewString("")
+		return EmptyString
 	}
 	if b, ok := obj.(*JsonString); ok {
 		return b
@@ -132,7 +135,7 @@ func AsString(obj interface{}) *JsonString {
 		return NewString(b.StringValue())
 	}
 	//TODO: add more types
-	return NewString("")
+	return EmptyString
 }
 
 // IsString returns true if the given interface is a string.

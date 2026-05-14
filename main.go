@@ -162,7 +162,7 @@ func main() {
 				}
 				outFile, err = filepath.Abs(out)
 			}
-			object, err := getScope(scope, -1)
+			object, scopeMolangFiles, err := getScope(scope, -1)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -184,7 +184,118 @@ func main() {
 				errs = multierr.Append(errs, e)
 			}
 			modules := map[string]jsonte.JsonModule{}
+
+			type molangRes struct {
+				base string
+				file string
+				data string
+			}
+
 			var wg sync.WaitGroup
+			molangCh := make(chan molangRes)
+			for base, files := range scopeMolangFiles {
+				for _, file := range files {
+					wg.Add(1)
+					go func(base, file string) {
+						defer wg.Done()
+						sem <- struct{}{}
+						defer func() { <-sem }()
+						bytes, err := os.ReadFile(file)
+						if err != nil {
+							appendErr(burrito.WrapErrorf(err, "An error occurred while reading the molang file %s", file))
+							return
+						}
+						output, err := jsonte.ProcessMolangFile(string(bytes), object)
+						if err != nil {
+							appendErr(burrito.WrapErrorf(err, "An error occurred while processing the molang file %s", file))
+							return
+						}
+						molangCh <- molangRes{base: base, file: file, data: output}
+						if removeSrc {
+							if err := os.Remove(file); err != nil {
+								appendErr(burrito.WrapErrorf(err, "An error occurred while removing the molang file %s", file))
+							}
+						}
+					}(base, file)
+				}
+			}
+			for base, files := range fileSets {
+				for _, file := range files {
+					if strings.HasSuffix(file, ".molang") {
+						wg.Add(1)
+						go func(base, file string) {
+							defer wg.Done()
+							sem <- struct{}{}
+							defer func() { <-sem }()
+							bytes, err := os.ReadFile(file)
+							if err != nil {
+								appendErr(burrito.WrapErrorf(err, "An error occurred while reading the molang file %s", file))
+								return
+							}
+							output, err := jsonte.ProcessMolangFile(string(bytes), object)
+							if err != nil {
+								appendErr(burrito.WrapErrorf(err, "An error occurred while processing the molang file %s", file))
+								return
+							}
+							molangCh <- molangRes{base: base, file: file, data: output}
+							if removeSrc {
+								if err := os.Remove(file); err != nil {
+									appendErr(burrito.WrapErrorf(err, "An error occurred while removing the molang file %s", file))
+								}
+							}
+						}(base, file)
+					}
+				}
+			}
+			go func() {
+				wg.Wait()
+				close(molangCh)
+			}()
+			molangResults := make([]molangRes, 0)
+			for r := range molangCh {
+				molangResults = append(molangResults, r)
+			}
+			sort.SliceStable(molangResults, func(i, j int) bool {
+				if molangResults[i].base == molangResults[j].base {
+					return molangResults[i].file < molangResults[j].file
+				}
+				return molangResults[i].base < molangResults[j].base
+			})
+			for _, r := range molangResults {
+				functions.CacheTextFile(r.file, r.data)
+			}
+			for _, r := range molangResults {
+				filename := r.file
+				if outFile != "" && r.base != "" {
+					var err error
+					filename, err = filepath.Rel(r.base, filename)
+					if err != nil {
+						appendErr(burrito.WrapErrorf(err, "An error occurred while creating the output file name"))
+						continue
+					}
+					filename = filepath.Join(outFile, r.base, filename)
+					rel, err := filepath.Rel(outFile, filename)
+					if err != nil {
+						appendErr(burrito.WrapErrorf(err, "An error occurred while relativizing the output file name"))
+						continue
+					}
+					utils.Logger.Infof("Writing file %s", filepath.Clean(rel))
+				} else {
+					utils.Logger.Infof("Writing file %s", filepath.Clean(filename))
+				}
+				if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+					appendErr(burrito.WrapErrorf(err, "An error occurred while creating the output directory %s", filepath.Dir(filename)))
+					continue
+				}
+				if err := os.WriteFile(filename, []byte(r.data), 0644); err != nil {
+					appendErr(burrito.WrapErrorf(err, "An error occurred while writing the output file %s", filename))
+				}
+			}
+			if errs != nil {
+				return errs
+			}
+
+			wg = sync.WaitGroup{}
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".modl") {
@@ -489,7 +600,7 @@ func main() {
 		Usage: "Evaluate a JSON expression or run a REPL",
 		Function: func(args []string) error {
 			functions.SetCacheAll(cacheAll)
-			object, err := getScope(scope, -1)
+			object, _, err := getScope(scope, -1)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -513,7 +624,7 @@ func main() {
 		Usage: "Evaluate a JSON expression or run a REPL",
 		Function: func(args []string) error {
 			functions.SetCacheAll(cacheAll)
-			object, err := getScope(scope, -1)
+			object, _, err := getScope(scope, -1)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -561,7 +672,7 @@ func main() {
 		Usage: "Start an IPC server",
 		Function: func(args []string) error {
 			functions.SetCacheAll(cacheAll)
-			object, err := getScope(scope, -1)
+			object, _, err := getScope(scope, -1)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -598,61 +709,64 @@ func main() {
 	}
 }
 
-func getScope(scope []string, timeout int64) (*types.JsonObject, error) {
+func getScope(scope []string, timeout int64) (*types.JsonObject, map[string][]string, error) {
 	assertionFiles := map[string]string{}
+	molangFiles := map[string][]string{}
 	result := types.NewJsonObject()
 	for _, path := range scope {
 		if strings.HasPrefix(path, "{") {
 			json, err := types.ParseJsonObject([]byte(path))
 			if err != nil {
-				return types.NewJsonObject(), burrito.WrapErrorf(err, "An error occurred while parsing inline scope '%s'", path)
+				return types.NewJsonObject(), nil, burrito.WrapErrorf(err, "An error occurred while parsing inline scope '%s'", path)
 			}
 			result = types.MergeObject(result, json, false, "#")
 			continue
 		}
-		err := utils.WalkDirFollowSymlinks(path, func(path string, d fs.DirEntry, err error) error {
+		err := utils.WalkDirFollowSymlinks(path, func(filePath string, d fs.DirEntry, err error) error {
 			if err != nil {
 				if os.IsNotExist(err) {
-					utils.Logger.Warnf("Skipping non-existent scope file '%s'", path)
+					utils.Logger.Warnf("Skipping non-existent scope file '%s'", filePath)
 					return nil
 				}
-				return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
+				return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", filePath)
 			}
 			if !d.IsDir() {
-				if strings.HasSuffix(path, ".json") {
-					file, err := os.ReadFile(path)
+				if strings.HasSuffix(filePath, ".json") {
+					file, err := os.ReadFile(filePath)
 					if err != nil {
-						return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", path)
+						return burrito.WrapErrorf(err, "An error occurred while reading the scope file '%s'", filePath)
 					}
 					json, err := types.ParseJsonObject(file)
 					if err != nil {
-						return burrito.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", path)
+						return burrito.WrapErrorf(err, "An error occurred while parsing the scope file '%s'", filePath)
 					}
-					err = jsonte.VerifyReservedNames(json, path+"#/")
+					err = jsonte.VerifyReservedNames(json, filePath+"#/")
 					result = types.MergeObject(result, json, false, "#")
-				} else if strings.HasSuffix(path, ".assert") {
-					file, err := os.ReadFile(path)
+				} else if strings.HasSuffix(filePath, ".assert") {
+					file, err := os.ReadFile(filePath)
 					if err != nil {
-						return burrito.WrapErrorf(err, "An error occurred while reading the assertion file '%s'", path)
+						return burrito.WrapErrorf(err, "An error occurred while reading the assertion file '%s'", filePath)
 					}
-					assertionFiles[path] = string(file)
+					assertionFiles[filePath] = string(file)
+				} else if strings.HasSuffix(filePath, ".molang") {
+					molangFiles[path] = append(molangFiles[path], filePath)
 				} else {
-					utils.Logger.Debugf("Skipping non-scope file '%s'", path)
+					utils.Logger.Debugf("Skipping non-scope file '%s'", filePath)
 				}
 			}
 			return nil
 		})
 		if err != nil {
-			return types.NewJsonObject(), burrito.WrapError(err, "An error occurred while reading the scope files")
+			return types.NewJsonObject(), nil, burrito.WrapError(err, "An error occurred while reading the scope files")
 		}
 	}
 	for path, file := range assertionFiles {
 		err := jsonte.ProcessAssertionsFile(path, file, result, timeout)
 		if err != nil {
-			return types.NewJsonObject(), burrito.PassError(err)
+			return types.NewJsonObject(), nil, burrito.PassError(err)
 		}
 	}
-	return result, nil
+	return result, molangFiles, nil
 }
 
 func getFileList(paths, include, exclude []string) (map[string][]string, error) {
@@ -692,7 +806,7 @@ func getFileList(paths, include, exclude []string) (map[string][]string, error) 
 				return burrito.WrapErrorf(err, "An error occurred while reading the path %s", p)
 			}
 			if !d.IsDir() {
-				if !strings.HasSuffix(path, ".templ") && !strings.HasSuffix(path, ".modl") && !strings.HasSuffix(path, ".mcfunction") && !strings.HasSuffix(path, ".lang") {
+				if !strings.HasSuffix(path, ".templ") && !strings.HasSuffix(path, ".modl") && !strings.HasSuffix(path, ".mcfunction") && !strings.HasSuffix(path, ".lang") && !strings.HasSuffix(path, ".molang") {
 					return nil
 				}
 				for _, g := range includes {

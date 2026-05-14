@@ -1,18 +1,20 @@
 package functions
 
 import (
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gobwas/glob"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 const fileCache = "fileCache"
+const textFileCache = "textFileCache"
 
 func RegisterFileFunctions() {
 	const group = "file"
@@ -22,6 +24,7 @@ func RegisterFileFunctions() {
 		Summary: "Functions related to files and file paths.",
 	})
 	utils.CreateCacheBucket(fileCache)
+	utils.CreateCacheBucket(textFileCache)
 	RegisterFunction(JsonFunction{
 		Group:    group,
 		Name:     "load",
@@ -41,6 +44,30 @@ func RegisterFileFunctions() {
   "$template": {
     "$comment": "The field below will be an object from the file data.json",
     "test": "{{load('data.json')}}"
+  }
+}
+</code>`,
+		},
+	})
+	RegisterFunction(JsonFunction{
+		Group:    group,
+		Name:     "loadText",
+		Body:     loadText,
+		IsUnsafe: true,
+		Docs: Docs{
+			Summary: "Loads a text file from the given path.",
+			Arguments: []Argument{
+				{
+					Name:    "path",
+					Summary: "The path to the file to load.",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+    "$comment": "The field below will be a string from the file test.molang",
+    "test": "{{loadText('test.molang')}}"
   }
 }
 </code>`,
@@ -266,6 +293,12 @@ func RegisterFileFunctions() {
 	})
 }
 
+// CacheTextFile pre-populates the text file cache so that loadText returns
+// the given content for the given path without reading from disk.
+func CacheTextFile(path, content string) {
+	utils.PutCache(textFileCache, path, types.NewString(content))
+}
+
 func fileExists(s *types.JsonString) (*types.JsonBool, error) {
 	_, err := safeio.Resolver.Stat(s.StringValue())
 	if err != nil {
@@ -296,6 +329,29 @@ func load(s *types.JsonString) (*types.JsonObject, error) {
 			utils.PutCache(fileCache, s.StringValue(), object)
 		}
 		return object, err
+	}
+}
+
+func loadText(s *types.JsonString) (*types.JsonString, error) {
+	cache := utils.GetCache(textFileCache, s.StringValue())
+	if cache != nil {
+		return (*cache).(*types.JsonString), nil
+	} else {
+		resolver, err := safeio.Resolver.Open(s.StringValue())
+		if err != nil {
+			return types.EmptyString, burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
+		}
+		readAll, err := io.ReadAll(resolver)
+		if err != nil {
+			return types.EmptyString, burrito.WrapErrorf(err, "Failed to read file %s", s.StringValue())
+		}
+		err = resolver.Close()
+		if err != nil {
+			return types.EmptyString, burrito.WrapErrorf(err, "Failed to close file %s", s.StringValue())
+		}
+		str := types.NewString(string(readAll))
+		utils.PutCache(textFileCache, s.StringValue(), str)
+		return str, err
 	}
 }
 

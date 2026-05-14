@@ -1,12 +1,14 @@
 package jsonte
 
 import (
+	"strings"
+	"sync"
+
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/json"
 	"github.com/MCDevKit/jsonte/jsonte/types"
+	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
-	"strings"
-	"sync"
 )
 
 // ProcessLangFile processes a lang file replacing all the jsonte expressions with their values
@@ -23,6 +25,19 @@ func ProcessLangFile(input string, scope *types.JsonObject) (string, error) {
 		}
 	}
 	return strings.Join(lines, "\n"), nil
+}
+
+// ProcessMolangFile processes a molang file replacing all the jsonte expressions with their values, then minifies it
+func ProcessMolangFile(input string, scope *types.JsonObject) (string, error) {
+	str, err := json.ConvertToUTF8([]byte(input))
+	if err != nil {
+		return input, burrito.PassError(err)
+	}
+	output, err := ProcessString(string(str), scope, "#", "")
+	if err != nil {
+		return "", burrito.PassError(err)
+	}
+	return utils.MinifyWithShortAccessors(output), nil
 }
 
 // ProcessMCFunction processes a file replacing all the jsonte expressions with their values
