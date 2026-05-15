@@ -46,4 +46,10 @@ type JsonTemplateVisitor interface {
 
 	// Visit a parse tree produced by JsonTemplateParser#index.
 	VisitIndex(ctx *IndexContext) interface{}
+
+	// Visit a parse tree produced by JsonTemplateParser#template_string.
+	VisitTemplate_string(ctx *Template_stringContext) interface{}
+
+	// Visit a parse tree produced by JsonTemplateParser#template_string_part.
+	VisitTemplate_string_part(ctx *Template_string_partContext) interface{}
 }

@@ -3,7 +3,7 @@
 package parser // JsonTemplate
 import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
-// BaseJsonTemplateListener is a complete listener for a parse tree produced by JsonTemplateParser.
+// BaseJsonTemplateListener is a complete listener for a parse tree produced by JsonTemplate.
 type BaseJsonTemplateListener struct{}
 
 var _ JsonTemplateListener = &BaseJsonTemplateListener{}
@@ -85,6 +85,18 @@ func (s *BaseJsonTemplateListener) EnterObject_field(ctx *Object_fieldContext) {
 
 // ExitObject_field is called when production object_field is exited.
 func (s *BaseJsonTemplateListener) ExitObject_field(ctx *Object_fieldContext) {}
+
+// EnterTemplate_string is called when production template_string is entered.
+func (s *BaseJsonTemplateListener) EnterTemplate_string(ctx *Template_stringContext) {}
+
+// ExitTemplate_string is called when production template_string is exited.
+func (s *BaseJsonTemplateListener) ExitTemplate_string(ctx *Template_stringContext) {}
+
+// EnterTemplate_string_part is called when production template_string_part is entered.
+func (s *BaseJsonTemplateListener) EnterTemplate_string_part(ctx *Template_string_partContext) {}
+
+// ExitTemplate_string_part is called when production template_string_part is exited.
+func (s *BaseJsonTemplateListener) ExitTemplate_string_part(ctx *Template_string_partContext) {}
 
 // EnterName is called when production name is entered.
 func (s *BaseJsonTemplateListener) EnterName(ctx *NameContext) {}

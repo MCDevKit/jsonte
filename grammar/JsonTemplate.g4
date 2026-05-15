@@ -1,59 +1,6 @@
-grammar JsonTemplate;
+parser grammar JsonTemplate;
 
-Less: '<';
-LessOrEqual: '<=';
-Equal: '==';
-Greater: '>';
-GreaterOrEqual: '>=';
-NotEqual: '!=';
-And: '&&';
-Or: '||';
-Not: '!';
-
-//Math operators
-Add: '+';
-Subtract: '-';
-Multiply: '*';
-Divide: '/';
-
-LeftParen: '(';
-RightParen: ')';
-LeftBracket: '[';
-RightBracket: ']';
-
-//Actions
-Iteration: '#';
-Question: '?';
-AddAssign: '+=';
-Literal: '=';
-
-NullCoalescing: '??';
-
-Range: '..';
-Spread: '...';
-As: 'as';
-Comma: ',';
-Arrow: '=>';
-Colon: ':';
-Semicolon: ';';
-Dot: '.';
-
-LeftBrace: '{';
-RightBrace: '}';
-
-Null: 'null';
-False: 'false';
-True: 'true';
-
-Return: 'return';
-For: 'for';
-In: 'in';
-If: 'if';
-Else: 'else';
-While: 'while';
-Do: 'do';
-Break: 'break';
-Continue: 'continue';
+options { tokenVocab=JsonTemplateLexer; }
 
 script
     : statement*
@@ -101,6 +48,7 @@ field
     | Null
     | NUMBER
     | ESCAPED_STRING
+    | template_string
     | array
     | object
     | lambda
@@ -145,6 +93,15 @@ object_field
     | Spread? field
     ;
 
+template_string
+    : Backtick template_string_part* TEMPLATE_END
+    ;
+
+template_string_part
+    : TEMPLATE_TEXT
+    | TEMPLATE_INTERP_START field RightBrace
+    ;
+
 name
     : STRING
     ;
@@ -153,26 +110,4 @@ index
     : field
     | NUMBER
     | ESCAPED_STRING
-    ;
-
-ESCAPED_STRING : ('"' ('\\' . | ~["\\])* '"') | ('\'' ('\\' . | ~['\\])* '\'');
-
-STRING
-    : [a-zA-Z_$][a-zA-Z0-9_$]*
-    ;
-
-NUMBER
-    : [0-9]+('.'[0-9]+)?
-    ;
-
-LINE_COMMENT
-    : '//' ~[\r\n]* -> channel(HIDDEN)
-    ;
-
-BLOCK_COMMENT
-    : '/*' .*? '*/' -> channel(HIDDEN)
-    ;
-
-WS
-    : [ \r\n\t] -> channel(HIDDEN)
     ;

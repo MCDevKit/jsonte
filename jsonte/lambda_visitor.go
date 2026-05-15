@@ -1,4 +1,4 @@
-package jsonte
+﻿package jsonte
 
 import (
 	"github.com/MCDevKit/jsonte/parser"
@@ -46,17 +46,23 @@ func (v *LambdaVisitor) Visit(tree antlr.ParseTree) {
 	case *parser.StatementContext:
 		v.VisitStatement(val)
 		break
+	case *parser.Template_stringContext:
+		v.VisitTemplate_string(val)
+		break
+	case *parser.Template_string_partContext:
+		v.VisitTemplate_string_part(val)
+		break
 	}
 }
 
 // resolveLambdaTree resolves a string to an AST tree
 func (v *LambdaVisitor) resolveLambdaTree(src string) parser.ILambdaContext {
 	is := antlr.NewInputStream(src)
-	lexer := parser.NewJsonTemplateLexer(is)
-	lexer.RemoveErrorListeners()
-	lexer.AddErrorListener(antlr.NewConsoleErrorListener())
+	lexer := NewTemplateAwareLexer(is)
+	lexer.JsonTemplateLexer.RemoveErrorListeners()
+	lexer.JsonTemplateLexer.AddErrorListener(antlr.NewConsoleErrorListener())
 	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplateParser(stream)
+	p := parser.NewJsonTemplate(stream)
 	p.RemoveErrorListeners()
 	p.AddErrorListener(antlr.NewConsoleErrorListener())
 	p.BuildParseTrees = true
@@ -88,6 +94,21 @@ func (v *LambdaVisitor) VisitField(context *parser.FieldContext) {
 	}
 	if context.Lambda() != nil {
 		v.Visit(context.Lambda())
+	}
+	if context.Template_string() != nil {
+		v.Visit(context.Template_string())
+	}
+}
+
+func (v *LambdaVisitor) VisitTemplate_string(ctx *parser.Template_stringContext) {
+	for _, part := range ctx.AllTemplate_string_part() {
+		v.Visit(part)
+	}
+}
+
+func (v *LambdaVisitor) VisitTemplate_string_part(ctx *parser.Template_string_partContext) {
+	if ctx.Field() != nil {
+		v.Visit(ctx.Field())
 	}
 }
 
@@ -152,3 +173,5 @@ func (v *LambdaVisitor) VisitFunction_param(ctx *parser.Function_paramContext) {
 		v.Visit(ctx.Lambda())
 	}
 }
+
+

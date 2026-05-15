@@ -1,4 +1,4 @@
-package jsonte
+﻿package jsonte
 
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
@@ -69,11 +69,11 @@ func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Resul
 	} else {
 		listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
 		is := antlr.NewInputStream(text)
-		lexer := parser.NewJsonTemplateLexer(is)
-		lexer.RemoveErrorListeners()
-		lexer.AddErrorListener(&listener)
+		lexer := NewTemplateAwareLexer(is)
+		lexer.JsonTemplateLexer.RemoveErrorListeners()
+		lexer.JsonTemplateLexer.AddErrorListener(&listener)
 		stream := antlr.NewCommonTokenStream(lexer, 0)
-		p := parser.NewJsonTemplateParser(stream)
+		p := parser.NewJsonTemplate(stream)
 		p.RemoveErrorListeners()
 		p.AddErrorListener(&listener)
 		p.BuildParseTrees = true
@@ -105,11 +105,11 @@ func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Resul
 func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) (Result, error) {
 	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
 	is := antlr.NewInputStream(text)
-	lexer := parser.NewJsonTemplateLexer(is)
-	lexer.RemoveErrorListeners()
-	lexer.AddErrorListener(&listener)
+	lexer := NewTemplateAwareLexer(is)
+	lexer.JsonTemplateLexer.RemoveErrorListeners()
+	lexer.JsonTemplateLexer.AddErrorListener(&listener)
 	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplateParser(stream)
+	p := parser.NewJsonTemplate(stream)
 	p.RemoveErrorListeners()
 	p.AddErrorListener(&listener)
 	p.BuildParseTrees = true
@@ -142,11 +142,11 @@ func evalWithExtraScope(text string, scope deque.Deque[*types.JsonObject], extra
 	} else {
 		listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
 		is := antlr.NewInputStream(text)
-		lexer := parser.NewJsonTemplateLexer(is)
-		lexer.RemoveErrorListeners()
-		lexer.AddErrorListener(&listener)
+		lexer := NewTemplateAwareLexer(is)
+		lexer.JsonTemplateLexer.RemoveErrorListeners()
+		lexer.JsonTemplateLexer.AddErrorListener(&listener)
 		stream := antlr.NewCommonTokenStream(lexer, 0)
-		p := parser.NewJsonTemplateParser(stream)
+		p := parser.NewJsonTemplate(stream)
 		p.RemoveErrorListeners()
 		p.AddErrorListener(&listener)
 		p.BuildParseTrees = true
@@ -193,11 +193,11 @@ func EvalWithTempScope(text string, scope deque.Deque[*types.JsonObject], path s
 func EvalJsonteFile(text string, scope *types.JsonObject, path string) error {
 	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
 	is := antlr.NewInputStream(text)
-	lexer := parser.NewJsonTemplateLexer(is)
-	lexer.RemoveErrorListeners()
-	lexer.AddErrorListener(&listener)
+	lexer := NewTemplateAwareLexer(is)
+	lexer.JsonTemplateLexer.RemoveErrorListeners()
+	lexer.JsonTemplateLexer.AddErrorListener(&listener)
 	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplateParser(stream)
+	p := parser.NewJsonTemplate(stream)
 	p.RemoveErrorListeners()
 	p.AddErrorListener(&listener)
 	p.BuildParseTrees = true
@@ -225,11 +225,11 @@ func EvalJsonteFile(text string, scope *types.JsonObject, path string) error {
 func ParseLambda(text string) ([]string, []string, error) {
 	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
 	is := antlr.NewInputStream(text)
-	lexer := parser.NewJsonTemplateLexer(is)
-	lexer.RemoveErrorListeners()
-	lexer.AddErrorListener(&listener)
+	lexer := NewTemplateAwareLexer(is)
+	lexer.JsonTemplateLexer.RemoveErrorListeners()
+	lexer.JsonTemplateLexer.AddErrorListener(&listener)
 	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplateParser(stream)
+	p := parser.NewJsonTemplate(stream)
 	p.RemoveErrorListeners()
 	p.AddErrorListener(&listener)
 	p.BuildParseTrees = true
@@ -241,3 +241,5 @@ func ParseLambda(text string) ([]string, []string, error) {
 	visitor.Visit(tree)
 	return visitor.usedVariables, visitor.arguments, nil
 }
+
+

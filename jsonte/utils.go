@@ -151,6 +151,8 @@ func UnescapeStringToBuffer(text []rune, sb *strings.Builder, i *int, end rune) 
 				sb.WriteRune('\'')
 			case '"':
 				sb.WriteRune('"')
+			case '`':
+				sb.WriteRune('`')
 			case 'u':
 				if *i+4 >= len(text) {
 					sb.WriteRune(c)

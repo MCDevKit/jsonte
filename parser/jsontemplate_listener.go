@@ -3,7 +3,7 @@
 package parser // JsonTemplate
 import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
-// JsonTemplateListener is a complete listener for a parse tree produced by JsonTemplateParser.
+// JsonTemplateListener is a complete listener for a parse tree produced by JsonTemplate.
 type JsonTemplateListener interface {
 	antlr.ParseTreeListener
 
@@ -39,6 +39,12 @@ type JsonTemplateListener interface {
 
 	// EnterObject_field is called when entering the object_field production.
 	EnterObject_field(c *Object_fieldContext)
+
+	// EnterTemplate_string is called when entering the template_string production.
+	EnterTemplate_string(c *Template_stringContext)
+
+	// EnterTemplate_string_part is called when entering the template_string_part production.
+	EnterTemplate_string_part(c *Template_string_partContext)
 
 	// EnterName is called when entering the name production.
 	EnterName(c *NameContext)
@@ -78,6 +84,12 @@ type JsonTemplateListener interface {
 
 	// ExitObject_field is called when exiting the object_field production.
 	ExitObject_field(c *Object_fieldContext)
+
+	// ExitTemplate_string is called when exiting the template_string production.
+	ExitTemplate_string(c *Template_stringContext)
+
+	// ExitTemplate_string_part is called when exiting the template_string_part production.
+	ExitTemplate_string_part(c *Template_string_partContext)
 
 	// ExitName is called when exiting the name production.
 	ExitName(c *NameContext)

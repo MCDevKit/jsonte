@@ -1,4 +1,4 @@
-package jsonte
+﻿package jsonte
 
 import (
 	"reflect"
@@ -100,6 +100,12 @@ func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) 
 	case *parser.ScriptContext:
 		result, err = v.VisitScript(val)
 		break
+	case *parser.Template_stringContext:
+		result, err = v.VisitTemplate_string(val)
+		break
+	case *parser.Template_string_partContext:
+		result, err = v.VisitTemplate_string_part(val)
+		break
 	default:
 		utils.BadDeveloperError("Unknown tree type " + reflect.TypeOf(tree).String())
 	}
@@ -141,11 +147,11 @@ func isInLeftSideOfAssignment(context antlr.Tree) bool {
 // resolveLambdaTree resolves a string to an AST tree
 func (v *ExpressionVisitor) resolveLambdaTree(src string) parser.ILambdaContext {
 	is := antlr.NewInputStream(src)
-	lexer := parser.NewJsonTemplateLexer(is)
-	lexer.RemoveErrorListeners()
-	lexer.AddErrorListener(antlr.NewConsoleErrorListener())
+	lexer := NewTemplateAwareLexer(is)
+	lexer.JsonTemplateLexer.RemoveErrorListeners()
+	lexer.JsonTemplateLexer.AddErrorListener(antlr.NewConsoleErrorListener())
 	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplateParser(stream)
+	p := parser.NewJsonTemplate(stream)
 	p.RemoveErrorListeners()
 	p.AddErrorListener(antlr.NewConsoleErrorListener())
 	p.BuildParseTrees = true
@@ -851,6 +857,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	if context.ESCAPED_STRING() != nil {
 		return types.NewString(unescapeString(types.ToString(context.ESCAPED_STRING().GetText()))), nil
 	}
+	// template string literal
+	if context.Template_string() != nil {
+		return v.Visit(context.Template_string())
+	}
 	// literal array notation
 	if context.Array() != nil {
 		return v.Visit(context.Array())
@@ -1012,6 +1022,38 @@ func (v *ExpressionVisitor) VisitFunction_param(ctx *parser.Function_paramContex
 	return types.Null, burrito.WrappedErrorf("Invalid function parameter: %s", ctx.GetText())
 }
 
+func (v *ExpressionVisitor) VisitTemplate_string(ctx *parser.Template_stringContext) (types.JsonType, error) {
+	result := ""
+	for _, part := range ctx.AllTemplate_string_part() {
+		partCtx := part.(*parser.Template_string_partContext)
+		if partCtx.TEMPLATE_TEXT() != nil {
+			result += unescapeTemplateText(partCtx.TEMPLATE_TEXT().GetText())
+		} else {
+			val, err := v.Visit(partCtx.Field())
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			result += val.StringValue()
+		}
+	}
+	return types.NewString(result), nil
+}
+
+func (v *ExpressionVisitor) VisitTemplate_string_part(ctx *parser.Template_string_partContext) (types.JsonType, error) {
+	if ctx.Field() != nil {
+		return v.Visit(ctx.Field())
+	}
+	if ctx.TEMPLATE_TEXT() != nil {
+		return types.NewString(unescapeTemplateText(ctx.TEMPLATE_TEXT().GetText())), nil
+	}
+	return types.NewString(""), nil
+}
+
+// unescapeTemplateText handles backslash escapes in template string literal segments.
+func unescapeTemplateText(text string) string {
+	return UnescapeString(text)
+}
+
 // unescapeString removes quotes and unescapes a string.
 func unescapeString(str string) string {
 	runes := []rune(str)
@@ -1021,3 +1063,5 @@ func unescapeString(str string) string {
 	str = string(runes[1 : len(runes)-1])
 	return UnescapeString(str)
 }
+
+
