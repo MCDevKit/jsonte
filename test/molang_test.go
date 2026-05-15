@@ -160,3 +160,36 @@ func TestMolangWithScopeMultiline(t *testing.T) {
 	expected := "v.speed=1.5;return v.speed;"
 	assertMolangWithScope(t, input, expected, map[string]interface{}{"speed": 1.5})
 }
+
+func TestMolangLineComment(t *testing.T) {
+	input := "variable.x = 1.0; # this is a comment\nreturn variable.x;"
+	expected := "v.x=1.0;return v.x;"
+	assertMolang(t, input, expected)
+}
+
+func TestMolangLineCommentOnly(t *testing.T) {
+	input := "# full line comment\nvariable.x = 1.0;\nreturn variable.x;"
+	expected := "v.x=1.0;return v.x;"
+	assertMolang(t, input, expected)
+}
+
+func TestMolangHashBraceNotStripped(t *testing.T) {
+	// #{expr} must not be treated as a comment
+	input := `query.life_time < #{0.5};`
+	expected := `q.life_time<0.5;`
+	assertMolang(t, input, expected)
+}
+
+func TestMolangCommentWithExpression(t *testing.T) {
+	// comment after a real #{} expression
+	input := "variable.x = #{42}; # set x\nreturn variable.x;"
+	expected := "v.x=42;return v.x;"
+	assertMolang(t, input, expected)
+}
+
+func TestMolangCommentInsideStringNotStripped(t *testing.T) {
+	// '# ' inside a single-quoted string literal must not be removed
+	input := `variable.s = 'hello # world'; return variable.s;`
+	expected := `v.s='hello # world';return v.s;`
+	assertMolang(t, input, expected)
+}

@@ -165,6 +165,14 @@ NUMBER
     : [0-9]+('.'[0-9]+)?
     ;
 
+LINE_COMMENT
+    : '//' ~[\r\n]* -> channel(HIDDEN)
+    ;
+
+BLOCK_COMMENT
+    : '/*' .*? '*/' -> channel(HIDDEN)
+    ;
+
 WS
     : [ \r\n\t] -> channel(HIDDEN)
     ;

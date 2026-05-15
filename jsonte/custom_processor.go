@@ -27,13 +27,49 @@ func ProcessLangFile(input string, scope *types.JsonObject) (string, error) {
 	return strings.Join(lines, "\n"), nil
 }
 
+// stripMolangLineComment removes a `# ` comment from a single line without
+// touching `#{` template prefixes or content inside string literals.
+func stripMolangLineComment(line string) string {
+	runes := []rune(line)
+	inString := false
+	var quote rune
+	for j, ch := range runes {
+		if inString {
+			if ch == quote && (j == 0 || runes[j-1] != '\\') {
+				inString = false
+			}
+		} else {
+			switch ch {
+			case '"', '\'':
+				inString = true
+				quote = ch
+			case '#':
+				if j+1 < len(runes) && runes[j+1] == ' ' {
+					return strings.TrimRight(string(runes[:j]), " \t")
+				}
+			}
+		}
+	}
+	return line
+}
+
+// stripMolangComments removes `# ` line comments from molang source line by line.
+func stripMolangComments(input string) string {
+	lines := strings.Split(input, "\n")
+	for i, line := range lines {
+		lines[i] = stripMolangLineComment(line)
+	}
+	return strings.Join(lines, "\n")
+}
+
 // ProcessMolangFile processes a molang file replacing all the jsonte expressions with their values, then minifies it
 func ProcessMolangFile(input string, scope *types.JsonObject) (string, error) {
 	str, err := json.ConvertToUTF8([]byte(input))
 	if err != nil {
 		return input, burrito.PassError(err)
 	}
-	output, err := ProcessString(string(str), scope, "#", "")
+	stripped := stripMolangComments(string(str))
+	output, err := ProcessString(stripped, scope, "#", "")
 	if err != nil {
 		return "", burrito.PassError(err)
 	}

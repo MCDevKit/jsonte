@@ -96,3 +96,22 @@ func TestBlockLambdaReturnFromMap(t *testing.T) {
 	}
 	assertArray(t, jsonte.Result{Value: signal.Value, Action: types.Value}, types.AsArray([]interface{}{2, 4, 6, 8, 10}))
 }
+
+func TestLineComment(t *testing.T) {
+	eval := evaluateScript(t, `
+		// this is a comment
+		x = 1 + 2; // inline comment
+		return x;
+	`)
+	assertReturn(t, eval, types.AsNumber(3))
+}
+
+func TestBlockComment(t *testing.T) {
+	eval := evaluateScript(t, `
+		/* block
+		   comment */
+		x = 10;
+		return x /* trailing */ + 1;
+	`)
+	assertReturn(t, eval, types.AsNumber(11))
+}

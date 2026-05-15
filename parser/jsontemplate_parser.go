@@ -45,7 +45,8 @@ func jsontemplateParserInit() {
 		"AddAssign", "Literal", "NullCoalescing", "Range", "Spread", "As", "Comma",
 		"Arrow", "Colon", "Semicolon", "Dot", "LeftBrace", "RightBrace", "Null",
 		"False", "True", "Return", "For", "In", "If", "Else", "While", "Do",
-		"Break", "Continue", "ESCAPED_STRING", "STRING", "NUMBER", "WS",
+		"Break", "Continue", "ESCAPED_STRING", "STRING", "NUMBER", "LINE_COMMENT",
+		"BLOCK_COMMENT", "WS",
 	}
 	staticData.ruleNames = []string{
 		"script", "statement", "statements", "expression", "lambda", "function_param",
@@ -54,7 +55,7 @@ func jsontemplateParserInit() {
 	}
 	staticData.predictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
-		4, 1, 48, 354, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
+		4, 1, 50, 354, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
 		4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9, 2, 10, 7,
 		10, 2, 11, 7, 11, 2, 12, 7, 12, 1, 0, 5, 0, 28, 8, 0, 10, 0, 12, 0, 31,
 		9, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 39, 8, 1, 1, 1, 1, 1, 1,
@@ -305,7 +306,9 @@ const (
 	JsonTemplateParserESCAPED_STRING = 45
 	JsonTemplateParserSTRING         = 46
 	JsonTemplateParserNUMBER         = 47
-	JsonTemplateParserWS             = 48
+	JsonTemplateParserLINE_COMMENT   = 48
+	JsonTemplateParserBLOCK_COMMENT  = 49
+	JsonTemplateParserWS             = 50
 )
 
 // JsonTemplateParser rules.
