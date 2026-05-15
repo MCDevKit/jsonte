@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"strings"
 )
 
 // valueIndexArgs stores scratch space for invoking predicates that take a value
@@ -1064,6 +1065,30 @@ the result will be
 </code>`,
 		},
 	})
+	RegisterFunction(JsonFunction{
+		Group:      group,
+		Name:       "join",
+		Body:       arrayJoinNoSep,
+		IsInstance: true,
+		Docs: Docs{
+			Summary: "Joins the elements of the array into a string with no separator",
+			Arguments: []Argument{
+				{
+					Name:    "array",
+					Summary: "The array to join",
+				},
+			},
+			Example: `
+<code>
+{
+  "$template": {
+	"$comment": "The field below will be \"123\"",
+	"test": "{{[1, 2, 3].join()}}"
+  }
+}
+</code>`,
+		},
+	})
 }
 
 func arrayAppend(arr *types.JsonArray, values ...types.JsonType) *types.JsonArray {
@@ -1524,4 +1549,12 @@ func findLast(arr *types.JsonArray) (types.JsonType, error) {
 		return nil, burrito.WrappedError("No matching items found!")
 	}
 	return arr.Value[len(arr.Value)-1], nil
+}
+
+func arrayJoinNoSep(arr *types.JsonArray) *types.JsonString {
+	parts := make([]string, len(arr.Value))
+	for i, v := range arr.Value {
+		parts[i] = v.StringValue()
+	}
+	return types.NewString(strings.Join(parts, ""))
 }
