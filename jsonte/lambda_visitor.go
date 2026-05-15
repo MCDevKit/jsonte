@@ -80,6 +80,9 @@ func (v *LambdaVisitor) VisitField(context *parser.FieldContext) {
 	if context.Object() != nil {
 		v.Visit(context.Object())
 	}
+	if context.Lambda() != nil {
+		v.Visit(context.Lambda())
+	}
 }
 
 func (v *LambdaVisitor) VisitIndex(context *parser.IndexContext) {

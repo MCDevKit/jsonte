@@ -1,7 +1,6 @@
 // Code generated from java-escape by ANTLR 4.11.1. DO NOT EDIT.
 
 package parser // JsonTemplate
-
 import (
 	"fmt"
 	"strconv"
@@ -55,7 +54,7 @@ func jsontemplateParserInit() {
 	}
 	staticData.predictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
-		4, 1, 47, 329, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
+		4, 1, 47, 330, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
 		4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9, 2, 10, 7,
 		10, 2, 11, 7, 11, 2, 12, 7, 12, 1, 0, 5, 0, 28, 8, 0, 10, 0, 12, 0, 31,
 		9, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 39, 8, 1, 1, 1, 1, 1, 1,
@@ -73,25 +72,25 @@ func jsontemplateParserInit() {
 		4, 12, 4, 162, 9, 4, 5, 4, 164, 8, 4, 10, 4, 12, 4, 167, 9, 4, 1, 4, 1,
 		4, 1, 4, 3, 4, 172, 8, 4, 1, 5, 3, 5, 175, 8, 5, 1, 5, 1, 5, 3, 5, 179,
 		8, 5, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6,
-		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 3, 6, 198, 8, 6, 1, 6, 1, 6, 1, 6,
+		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 3, 6, 199, 8, 6, 1, 6, 1, 6,
 		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6,
 		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6,
 		1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6,
-		1, 6, 1, 6, 3, 6, 241, 8, 6, 1, 6, 1, 6, 1, 6, 1, 6, 3, 6, 247, 8, 6, 1,
-		6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 5, 6, 258, 8, 6, 10,
-		6, 12, 6, 261, 9, 6, 3, 6, 263, 8, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1,
-		6, 3, 6, 271, 8, 6, 5, 6, 273, 8, 6, 10, 6, 12, 6, 276, 9, 6, 1, 7, 1,
-		7, 1, 7, 1, 7, 5, 7, 282, 8, 7, 10, 7, 12, 7, 285, 9, 7, 3, 7, 287, 8,
-		7, 1, 7, 1, 7, 1, 8, 3, 8, 292, 8, 8, 1, 8, 1, 8, 1, 9, 1, 9, 1, 9, 1,
-		9, 5, 9, 300, 8, 9, 10, 9, 12, 9, 303, 9, 9, 3, 9, 305, 8, 9, 1, 9, 1,
-		9, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 3, 10, 317,
-		8, 10, 1, 10, 3, 10, 320, 8, 10, 1, 11, 1, 11, 1, 12, 1, 12, 1, 12, 3,
-		12, 327, 8, 12, 1, 12, 0, 1, 12, 13, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18,
-		20, 22, 24, 0, 2, 1, 0, 12, 13, 1, 0, 10, 11, 389, 0, 29, 1, 0, 0, 0, 2,
+		1, 6, 1, 6, 1, 6, 3, 6, 242, 8, 6, 1, 6, 1, 6, 1, 6, 1, 6, 3, 6, 248, 8,
+		6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 5, 6, 259, 8,
+		6, 10, 6, 12, 6, 262, 9, 6, 3, 6, 264, 8, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1,
+		6, 1, 6, 3, 6, 272, 8, 6, 5, 6, 274, 8, 6, 10, 6, 12, 6, 277, 9, 6, 1,
+		7, 1, 7, 1, 7, 1, 7, 5, 7, 283, 8, 7, 10, 7, 12, 7, 286, 9, 7, 3, 7, 288,
+		8, 7, 1, 7, 1, 7, 1, 8, 3, 8, 293, 8, 8, 1, 8, 1, 8, 1, 9, 1, 9, 1, 9,
+		1, 9, 5, 9, 301, 8, 9, 10, 9, 12, 9, 304, 9, 9, 3, 9, 306, 8, 9, 1, 9,
+		1, 9, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 3, 10, 318,
+		8, 10, 1, 10, 3, 10, 321, 8, 10, 1, 11, 1, 11, 1, 12, 1, 12, 1, 12, 3,
+		12, 328, 8, 12, 1, 12, 0, 1, 12, 13, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18,
+		20, 22, 24, 0, 2, 1, 0, 12, 13, 1, 0, 10, 11, 391, 0, 29, 1, 0, 0, 0, 2,
 		82, 1, 0, 0, 0, 4, 84, 1, 0, 0, 0, 6, 148, 1, 0, 0, 0, 8, 171, 1, 0, 0,
-		0, 10, 178, 1, 0, 0, 0, 12, 197, 1, 0, 0, 0, 14, 277, 1, 0, 0, 0, 16, 291,
-		1, 0, 0, 0, 18, 295, 1, 0, 0, 0, 20, 319, 1, 0, 0, 0, 22, 321, 1, 0, 0,
-		0, 24, 326, 1, 0, 0, 0, 26, 28, 3, 2, 1, 0, 27, 26, 1, 0, 0, 0, 28, 31,
+		0, 10, 178, 1, 0, 0, 0, 12, 198, 1, 0, 0, 0, 14, 278, 1, 0, 0, 0, 16, 292,
+		1, 0, 0, 0, 18, 296, 1, 0, 0, 0, 20, 320, 1, 0, 0, 0, 22, 322, 1, 0, 0,
+		0, 24, 327, 1, 0, 0, 0, 26, 28, 3, 2, 1, 0, 27, 26, 1, 0, 0, 0, 28, 31,
 		1, 0, 0, 0, 29, 27, 1, 0, 0, 0, 29, 30, 1, 0, 0, 0, 30, 1, 1, 0, 0, 0,
 		31, 29, 1, 0, 0, 0, 32, 83, 3, 4, 2, 0, 33, 34, 3, 12, 6, 0, 34, 35, 5,
 		28, 0, 0, 35, 83, 1, 0, 0, 0, 36, 38, 5, 35, 0, 0, 37, 39, 3, 12, 6, 0,
@@ -147,68 +146,69 @@ func jsontemplateParserInit() {
 		0, 0, 174, 173, 1, 0, 0, 0, 174, 175, 1, 0, 0, 0, 175, 176, 1, 0, 0, 0,
 		176, 179, 3, 12, 6, 0, 177, 179, 3, 8, 4, 0, 178, 174, 1, 0, 0, 0, 178,
 		177, 1, 0, 0, 0, 179, 11, 1, 0, 0, 0, 180, 181, 6, 6, -1, 0, 181, 182,
-		5, 14, 0, 0, 182, 183, 3, 12, 6, 0, 183, 184, 5, 15, 0, 0, 184, 198, 1,
-		0, 0, 0, 185, 198, 5, 34, 0, 0, 186, 198, 5, 33, 0, 0, 187, 198, 5, 32,
-		0, 0, 188, 198, 5, 46, 0, 0, 189, 198, 5, 44, 0, 0, 190, 198, 3, 14, 7,
-		0, 191, 198, 3, 18, 9, 0, 192, 198, 3, 22, 11, 0, 193, 194, 5, 11, 0, 0,
-		194, 198, 3, 12, 6, 16, 195, 196, 5, 9, 0, 0, 196, 198, 3, 12, 6, 15, 197,
-		180, 1, 0, 0, 0, 197, 185, 1, 0, 0, 0, 197, 186, 1, 0, 0, 0, 197, 187,
-		1, 0, 0, 0, 197, 188, 1, 0, 0, 0, 197, 189, 1, 0, 0, 0, 197, 190, 1, 0,
-		0, 0, 197, 191, 1, 0, 0, 0, 197, 192, 1, 0, 0, 0, 197, 193, 1, 0, 0, 0,
-		197, 195, 1, 0, 0, 0, 198, 274, 1, 0, 0, 0, 199, 200, 10, 14, 0, 0, 200,
-		201, 7, 0, 0, 0, 201, 273, 3, 12, 6, 15, 202, 203, 10, 13, 0, 0, 203, 204,
-		7, 1, 0, 0, 204, 273, 3, 12, 6, 14, 205, 206, 10, 12, 0, 0, 206, 207, 5,
-		22, 0, 0, 207, 273, 3, 12, 6, 13, 208, 209, 10, 11, 0, 0, 209, 210, 5,
-		21, 0, 0, 210, 273, 3, 12, 6, 12, 211, 212, 10, 10, 0, 0, 212, 213, 5,
-		3, 0, 0, 213, 273, 3, 12, 6, 11, 214, 215, 10, 9, 0, 0, 215, 216, 5, 1,
-		0, 0, 216, 273, 3, 12, 6, 10, 217, 218, 10, 8, 0, 0, 218, 219, 5, 2, 0,
-		0, 219, 273, 3, 12, 6, 9, 220, 221, 10, 7, 0, 0, 221, 222, 5, 4, 0, 0,
-		222, 273, 3, 12, 6, 8, 223, 224, 10, 6, 0, 0, 224, 225, 5, 5, 0, 0, 225,
-		273, 3, 12, 6, 7, 226, 227, 10, 5, 0, 0, 227, 228, 5, 6, 0, 0, 228, 273,
-		3, 12, 6, 6, 229, 230, 10, 4, 0, 0, 230, 231, 5, 7, 0, 0, 231, 273, 3,
-		12, 6, 5, 232, 233, 10, 3, 0, 0, 233, 234, 5, 8, 0, 0, 234, 273, 3, 12,
-		6, 4, 235, 236, 10, 1, 0, 0, 236, 237, 5, 20, 0, 0, 237, 273, 3, 12, 6,
-		2, 238, 240, 10, 19, 0, 0, 239, 241, 5, 19, 0, 0, 240, 239, 1, 0, 0, 0,
-		240, 241, 1, 0, 0, 0, 241, 242, 1, 0, 0, 0, 242, 243, 5, 29, 0, 0, 243,
-		273, 3, 22, 11, 0, 244, 246, 10, 18, 0, 0, 245, 247, 5, 19, 0, 0, 246,
-		245, 1, 0, 0, 0, 246, 247, 1, 0, 0, 0, 247, 248, 1, 0, 0, 0, 248, 249,
-		5, 16, 0, 0, 249, 250, 3, 24, 12, 0, 250, 251, 5, 17, 0, 0, 251, 273, 1,
-		0, 0, 0, 252, 253, 10, 17, 0, 0, 253, 262, 5, 14, 0, 0, 254, 259, 3, 10,
-		5, 0, 255, 256, 5, 25, 0, 0, 256, 258, 3, 10, 5, 0, 257, 255, 1, 0, 0,
-		0, 258, 261, 1, 0, 0, 0, 259, 257, 1, 0, 0, 0, 259, 260, 1, 0, 0, 0, 260,
-		263, 1, 0, 0, 0, 261, 259, 1, 0, 0, 0, 262, 254, 1, 0, 0, 0, 262, 263,
-		1, 0, 0, 0, 263, 264, 1, 0, 0, 0, 264, 273, 5, 15, 0, 0, 265, 266, 10,
-		2, 0, 0, 266, 267, 5, 19, 0, 0, 267, 270, 3, 12, 6, 0, 268, 269, 5, 27,
-		0, 0, 269, 271, 3, 12, 6, 0, 270, 268, 1, 0, 0, 0, 270, 271, 1, 0, 0, 0,
-		271, 273, 1, 0, 0, 0, 272, 199, 1, 0, 0, 0, 272, 202, 1, 0, 0, 0, 272,
-		205, 1, 0, 0, 0, 272, 208, 1, 0, 0, 0, 272, 211, 1, 0, 0, 0, 272, 214,
-		1, 0, 0, 0, 272, 217, 1, 0, 0, 0, 272, 220, 1, 0, 0, 0, 272, 223, 1, 0,
-		0, 0, 272, 226, 1, 0, 0, 0, 272, 229, 1, 0, 0, 0, 272, 232, 1, 0, 0, 0,
-		272, 235, 1, 0, 0, 0, 272, 238, 1, 0, 0, 0, 272, 244, 1, 0, 0, 0, 272,
-		252, 1, 0, 0, 0, 272, 265, 1, 0, 0, 0, 273, 276, 1, 0, 0, 0, 274, 272,
-		1, 0, 0, 0, 274, 275, 1, 0, 0, 0, 275, 13, 1, 0, 0, 0, 276, 274, 1, 0,
-		0, 0, 277, 286, 5, 16, 0, 0, 278, 283, 3, 16, 8, 0, 279, 280, 5, 25, 0,
-		0, 280, 282, 3, 16, 8, 0, 281, 279, 1, 0, 0, 0, 282, 285, 1, 0, 0, 0, 283,
-		281, 1, 0, 0, 0, 283, 284, 1, 0, 0, 0, 284, 287, 1, 0, 0, 0, 285, 283,
-		1, 0, 0, 0, 286, 278, 1, 0, 0, 0, 286, 287, 1, 0, 0, 0, 287, 288, 1, 0,
-		0, 0, 288, 289, 5, 17, 0, 0, 289, 15, 1, 0, 0, 0, 290, 292, 5, 23, 0, 0,
-		291, 290, 1, 0, 0, 0, 291, 292, 1, 0, 0, 0, 292, 293, 1, 0, 0, 0, 293,
-		294, 3, 12, 6, 0, 294, 17, 1, 0, 0, 0, 295, 304, 5, 30, 0, 0, 296, 301,
-		3, 20, 10, 0, 297, 298, 5, 25, 0, 0, 298, 300, 3, 20, 10, 0, 299, 297,
-		1, 0, 0, 0, 300, 303, 1, 0, 0, 0, 301, 299, 1, 0, 0, 0, 301, 302, 1, 0,
-		0, 0, 302, 305, 1, 0, 0, 0, 303, 301, 1, 0, 0, 0, 304, 296, 1, 0, 0, 0,
-		304, 305, 1, 0, 0, 0, 305, 306, 1, 0, 0, 0, 306, 307, 5, 31, 0, 0, 307,
-		19, 1, 0, 0, 0, 308, 309, 3, 22, 11, 0, 309, 310, 5, 27, 0, 0, 310, 311,
-		3, 12, 6, 0, 311, 320, 1, 0, 0, 0, 312, 313, 5, 44, 0, 0, 313, 314, 5,
-		27, 0, 0, 314, 320, 3, 12, 6, 0, 315, 317, 5, 23, 0, 0, 316, 315, 1, 0,
-		0, 0, 316, 317, 1, 0, 0, 0, 317, 318, 1, 0, 0, 0, 318, 320, 3, 12, 6, 0,
-		319, 308, 1, 0, 0, 0, 319, 312, 1, 0, 0, 0, 319, 316, 1, 0, 0, 0, 320,
-		21, 1, 0, 0, 0, 321, 322, 5, 45, 0, 0, 322, 23, 1, 0, 0, 0, 323, 327, 3,
-		12, 6, 0, 324, 327, 5, 46, 0, 0, 325, 327, 5, 44, 0, 0, 326, 323, 1, 0,
-		0, 0, 326, 324, 1, 0, 0, 0, 326, 325, 1, 0, 0, 0, 327, 25, 1, 0, 0, 0,
-		39, 29, 38, 49, 65, 70, 82, 88, 95, 103, 105, 109, 115, 121, 127, 133,
-		139, 144, 148, 160, 165, 171, 174, 178, 197, 240, 246, 259, 262, 270, 272,
-		274, 283, 286, 291, 301, 304, 316, 319, 326,
+		5, 14, 0, 0, 182, 183, 3, 12, 6, 0, 183, 184, 5, 15, 0, 0, 184, 199, 1,
+		0, 0, 0, 185, 199, 5, 34, 0, 0, 186, 199, 5, 33, 0, 0, 187, 199, 5, 32,
+		0, 0, 188, 199, 5, 46, 0, 0, 189, 199, 5, 44, 0, 0, 190, 199, 3, 14, 7,
+		0, 191, 199, 3, 18, 9, 0, 192, 199, 3, 8, 4, 0, 193, 199, 3, 22, 11, 0,
+		194, 195, 5, 11, 0, 0, 195, 199, 3, 12, 6, 16, 196, 197, 5, 9, 0, 0, 197,
+		199, 3, 12, 6, 15, 198, 180, 1, 0, 0, 0, 198, 185, 1, 0, 0, 0, 198, 186,
+		1, 0, 0, 0, 198, 187, 1, 0, 0, 0, 198, 188, 1, 0, 0, 0, 198, 189, 1, 0,
+		0, 0, 198, 190, 1, 0, 0, 0, 198, 191, 1, 0, 0, 0, 198, 192, 1, 0, 0, 0,
+		198, 193, 1, 0, 0, 0, 198, 194, 1, 0, 0, 0, 198, 196, 1, 0, 0, 0, 199,
+		275, 1, 0, 0, 0, 200, 201, 10, 14, 0, 0, 201, 202, 7, 0, 0, 0, 202, 274,
+		3, 12, 6, 15, 203, 204, 10, 13, 0, 0, 204, 205, 7, 1, 0, 0, 205, 274, 3,
+		12, 6, 14, 206, 207, 10, 12, 0, 0, 207, 208, 5, 22, 0, 0, 208, 274, 3,
+		12, 6, 13, 209, 210, 10, 11, 0, 0, 210, 211, 5, 21, 0, 0, 211, 274, 3,
+		12, 6, 12, 212, 213, 10, 10, 0, 0, 213, 214, 5, 3, 0, 0, 214, 274, 3, 12,
+		6, 11, 215, 216, 10, 9, 0, 0, 216, 217, 5, 1, 0, 0, 217, 274, 3, 12, 6,
+		10, 218, 219, 10, 8, 0, 0, 219, 220, 5, 2, 0, 0, 220, 274, 3, 12, 6, 9,
+		221, 222, 10, 7, 0, 0, 222, 223, 5, 4, 0, 0, 223, 274, 3, 12, 6, 8, 224,
+		225, 10, 6, 0, 0, 225, 226, 5, 5, 0, 0, 226, 274, 3, 12, 6, 7, 227, 228,
+		10, 5, 0, 0, 228, 229, 5, 6, 0, 0, 229, 274, 3, 12, 6, 6, 230, 231, 10,
+		4, 0, 0, 231, 232, 5, 7, 0, 0, 232, 274, 3, 12, 6, 5, 233, 234, 10, 3,
+		0, 0, 234, 235, 5, 8, 0, 0, 235, 274, 3, 12, 6, 4, 236, 237, 10, 1, 0,
+		0, 237, 238, 5, 20, 0, 0, 238, 274, 3, 12, 6, 2, 239, 241, 10, 19, 0, 0,
+		240, 242, 5, 19, 0, 0, 241, 240, 1, 0, 0, 0, 241, 242, 1, 0, 0, 0, 242,
+		243, 1, 0, 0, 0, 243, 244, 5, 29, 0, 0, 244, 274, 3, 22, 11, 0, 245, 247,
+		10, 18, 0, 0, 246, 248, 5, 19, 0, 0, 247, 246, 1, 0, 0, 0, 247, 248, 1,
+		0, 0, 0, 248, 249, 1, 0, 0, 0, 249, 250, 5, 16, 0, 0, 250, 251, 3, 24,
+		12, 0, 251, 252, 5, 17, 0, 0, 252, 274, 1, 0, 0, 0, 253, 254, 10, 17, 0,
+		0, 254, 263, 5, 14, 0, 0, 255, 260, 3, 10, 5, 0, 256, 257, 5, 25, 0, 0,
+		257, 259, 3, 10, 5, 0, 258, 256, 1, 0, 0, 0, 259, 262, 1, 0, 0, 0, 260,
+		258, 1, 0, 0, 0, 260, 261, 1, 0, 0, 0, 261, 264, 1, 0, 0, 0, 262, 260,
+		1, 0, 0, 0, 263, 255, 1, 0, 0, 0, 263, 264, 1, 0, 0, 0, 264, 265, 1, 0,
+		0, 0, 265, 274, 5, 15, 0, 0, 266, 267, 10, 2, 0, 0, 267, 268, 5, 19, 0,
+		0, 268, 271, 3, 12, 6, 0, 269, 270, 5, 27, 0, 0, 270, 272, 3, 12, 6, 0,
+		271, 269, 1, 0, 0, 0, 271, 272, 1, 0, 0, 0, 272, 274, 1, 0, 0, 0, 273,
+		200, 1, 0, 0, 0, 273, 203, 1, 0, 0, 0, 273, 206, 1, 0, 0, 0, 273, 209,
+		1, 0, 0, 0, 273, 212, 1, 0, 0, 0, 273, 215, 1, 0, 0, 0, 273, 218, 1, 0,
+		0, 0, 273, 221, 1, 0, 0, 0, 273, 224, 1, 0, 0, 0, 273, 227, 1, 0, 0, 0,
+		273, 230, 1, 0, 0, 0, 273, 233, 1, 0, 0, 0, 273, 236, 1, 0, 0, 0, 273,
+		239, 1, 0, 0, 0, 273, 245, 1, 0, 0, 0, 273, 253, 1, 0, 0, 0, 273, 266,
+		1, 0, 0, 0, 274, 277, 1, 0, 0, 0, 275, 273, 1, 0, 0, 0, 275, 276, 1, 0,
+		0, 0, 276, 13, 1, 0, 0, 0, 277, 275, 1, 0, 0, 0, 278, 287, 5, 16, 0, 0,
+		279, 284, 3, 16, 8, 0, 280, 281, 5, 25, 0, 0, 281, 283, 3, 16, 8, 0, 282,
+		280, 1, 0, 0, 0, 283, 286, 1, 0, 0, 0, 284, 282, 1, 0, 0, 0, 284, 285,
+		1, 0, 0, 0, 285, 288, 1, 0, 0, 0, 286, 284, 1, 0, 0, 0, 287, 279, 1, 0,
+		0, 0, 287, 288, 1, 0, 0, 0, 288, 289, 1, 0, 0, 0, 289, 290, 5, 17, 0, 0,
+		290, 15, 1, 0, 0, 0, 291, 293, 5, 23, 0, 0, 292, 291, 1, 0, 0, 0, 292,
+		293, 1, 0, 0, 0, 293, 294, 1, 0, 0, 0, 294, 295, 3, 12, 6, 0, 295, 17,
+		1, 0, 0, 0, 296, 305, 5, 30, 0, 0, 297, 302, 3, 20, 10, 0, 298, 299, 5,
+		25, 0, 0, 299, 301, 3, 20, 10, 0, 300, 298, 1, 0, 0, 0, 301, 304, 1, 0,
+		0, 0, 302, 300, 1, 0, 0, 0, 302, 303, 1, 0, 0, 0, 303, 306, 1, 0, 0, 0,
+		304, 302, 1, 0, 0, 0, 305, 297, 1, 0, 0, 0, 305, 306, 1, 0, 0, 0, 306,
+		307, 1, 0, 0, 0, 307, 308, 5, 31, 0, 0, 308, 19, 1, 0, 0, 0, 309, 310,
+		3, 22, 11, 0, 310, 311, 5, 27, 0, 0, 311, 312, 3, 12, 6, 0, 312, 321, 1,
+		0, 0, 0, 313, 314, 5, 44, 0, 0, 314, 315, 5, 27, 0, 0, 315, 321, 3, 12,
+		6, 0, 316, 318, 5, 23, 0, 0, 317, 316, 1, 0, 0, 0, 317, 318, 1, 0, 0, 0,
+		318, 319, 1, 0, 0, 0, 319, 321, 3, 12, 6, 0, 320, 309, 1, 0, 0, 0, 320,
+		313, 1, 0, 0, 0, 320, 317, 1, 0, 0, 0, 321, 21, 1, 0, 0, 0, 322, 323, 5,
+		45, 0, 0, 323, 23, 1, 0, 0, 0, 324, 328, 3, 12, 6, 0, 325, 328, 5, 46,
+		0, 0, 326, 328, 5, 44, 0, 0, 327, 324, 1, 0, 0, 0, 327, 325, 1, 0, 0, 0,
+		327, 326, 1, 0, 0, 0, 328, 25, 1, 0, 0, 0, 39, 29, 38, 49, 65, 70, 82,
+		88, 95, 103, 105, 109, 115, 121, 127, 133, 139, 144, 148, 160, 165, 171,
+		174, 178, 198, 241, 247, 260, 263, 271, 273, 275, 284, 287, 292, 302, 305,
+		317, 320, 327,
 	}
 	deserializer := antlr.NewATNDeserializer(nil)
 	staticData.atn = deserializer.Deserialize(staticData.serializedATN)
@@ -409,16 +409,6 @@ func (s *ScriptContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *ScriptContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(JsonTemplateListener); ok {
 		listenerT.ExitScript(s)
-	}
-}
-
-func (s *ScriptContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitScript(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -695,16 +685,6 @@ func (s *StatementContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *StatementContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(JsonTemplateListener); ok {
 		listenerT.ExitStatement(s)
-	}
-}
-
-func (s *StatementContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitStatement(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -1047,16 +1027,6 @@ func (s *StatementsContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *StatementsContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitStatements(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *JsonTemplateParser) Statements() (localctx IStatementsContext) {
 	this := p
 	_ = this
@@ -1260,16 +1230,6 @@ func (s *ExpressionContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *ExpressionContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(JsonTemplateListener); ok {
 		listenerT.ExitExpression(s)
-	}
-}
-
-func (s *ExpressionContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitExpression(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -1645,16 +1605,6 @@ func (s *LambdaContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *LambdaContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitLambda(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *JsonTemplateParser) Lambda() (localctx ILambdaContext) {
 	this := p
 	_ = this
@@ -1847,16 +1797,6 @@ func (s *Function_paramContext) EnterRule(listener antlr.ParseTreeListener) {
 func (s *Function_paramContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(JsonTemplateListener); ok {
 		listenerT.ExitFunction_param(s)
-	}
-}
-
-func (s *Function_paramContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitFunction_param(s)
-
-	default:
-		return t.VisitChildren(s)
 	}
 }
 
@@ -2056,6 +1996,22 @@ func (s *FieldContext) Object() IObjectContext {
 	return t.(IObjectContext)
 }
 
+func (s *FieldContext) Lambda() ILambdaContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ILambdaContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ILambdaContext)
+}
+
 func (s *FieldContext) Name() INameContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
@@ -2241,16 +2197,6 @@ func (s *FieldContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *FieldContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitField(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *JsonTemplateParser) Field() (localctx IFieldContext) {
 	return p.field(0)
 }
@@ -2287,11 +2233,10 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 	var _alt int
 
 	p.EnterOuterAlt(localctx, 1)
-	p.SetState(197)
+	p.SetState(198)
 	p.GetErrorHandler().Sync(p)
-
-	switch p.GetTokenStream().LA(1) {
-	case JsonTemplateParserLeftParen:
+	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 23, p.GetParserRuleContext()) {
+	case 1:
 		{
 			p.SetState(181)
 			p.Match(JsonTemplateParserLeftParen)
@@ -2305,79 +2250,83 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 			p.Match(JsonTemplateParserRightParen)
 		}
 
-	case JsonTemplateParserTrue:
+	case 2:
 		{
 			p.SetState(185)
 			p.Match(JsonTemplateParserTrue)
 		}
 
-	case JsonTemplateParserFalse:
+	case 3:
 		{
 			p.SetState(186)
 			p.Match(JsonTemplateParserFalse)
 		}
 
-	case JsonTemplateParserNull:
+	case 4:
 		{
 			p.SetState(187)
 			p.Match(JsonTemplateParserNull)
 		}
 
-	case JsonTemplateParserNUMBER:
+	case 5:
 		{
 			p.SetState(188)
 			p.Match(JsonTemplateParserNUMBER)
 		}
 
-	case JsonTemplateParserESCAPED_STRING:
+	case 6:
 		{
 			p.SetState(189)
 			p.Match(JsonTemplateParserESCAPED_STRING)
 		}
 
-	case JsonTemplateParserLeftBracket:
+	case 7:
 		{
 			p.SetState(190)
 			p.Array()
 		}
 
-	case JsonTemplateParserLeftBrace:
+	case 8:
 		{
 			p.SetState(191)
 			p.Object()
 		}
 
-	case JsonTemplateParserSTRING:
+	case 9:
 		{
 			p.SetState(192)
+			p.Lambda()
+		}
+
+	case 10:
+		{
+			p.SetState(193)
 			p.Name()
 		}
 
-	case JsonTemplateParserSubtract:
+	case 11:
 		{
-			p.SetState(193)
+			p.SetState(194)
 			p.Match(JsonTemplateParserSubtract)
 		}
 		{
-			p.SetState(194)
+			p.SetState(195)
 			p.field(16)
 		}
 
-	case JsonTemplateParserNot:
+	case 12:
 		{
-			p.SetState(195)
+			p.SetState(196)
 			p.Match(JsonTemplateParserNot)
 		}
 		{
-			p.SetState(196)
+			p.SetState(197)
 			p.field(15)
 		}
 
-	default:
-		panic(antlr.NewNoViableAltException(p, nil, nil, nil, nil, nil))
 	}
 	p.GetParserRuleContext().SetStop(p.GetTokenStream().LT(-1))
-	p.SetState(274)
+	p.SetState(275)
 	p.GetErrorHandler().Sync(p)
 	_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 30, p.GetParserRuleContext())
 
@@ -2387,19 +2336,19 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 				p.TriggerExitRuleEvent()
 			}
 			_prevctx = localctx
-			p.SetState(272)
+			p.SetState(273)
 			p.GetErrorHandler().Sync(p)
 			switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 29, p.GetParserRuleContext()) {
 			case 1:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(199)
+				p.SetState(200)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 14)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 14)", ""))
 				}
 				{
-					p.SetState(200)
+					p.SetState(201)
 					_la = p.GetTokenStream().LA(1)
 
 					if !(_la == JsonTemplateParserMultiply || _la == JsonTemplateParserDivide) {
@@ -2410,20 +2359,20 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 					}
 				}
 				{
-					p.SetState(201)
+					p.SetState(202)
 					p.field(15)
 				}
 
 			case 2:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(202)
+				p.SetState(203)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 13)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 13)", ""))
 				}
 				{
-					p.SetState(203)
+					p.SetState(204)
 					_la = p.GetTokenStream().LA(1)
 
 					if !(_la == JsonTemplateParserAdd || _la == JsonTemplateParserSubtract) {
@@ -2434,331 +2383,331 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 					}
 				}
 				{
-					p.SetState(204)
+					p.SetState(205)
 					p.field(14)
 				}
 
 			case 3:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(205)
+				p.SetState(206)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 12)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 12)", ""))
 				}
 				{
-					p.SetState(206)
+					p.SetState(207)
 					p.Match(JsonTemplateParserRange)
 				}
 				{
-					p.SetState(207)
+					p.SetState(208)
 					p.field(13)
 				}
 
 			case 4:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(208)
+				p.SetState(209)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 11)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 11)", ""))
 				}
 				{
-					p.SetState(209)
+					p.SetState(210)
 					p.Match(JsonTemplateParserNullCoalescing)
 				}
 				{
-					p.SetState(210)
+					p.SetState(211)
 					p.field(12)
 				}
 
 			case 5:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(211)
+				p.SetState(212)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 10)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 10)", ""))
 				}
 				{
-					p.SetState(212)
+					p.SetState(213)
 					p.Match(JsonTemplateParserEqual)
 				}
 				{
-					p.SetState(213)
+					p.SetState(214)
 					p.field(11)
 				}
 
 			case 6:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(214)
+				p.SetState(215)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 9)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 9)", ""))
 				}
 				{
-					p.SetState(215)
+					p.SetState(216)
 					p.Match(JsonTemplateParserLess)
 				}
 				{
-					p.SetState(216)
+					p.SetState(217)
 					p.field(10)
 				}
 
 			case 7:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(217)
+				p.SetState(218)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 8)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 8)", ""))
 				}
 				{
-					p.SetState(218)
+					p.SetState(219)
 					p.Match(JsonTemplateParserLessOrEqual)
 				}
 				{
-					p.SetState(219)
+					p.SetState(220)
 					p.field(9)
 				}
 
 			case 8:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(220)
+				p.SetState(221)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 7)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 7)", ""))
 				}
 				{
-					p.SetState(221)
+					p.SetState(222)
 					p.Match(JsonTemplateParserGreater)
 				}
 				{
-					p.SetState(222)
+					p.SetState(223)
 					p.field(8)
 				}
 
 			case 9:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(223)
+				p.SetState(224)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 6)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 6)", ""))
 				}
 				{
-					p.SetState(224)
+					p.SetState(225)
 					p.Match(JsonTemplateParserGreaterOrEqual)
 				}
 				{
-					p.SetState(225)
+					p.SetState(226)
 					p.field(7)
 				}
 
 			case 10:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(226)
+				p.SetState(227)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 5)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 5)", ""))
 				}
 				{
-					p.SetState(227)
+					p.SetState(228)
 					p.Match(JsonTemplateParserNotEqual)
 				}
 				{
-					p.SetState(228)
+					p.SetState(229)
 					p.field(6)
 				}
 
 			case 11:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(229)
+				p.SetState(230)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 4)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 4)", ""))
 				}
 				{
-					p.SetState(230)
+					p.SetState(231)
 					p.Match(JsonTemplateParserAnd)
 				}
 				{
-					p.SetState(231)
+					p.SetState(232)
 					p.field(5)
 				}
 
 			case 12:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(232)
+				p.SetState(233)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 3)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 3)", ""))
 				}
 				{
-					p.SetState(233)
+					p.SetState(234)
 					p.Match(JsonTemplateParserOr)
 				}
 				{
-					p.SetState(234)
+					p.SetState(235)
 					p.field(4)
 				}
 
 			case 13:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(235)
+				p.SetState(236)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 1)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 1)", ""))
 				}
 				{
-					p.SetState(236)
+					p.SetState(237)
 					p.Match(JsonTemplateParserLiteral)
 				}
 				{
-					p.SetState(237)
+					p.SetState(238)
 					p.field(2)
 				}
 
 			case 14:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(238)
+				p.SetState(239)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 19)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 19)", ""))
 				}
 
-				p.SetState(240)
+				p.SetState(241)
 				p.GetErrorHandler().Sync(p)
 				_la = p.GetTokenStream().LA(1)
 
 				if _la == JsonTemplateParserQuestion {
 					{
-						p.SetState(239)
+						p.SetState(240)
 						p.Match(JsonTemplateParserQuestion)
 					}
 
 				}
 				{
-					p.SetState(242)
+					p.SetState(243)
 					p.Match(JsonTemplateParserDot)
 				}
 				{
-					p.SetState(243)
+					p.SetState(244)
 					p.Name()
 				}
 
 			case 15:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(244)
+				p.SetState(245)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 18)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 18)", ""))
 				}
 
-				p.SetState(246)
+				p.SetState(247)
 				p.GetErrorHandler().Sync(p)
 				_la = p.GetTokenStream().LA(1)
 
 				if _la == JsonTemplateParserQuestion {
 					{
-						p.SetState(245)
+						p.SetState(246)
 						p.Match(JsonTemplateParserQuestion)
 					}
 
 				}
 				{
-					p.SetState(248)
+					p.SetState(249)
 					p.Match(JsonTemplateParserLeftBracket)
 				}
 				{
-					p.SetState(249)
+					p.SetState(250)
 					p.Index()
 				}
 				{
-					p.SetState(250)
+					p.SetState(251)
 					p.Match(JsonTemplateParserRightBracket)
 				}
 
 			case 16:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(252)
+				p.SetState(253)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 17)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 17)", ""))
 				}
 				{
-					p.SetState(253)
+					p.SetState(254)
 					p.Match(JsonTemplateParserLeftParen)
 				}
-				p.SetState(262)
+				p.SetState(263)
 				p.GetErrorHandler().Sync(p)
 				_la = p.GetTokenStream().LA(1)
 
 				if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&123176449296896) != 0 {
 					{
-						p.SetState(254)
+						p.SetState(255)
 						p.Function_param()
 					}
-					p.SetState(259)
+					p.SetState(260)
 					p.GetErrorHandler().Sync(p)
 					_la = p.GetTokenStream().LA(1)
 
 					for _la == JsonTemplateParserComma {
 						{
-							p.SetState(255)
+							p.SetState(256)
 							p.Match(JsonTemplateParserComma)
 						}
 						{
-							p.SetState(256)
+							p.SetState(257)
 							p.Function_param()
 						}
 
-						p.SetState(261)
+						p.SetState(262)
 						p.GetErrorHandler().Sync(p)
 						_la = p.GetTokenStream().LA(1)
 					}
 
 				}
 				{
-					p.SetState(264)
+					p.SetState(265)
 					p.Match(JsonTemplateParserRightParen)
 				}
 
 			case 17:
 				localctx = NewFieldContext(p, _parentctx, _parentState)
 				p.PushNewRecursionContext(localctx, _startState, JsonTemplateParserRULE_field)
-				p.SetState(265)
+				p.SetState(266)
 
 				if !(p.Precpred(p.GetParserRuleContext(), 2)) {
 					panic(antlr.NewFailedPredicateException(p, "p.Precpred(p.GetParserRuleContext(), 2)", ""))
 				}
 				{
-					p.SetState(266)
+					p.SetState(267)
 					p.Match(JsonTemplateParserQuestion)
 				}
 				{
-					p.SetState(267)
+					p.SetState(268)
 					p.field(0)
 				}
-				p.SetState(270)
+				p.SetState(271)
 				p.GetErrorHandler().Sync(p)
 
 				if p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 28, p.GetParserRuleContext()) == 1 {
 					{
-						p.SetState(268)
+						p.SetState(269)
 						p.Match(JsonTemplateParserColon)
 					}
 					{
-						p.SetState(269)
+						p.SetState(270)
 						p.field(0)
 					}
 
@@ -2767,7 +2716,7 @@ func (p *JsonTemplateParser) field(_p int) (localctx IFieldContext) {
 			}
 
 		}
-		p.SetState(276)
+		p.SetState(277)
 		p.GetErrorHandler().Sync(p)
 		_alt = p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 30, p.GetParserRuleContext())
 	}
@@ -2890,16 +2839,6 @@ func (s *ArrayContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *ArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitArray(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *JsonTemplateParser) Array() (localctx IArrayContext) {
 	this := p
 	_ = this
@@ -2926,40 +2865,40 @@ func (p *JsonTemplateParser) Array() (localctx IArrayContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(277)
+		p.SetState(278)
 		p.Match(JsonTemplateParserLeftBracket)
 	}
-	p.SetState(286)
+	p.SetState(287)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
 	if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&123176449296896) != 0 {
 		{
-			p.SetState(278)
+			p.SetState(279)
 			p.Spread_field()
 		}
-		p.SetState(283)
+		p.SetState(284)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == JsonTemplateParserComma {
 			{
-				p.SetState(279)
+				p.SetState(280)
 				p.Match(JsonTemplateParserComma)
 			}
 			{
-				p.SetState(280)
+				p.SetState(281)
 				p.Spread_field()
 			}
 
-			p.SetState(285)
+			p.SetState(286)
 			p.GetErrorHandler().Sync(p)
 			_la = p.GetTokenStream().LA(1)
 		}
 
 	}
 	{
-		p.SetState(288)
+		p.SetState(289)
 		p.Match(JsonTemplateParserRightBracket)
 	}
 
@@ -3044,16 +2983,6 @@ func (s *Spread_fieldContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *Spread_fieldContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitSpread_field(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *JsonTemplateParser) Spread_field() (localctx ISpread_fieldContext) {
 	this := p
 	_ = this
@@ -3079,19 +3008,19 @@ func (p *JsonTemplateParser) Spread_field() (localctx ISpread_fieldContext) {
 	}()
 
 	p.EnterOuterAlt(localctx, 1)
-	p.SetState(291)
+	p.SetState(292)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
 	if _la == JsonTemplateParserSpread {
 		{
-			p.SetState(290)
+			p.SetState(291)
 			p.Match(JsonTemplateParserSpread)
 		}
 
 	}
 	{
-		p.SetState(293)
+		p.SetState(294)
 		p.field(0)
 	}
 
@@ -3213,16 +3142,6 @@ func (s *ObjectContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *ObjectContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitObject(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *JsonTemplateParser) Object() (localctx IObjectContext) {
 	this := p
 	_ = this
@@ -3249,40 +3168,40 @@ func (p *JsonTemplateParser) Object() (localctx IObjectContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(295)
+		p.SetState(296)
 		p.Match(JsonTemplateParserLeftBrace)
 	}
-	p.SetState(304)
+	p.SetState(305)
 	p.GetErrorHandler().Sync(p)
 	_la = p.GetTokenStream().LA(1)
 
 	if (int64(_la) & ^0x3f) == 0 && ((int64(1)<<_la)&123176449296896) != 0 {
 		{
-			p.SetState(296)
+			p.SetState(297)
 			p.Object_field()
 		}
-		p.SetState(301)
+		p.SetState(302)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		for _la == JsonTemplateParserComma {
 			{
-				p.SetState(297)
+				p.SetState(298)
 				p.Match(JsonTemplateParserComma)
 			}
 			{
-				p.SetState(298)
+				p.SetState(299)
 				p.Object_field()
 			}
 
-			p.SetState(303)
+			p.SetState(304)
 			p.GetErrorHandler().Sync(p)
 			_la = p.GetTokenStream().LA(1)
 		}
 
 	}
 	{
-		p.SetState(306)
+		p.SetState(307)
 		p.Match(JsonTemplateParserRightBrace)
 	}
 
@@ -3391,16 +3310,6 @@ func (s *Object_fieldContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *Object_fieldContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitObject_field(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *JsonTemplateParser) Object_field() (localctx IObject_fieldContext) {
 	this := p
 	_ = this
@@ -3425,54 +3334,54 @@ func (p *JsonTemplateParser) Object_field() (localctx IObject_fieldContext) {
 		}
 	}()
 
-	p.SetState(319)
+	p.SetState(320)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 37, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(308)
+			p.SetState(309)
 			p.Name()
 		}
 		{
-			p.SetState(309)
+			p.SetState(310)
 			p.Match(JsonTemplateParserColon)
 		}
 		{
-			p.SetState(310)
+			p.SetState(311)
 			p.field(0)
 		}
 
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(312)
+			p.SetState(313)
 			p.Match(JsonTemplateParserESCAPED_STRING)
 		}
 		{
-			p.SetState(313)
+			p.SetState(314)
 			p.Match(JsonTemplateParserColon)
 		}
 		{
-			p.SetState(314)
+			p.SetState(315)
 			p.field(0)
 		}
 
 	case 3:
 		p.EnterOuterAlt(localctx, 3)
-		p.SetState(316)
+		p.SetState(317)
 		p.GetErrorHandler().Sync(p)
 		_la = p.GetTokenStream().LA(1)
 
 		if _la == JsonTemplateParserSpread {
 			{
-				p.SetState(315)
+				p.SetState(316)
 				p.Match(JsonTemplateParserSpread)
 			}
 
 		}
 		{
-			p.SetState(318)
+			p.SetState(319)
 			p.field(0)
 		}
 
@@ -3543,16 +3452,6 @@ func (s *NameContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *NameContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitName(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *JsonTemplateParser) Name() (localctx INameContext) {
 	this := p
 	_ = this
@@ -3578,7 +3477,7 @@ func (p *JsonTemplateParser) Name() (localctx INameContext) {
 
 	p.EnterOuterAlt(localctx, 1)
 	{
-		p.SetState(321)
+		p.SetState(322)
 		p.Match(JsonTemplateParserSTRING)
 	}
 
@@ -3667,16 +3566,6 @@ func (s *IndexContext) ExitRule(listener antlr.ParseTreeListener) {
 	}
 }
 
-func (s *IndexContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case JsonTemplateVisitor:
-		return t.VisitIndex(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
 func (p *JsonTemplateParser) Index() (localctx IIndexContext) {
 	this := p
 	_ = this
@@ -3700,27 +3589,27 @@ func (p *JsonTemplateParser) Index() (localctx IIndexContext) {
 		}
 	}()
 
-	p.SetState(326)
+	p.SetState(327)
 	p.GetErrorHandler().Sync(p)
 	switch p.GetInterpreter().AdaptivePredict(p.GetTokenStream(), 38, p.GetParserRuleContext()) {
 	case 1:
 		p.EnterOuterAlt(localctx, 1)
 		{
-			p.SetState(323)
+			p.SetState(324)
 			p.field(0)
 		}
 
 	case 2:
 		p.EnterOuterAlt(localctx, 2)
 		{
-			p.SetState(324)
+			p.SetState(325)
 			p.Match(JsonTemplateParserNUMBER)
 		}
 
 	case 3:
 		p.EnterOuterAlt(localctx, 3)
 		{
-			p.SetState(325)
+			p.SetState(326)
 			p.Match(JsonTemplateParserESCAPED_STRING)
 		}
 

@@ -100,6 +100,7 @@ field
     | ESCAPED_STRING
     | array
     | object
+    | lambda
     | name
     | field (Question? Dot name)
     | field (Question? LeftBracket index RightBracket)

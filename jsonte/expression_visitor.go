@@ -402,7 +402,23 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) (type
 	}
 	v.name = name
 	v.indexName = indexName
-	return v.Visit(ctx.Field())
+	result, err := v.Visit(ctx.Field())
+	if err != nil {
+		return types.Null, burrito.PassError(err)
+	}
+	if _, ok := result.(*types.JsonLambda); ok {
+		switch v.action {
+		case types.Iteration:
+			return types.Null, burrito.WrappedErrorf("Cannot iterate over a lambda")
+		case types.Predicate:
+			return types.Null, burrito.WrappedErrorf("Cannot use a lambda as a predicate")
+		case types.Literal:
+			return types.Null, burrito.WrappedErrorf("Cannot use a lambda as a literal value")
+		case types.Value:
+			return types.Null, burrito.WrappedErrorf("Cannot use a lambda as a template value")
+		}
+	}
+	return result, nil
 }
 
 func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.JsonType, error) {
@@ -431,7 +447,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if err != nil {
 			return types.Null, burrito.WrapErrorf(err, "Error resolving right side of the statement")
 		}
-		right = types.Box(right.Unbox())
+		// Preserve lambdas as-is; for other types, re-box to strip parent references.
+		if _, ok := right.(*types.JsonLambda); !ok {
+			right = types.Box(right.Unbox())
+		}
 		if left.Parent() == nil {
 			return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
 		}
@@ -515,6 +534,8 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
+		_, f1IsLambda := f1.(*types.JsonLambda)
+		_, f2IsLambda := f2.(*types.JsonLambda)
 		if context.NullCoalescing() != nil {
 			if types.IsNull(f1) {
 				return f2, nil
@@ -522,30 +543,45 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				return f1, nil
 			}
 		} else if context.Add() != nil {
+			if f1IsLambda || f2IsLambda {
+				return types.Null, burrito.WrappedErrorf("Cannot use a lambda in an addition or concatenation")
+			}
 			return f1.Add(f2), nil
 		} else if context.Equal() != nil {
 			return types.AsBool(f1.Equals(f2)), nil
 		} else if context.NotEqual() != nil {
 			return types.AsBool(!f1.Equals(f2)), nil
 		} else if context.Less() != nil {
+			if f1IsLambda || f2IsLambda {
+				return types.Null, burrito.WrappedErrorf("Cannot compare a lambda")
+			}
 			than, err := f1.LessThan(f2)
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(than), nil
 		} else if context.Greater() != nil {
+			if f1IsLambda || f2IsLambda {
+				return types.Null, burrito.WrappedErrorf("Cannot compare a lambda")
+			}
 			than, err := f1.LessThan(f2)
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(!than && !f1.Equals(f2)), nil
 		} else if context.LessOrEqual() != nil {
+			if f1IsLambda || f2IsLambda {
+				return types.Null, burrito.WrappedErrorf("Cannot compare a lambda")
+			}
 			than, err := f1.LessThan(f2)
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(than || f1.Equals(f2)), nil
 		} else if context.GreaterOrEqual() != nil {
+			if f1IsLambda || f2IsLambda {
+				return types.Null, burrito.WrappedErrorf("Cannot compare a lambda")
+			}
 			than, err := f1.LessThan(f2)
 			if err != nil {
 				return types.Null, burrito.PassError(err)
@@ -592,6 +628,12 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				}
 			}
 		} else {
+			if f1IsLambda || f2IsLambda {
+				if context.Range() != nil {
+					return types.Null, burrito.WrappedErrorf("Cannot use a lambda in a range expression")
+				}
+				return types.Null, burrito.WrappedErrorf("Cannot use a lambda in an arithmetic operation")
+			}
 			return types.NaN(), nil
 		}
 	} else if len(context.AllField()) == 3 {
@@ -722,9 +764,15 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
+		if _, ok := i.(*types.JsonLambda); ok {
+			return types.Null, burrito.WrappedErrorf("Cannot use a lambda as an index")
+		}
 		object, err := v.Visit(context.Field(0))
 		if err != nil {
 			return types.Null, burrito.PassError(err)
+		}
+		if _, ok := object.(*types.JsonLambda); ok {
+			return types.Null, burrito.WrappedErrorf("Cannot index a lambda")
 		}
 		index, err := object.Index(i)
 		if err != nil {
@@ -751,11 +799,18 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	if context.Object() != nil {
 		return v.Visit(context.Object())
 	}
+	// lambda literal in field position
+	if context.Lambda() != nil {
+		return v.Visit(context.Lambda())
+	}
 	// negation
 	if context.Subtract() != nil && len(context.AllField()) == 1 {
 		f, err := v.Visit(context.Field(0))
 		if err != nil {
 			return types.Null, burrito.PassError(err)
+		}
+		if _, ok := f.(*types.JsonLambda); ok {
+			return types.Null, burrito.WrappedErrorf("Cannot negate a lambda")
 		}
 		return f.Negate(), nil
 	}
