@@ -1,6 +1,9 @@
 package jsonte
 
 import (
+	"reflect"
+	"sync"
+
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"github.com/MCDevKit/jsonte/jsonte/types"
@@ -8,8 +11,6 @@ import (
 	"github.com/MCDevKit/jsonte/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/gammazero/deque"
-	"reflect"
-	"sync"
 )
 
 const DefaultName = "value"
@@ -54,6 +55,9 @@ type ExpressionVisitor struct {
 	path          *string
 	usedVariables []string
 	variableScope *types.JsonObject
+	// globalScope, when non-nil, enables the $scope pseudo-variable in .jsonte scripts.
+	// $scope.key = value writes directly into the global scope object.
+	globalScope *types.JsonObject
 }
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) {
@@ -125,8 +129,10 @@ func treeMatches(context antlr.Tree, matchFunction func(ctx, parent antlr.Tree) 
 
 func isInLeftSideOfAssignment(context antlr.Tree) bool {
 	return treeMatches(context, func(ctx, parent antlr.Tree) bool {
-		if f, ok := parent.(*parser.FieldContext); ok && f.Literal() != nil && len(f.AllField()) == 2 && f.Field(0) == ctx {
-			return true
+		if f, ok := parent.(*parser.FieldContext); ok && len(f.AllField()) == 2 && f.Field(0) == ctx {
+			if f.Literal() != nil || f.AddAssign() != nil {
+				return true
+			}
 		}
 		return false
 	})
@@ -184,6 +190,14 @@ func (v *ExpressionVisitor) initVarScope() *types.JsonObject {
 
 // ResolveScope resolves a value from the scope by name
 func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
+	// $scope is a write-through proxy to the global scope, available only in .jsonte scripts.
+	if name == "$scope" && v.globalScope != nil {
+		return &types.JsonObject{
+			Value:       nil,
+			StackValue:  &v.scope,
+			StackTarget: v.globalScope,
+		}
+	}
 	if name == "this" {
 		return &types.JsonObject{
 			Value:       nil,
@@ -437,6 +451,52 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			return types.Null, burrito.PassError(err)
 		}
 		return types.AsBool(!visit.BoolValue()), nil
+	}
+	if context.AddAssign() != nil {
+		left, err := v.Visit(context.Field(0))
+		if err != nil {
+			return types.Null, burrito.WrapErrorf(err, "Error resolving left side of the statement")
+		}
+		right, err := v.Visit(context.Field(1))
+		if err != nil {
+			return types.Null, burrito.WrapErrorf(err, "Error resolving right side of the statement")
+		}
+		right = types.Box(left.Add(right).Unbox())
+		if left.Parent() == nil {
+			return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
+		}
+		if left.ParentIndex() == nil {
+			utils.BadDeveloperError("Invalid parent index type")
+		}
+		if b, ok := (left.Parent()).(*types.JsonObject); ok {
+			if i, ok1 := left.ParentIndex().(*types.JsonString); ok1 {
+				b.Put(i.StringValue(), right)
+				return right, nil
+			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
+				return i.Set(left.Parent(), right)
+			} else {
+				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected string or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
+			}
+		} else if b, ok := (left.Parent()).(*types.JsonArray); ok {
+			if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
+				index := int(i.IntValue())
+				if index < 0 {
+					index = len(b.Value) + index
+				}
+				if index >= 0 && index < len(b.Value) {
+					b.Value[index] = right
+					return right, nil
+				} else {
+					return types.Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
+				}
+			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
+				return i.Set(left.Parent(), right)
+			} else {
+				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected number or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
+			}
+		} else {
+			return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
+		}
 	}
 	if context.Literal() != nil {
 		left, err := v.Visit(context.Field(0))
@@ -903,6 +963,7 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 	if err != nil {
 		return types.Null, burrito.PassError(err)
 	}
+	hasBlock := ctx.Statements() != nil
 	return types.NewLambda(
 		func(this *types.JsonLambda, o []types.JsonType) (types.JsonType, error) {
 			if len(ctx.AllName()) > len(o) {
@@ -912,7 +973,20 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 				// Ensure we get boxed type
 				v.pushScopePair(context.GetText(), o[i])
 			}
-			result, err := v.Visit(ctx.Field())
+			var result types.JsonType
+			var err error
+			if hasBlock {
+				result, err = v.Visit(ctx.Statements())
+				if err == nil {
+					if signal, ok := result.(*types.JsonSignal); ok {
+						result = signal.Value
+					} else {
+						result = types.Null
+					}
+				}
+			} else {
+				result, err = v.Visit(ctx.Field())
+			}
 			for i := 0; i < len(ctx.AllName()); i++ {
 				v.popScopeObject()
 			}

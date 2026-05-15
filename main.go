@@ -718,6 +718,7 @@ func main() {
 func getScope(scope []string, timeout int64) (*types.JsonObject, map[string][]string, error) {
 	assertionFiles := map[string]string{}
 	molangFiles := map[string][]string{}
+	var jsonteFiles []string
 	result := types.NewJsonObject()
 	for _, path := range scope {
 		if strings.HasPrefix(path, "{") {
@@ -748,6 +749,8 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, map[string][]st
 					}
 					err = jsonte.VerifyReservedNames(json, filePath+"#/")
 					result = types.MergeObject(result, json, false, "#")
+				} else if strings.HasSuffix(filePath, ".jsonte") {
+					jsonteFiles = append(jsonteFiles, filePath)
 				} else if strings.HasSuffix(filePath, ".assert") {
 					file, err := os.ReadFile(filePath)
 					if err != nil {
@@ -770,6 +773,16 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, map[string][]st
 		err := jsonte.ProcessAssertionsFile(path, file, result, timeout)
 		if err != nil {
 			return types.NewJsonObject(), nil, burrito.PassError(err)
+		}
+	}
+	sort.Strings(jsonteFiles)
+	for _, file := range jsonteFiles {
+		bytes, err := os.ReadFile(file)
+		if err != nil {
+			return types.NewJsonObject(), nil, burrito.WrapErrorf(err, "Failed to read .jsonte scope file '%s'", file)
+		}
+		if err := jsonte.EvalJsonteFile(string(bytes), result, file); err != nil {
+			return types.NewJsonObject(), nil, burrito.WrapErrorf(err, "Failed to evaluate .jsonte scope file '%s'", file)
 		}
 	}
 	return result, molangFiles, nil

@@ -186,6 +186,42 @@ func EvalWithTempScope(text string, scope deque.Deque[*types.JsonObject], path s
 	return Eval(text, d, path)
 }
 
+// EvalJsonteFile runs a .jsonte script against the provided global scope object.
+// The scope is NOT deep-copied, so mutations to existing scope keys persist automatically.
+// New top-level scope keys can be added via `$scope.key = value`.
+// Script-local variables (loop counters, temporaries) go to variableScope and are discarded.
+func EvalJsonteFile(text string, scope *types.JsonObject, path string) error {
+	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
+	is := antlr.NewInputStream(text)
+	lexer := parser.NewJsonTemplateLexer(is)
+	lexer.RemoveErrorListeners()
+	lexer.AddErrorListener(&listener)
+	stream := antlr.NewCommonTokenStream(lexer, 0)
+	p := parser.NewJsonTemplateParser(stream)
+	p.RemoveErrorListeners()
+	p.AddErrorListener(&listener)
+	p.BuildParseTrees = true
+	tree := p.Script()
+	if listener.Error != nil {
+		return burrito.WrapErrorf(listener.Error, "Failed to parse .jsonte file \"%s\"", path)
+	}
+	d := deque.Deque[*types.JsonObject]{}
+	d.PushBack(scope)
+	visitor := ExpressionVisitor{
+		scope:         d,
+		name:          DefaultName,
+		indexName:     DefaultIndexName,
+		variableScope: types.NewJsonObject(),
+		path:          &path,
+		globalScope:   scope,
+	}
+	_, err := visitor.Visit(tree)
+	if err != nil {
+		return burrito.PassError(err)
+	}
+	return nil
+}
+
 func ParseLambda(text string) ([]string, []string, error) {
 	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
 	is := antlr.NewInputStream(text)

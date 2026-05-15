@@ -111,7 +111,9 @@ func (v *LambdaVisitor) VisitLambda(ctx *parser.LambdaContext) {
 	for _, context := range ctx.AllName() {
 		v.arguments = append(v.arguments, context.GetText())
 	}
-	v.Visit(ctx.Field())
+	if ctx.Field() != nil {
+		v.Visit(ctx.Field())
+	}
 }
 
 func (v *LambdaVisitor) VisitFunction_param(ctx *parser.Function_paramContext) {

@@ -24,6 +24,7 @@ RightBracket: ']';
 //Actions
 Iteration: '#';
 Question: '?';
+AddAssign: '+=';
 Literal: '=';
 
 NullCoalescing: '??';
@@ -83,7 +84,9 @@ expression
 
 lambda
     : name Arrow field
+    | name Arrow statements
     | LeftParen (name (Comma name)*)* RightParen Arrow field
+    | LeftParen (name (Comma name)*)* RightParen Arrow statements
     ;
 
 function_param
@@ -120,6 +123,7 @@ field
     | field And field
     | field Or field
     | field Question field (Colon field)?
+    | field AddAssign field
     | field Literal field
     ;
 
