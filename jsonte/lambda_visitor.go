@@ -40,6 +40,12 @@ func (v *LambdaVisitor) Visit(tree antlr.ParseTree) {
 	case *parser.IndexContext:
 		v.VisitIndex(val)
 		break
+	case *parser.StatementsContext:
+		v.VisitStatements(val)
+		break
+	case *parser.StatementContext:
+		v.VisitStatement(val)
+		break
 	}
 }
 
@@ -114,6 +120,28 @@ func (v *LambdaVisitor) VisitLambda(ctx *parser.LambdaContext) {
 	if ctx.Field() != nil {
 		v.Visit(ctx.Field())
 	}
+	if ctx.Statements() != nil {
+		v.Visit(ctx.Statements())
+	}
+}
+
+func (v *LambdaVisitor) VisitStatements(ctx *parser.StatementsContext) {
+	for _, s := range ctx.AllStatement() {
+		v.Visit(s)
+	}
+}
+
+func (v *LambdaVisitor) VisitStatement(ctx *parser.StatementContext) {
+	for _, f := range ctx.AllField() {
+		v.Visit(f)
+	}
+	for _, s := range ctx.AllStatements() {
+		v.Visit(s)
+	}
+}
+
+func (v *LambdaVisitor) VisitName(ctx *parser.NameContext) {
+	v.usedVariables = append(v.usedVariables, ctx.GetText())
 }
 
 func (v *LambdaVisitor) VisitFunction_param(ctx *parser.Function_paramContext) {

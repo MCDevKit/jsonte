@@ -959,10 +959,11 @@ func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContex
 }
 
 func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonType, error) {
-	vars, args, err := ParseLambda(ctx.GetText())
-	if err != nil {
-		return types.Null, burrito.PassError(err)
-	}
+	lv := LambdaVisitor{}
+	lv.Visit(ctx)
+	vars := lv.usedVariables
+	args := lv.arguments
+	lambdaText := ctx.GetStart().GetInputStream().GetText(ctx.GetStart().GetStart(), ctx.GetStop().GetStop())
 	hasBlock := ctx.Statements() != nil
 	return types.NewLambda(
 		func(this *types.JsonLambda, o []types.JsonType) (types.JsonType, error) {
@@ -995,7 +996,7 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			}
 			return result, nil
 		},
-		ctx.GetText(),
+		lambdaText,
 		vars,
 		args,
 	), nil
