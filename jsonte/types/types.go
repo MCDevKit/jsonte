@@ -224,7 +224,15 @@ func MergeJSON(template, parent JsonType, keepOverrides bool) (JsonType, error) 
 
 // ToString converts an interface to a string.
 func ToString(obj interface{}) string {
-	if b, ok := obj.(JsonType); ok {
+	// Fast paths for the most common JsonType implementations — avoids Unbox() boxing.
+	switch b := obj.(type) {
+	case *JsonNumber:
+		return b.StringValue()
+	case *JsonString:
+		return b.Value
+	case *JsonBool:
+		return b.StringValue()
+	case JsonType:
 		obj = b.Unbox()
 	}
 	if obj == nil {
@@ -237,9 +245,15 @@ func ToString(obj interface{}) string {
 		return strconv.FormatFloat(float64(b), 'f', -1, 64)
 	}
 	if b, ok := obj.(int); ok {
+		if b >= 0 && b < smallIntMax {
+			return smallIntStrings[b]
+		}
 		return strconv.FormatInt(int64(b), 10)
 	}
 	if b, ok := obj.(int32); ok {
+		if b >= 0 && int(b) < smallIntMax {
+			return smallIntStrings[b]
+		}
 		return strconv.FormatInt(int64(b), 10)
 	}
 	if b, ok := obj.(bool); ok && b {
@@ -334,20 +348,19 @@ func DeleteNulls(object JsonType) JsonType {
 
 // DeleteNullsFromObject removes all keys with null values from the given JSON object.
 func DeleteNullsFromObject(object *JsonObject) *JsonObject {
-	keys := object.Keys()
-	toRemove := make([]int, 0)
-	for i, k := range keys {
-		v := object.Get(k)
+	var toRemove []string
+	object.RangeEntries(func(k string, v JsonType) bool {
 		if IsObject(v) {
 			object.Put(k, DeleteNulls(AsObject(v)))
 		} else if IsArray(v) {
 			object.Put(k, DeleteNullsFromArray(AsArray(v)))
 		} else if v == nil || IsNull(v) {
-			toRemove = append(toRemove, i)
+			toRemove = append(toRemove, k)
 		}
-	}
-	for _, idx := range toRemove {
-		object.Remove(keys[idx])
+		return false
+	})
+	for _, k := range toRemove {
+		object.Remove(k)
 	}
 	return object
 }

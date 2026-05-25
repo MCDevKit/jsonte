@@ -5,10 +5,23 @@ import (
 	"reflect"
 )
 
+// JsonArrayInlineSize is the maximum number of elements stored inline in JsonArray
+// without a separate heap allocation for the backing slice.
+const JsonArrayInlineSize = 4
+
 type JsonArray struct {
+	inline      [JsonArrayInlineSize]JsonType
 	Value       []JsonType
 	parent      JsonType
 	parentIndex JsonType
+}
+
+// NewJsonArrayInline creates a JsonArray using the inline backing array (no heap slice alloc).
+// Use this for small arrays (up to JsonArrayInlineSize elements).
+func NewJsonArrayInline() *JsonArray {
+	a := &JsonArray{}
+	a.Value = a.inline[:0]
+	return a
 }
 
 func (t *JsonArray) Append(v ...JsonType) *JsonArray {
@@ -270,12 +283,15 @@ func DeepCopyArray(object *JsonArray) *JsonArray {
 }
 
 func NewJsonArray() *JsonArray {
-	return NewJsonArrayWithCapacity(0)
+	return NewJsonArrayInline()
 }
 
 func NewJsonArrayWithCapacity(capacity int) *JsonArray {
 	if capacity < 0 {
 		capacity = 0
+	}
+	if capacity <= JsonArrayInlineSize {
+		return NewJsonArrayInline()
 	}
 	return &JsonArray{Value: make([]JsonType, 0, capacity)}
 }

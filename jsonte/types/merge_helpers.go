@@ -85,7 +85,7 @@ func forEachObjectEntryUntil(obj *JsonObject, fn func(string, JsonType) bool) {
 	if obj == nil || fn == nil {
 		return
 	}
-	if obj.Value != nil && obj.StackValue == nil {
+	if obj.StackValue == nil {
 		obj.Value.ForEachUntil(func(key string, value JsonType) bool {
 			return fn(key, value)
 		})

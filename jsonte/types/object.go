@@ -9,7 +9,7 @@ import (
 )
 
 type JsonObject struct {
-	Value       *utils.NavigableMap[string, JsonType]
+	Value       utils.NavigableMap[string, JsonType]
 	StackValue  *deque.Deque[*JsonObject]
 	StackTarget *JsonObject
 	parent      JsonType
@@ -20,7 +20,7 @@ func forEachEntry(obj *JsonObject, fn func(string, JsonType)) {
 	if obj == nil || fn == nil {
 		return
 	}
-	if obj.Value != nil && obj.StackValue == nil {
+	if obj.StackValue == nil {
 		obj.Value.ForEach(fn)
 		return
 	}
@@ -29,27 +29,50 @@ func forEachEntry(obj *JsonObject, fn func(string, JsonType)) {
 	}
 }
 
+// RangeEntries calls fn for each key-value pair, stopping early if fn returns true.
+// Uses the fast slice-based path for plain Value objects; falls back to Keys()+Get() for StackValue.
+func (t *JsonObject) RangeEntries(fn func(string, JsonType) bool) {
+	if t == nil || fn == nil {
+		return
+	}
+	if t.StackValue == nil {
+		t.Value.Range(fn)
+		return
+	}
+	for _, key := range t.Keys() {
+		if fn(key, t.Get(key)) {
+			return
+		}
+	}
+}
+
 func (t *JsonObject) Keys() []string {
-	if t.Value != nil {
+	if t.StackValue == nil {
 		return t.Value.Keys()
 	}
-	if t.StackValue != nil {
-		keysMap := make(map[string]bool)
-		for _, k := range t.StackTarget.Keys() {
+	keysMap := make(map[string]bool)
+	for _, k := range t.StackTarget.Keys() {
+		keysMap[k] = true
+	}
+	for i := 0; i < t.StackValue.Len(); i++ {
+		for _, k := range t.StackValue.At(i).Keys() {
 			keysMap[k] = true
 		}
-		for i := 0; i < t.StackValue.Len(); i++ {
-			for _, k := range t.StackValue.At(i).Keys() {
-				keysMap[k] = true
-			}
-		}
-		keys := make([]string, 0)
-		for k := range keysMap {
-			keys = append(keys, k)
-		}
-		return keys
 	}
-	return []string{}
+	keys := make([]string, 0)
+	for k := range keysMap {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// AppendKeys appends all keys to dst and returns the result, reusing dst's backing array.
+func (t *JsonObject) AppendKeys(dst []string) []string {
+	if t.StackValue == nil {
+		return t.Value.AppendKeys(dst)
+	}
+	// Fallback for stacked objects: use Keys() and append.
+	return append(dst, t.Keys()...)
 }
 
 func (t *JsonObject) Get(key string) JsonType {
@@ -60,24 +83,22 @@ func (t *JsonObject) Get(key string) JsonType {
 }
 
 func (t *JsonObject) TryGet(key string) (JsonType, bool) {
-	if t.Value != nil {
+	if t.StackValue == nil {
 		return t.Value.TryGet(key)
 	}
-	if t.StackValue != nil {
-		if t.StackTarget.ContainsKey(key) {
-			return t.StackTarget.Get(key), true
-		}
-		for i := t.StackValue.Len() - 1; i >= 0; i-- {
-			if t.StackValue.At(i).ContainsKey(key) {
-				return t.StackValue.At(i).Get(key), true
-			}
+	if t.StackTarget.ContainsKey(key) {
+		return t.StackTarget.Get(key), true
+	}
+	for i := t.StackValue.Len() - 1; i >= 0; i-- {
+		if t.StackValue.At(i).ContainsKey(key) {
+			return t.StackValue.At(i).Get(key), true
 		}
 	}
 	return Null, false
 }
 
 func (t *JsonObject) Put(key string, value JsonType) {
-	if t.Value != nil {
+	if t.StackValue == nil {
 		t.Value.Put(key, value)
 	} else {
 		t.StackTarget.Put(key, value)
@@ -85,17 +106,16 @@ func (t *JsonObject) Put(key string, value JsonType) {
 }
 
 func (t *JsonObject) Remove(key string) {
-	if t.Value != nil {
+	if t.StackValue == nil {
 		t.Value.Remove(key)
+		return
 	}
-	if t.StackValue != nil {
-		if t.StackTarget.ContainsKey(key) {
-			t.StackTarget.Remove(key)
-		}
-		for i := t.StackValue.Len() - 1; i >= 0; i-- {
-			if t.StackValue.At(i).ContainsKey(key) {
-				t.StackValue.At(i).Remove(key)
-			}
+	if t.StackTarget.ContainsKey(key) {
+		t.StackTarget.Remove(key)
+	}
+	for i := t.StackValue.Len() - 1; i >= 0; i-- {
+		if t.StackValue.At(i).ContainsKey(key) {
+			t.StackValue.At(i).Remove(key)
 		}
 	}
 }
@@ -105,9 +125,7 @@ func (t *JsonObject) Reset() {
 	if t == nil {
 		return
 	}
-	if t.Value != nil {
-		t.Value.Reset()
-	}
+	t.Value.Reset()
 	t.StackValue = nil
 	t.StackTarget = nil
 	t.parent = nil
@@ -115,17 +133,15 @@ func (t *JsonObject) Reset() {
 }
 
 func (t *JsonObject) ContainsKey(key string) bool {
-	if t.Value != nil {
+	if t.StackValue == nil {
 		return t.Value.ContainsKey(key)
 	}
-	if t.StackValue != nil {
-		if t.StackTarget.ContainsKey(key) {
+	if t.StackTarget.ContainsKey(key) {
+		return true
+	}
+	for i := t.StackValue.Len() - 1; i >= 0; i-- {
+		if t.StackValue.At(i).ContainsKey(key) {
 			return true
-		}
-		for i := t.StackValue.Len() - 1; i >= 0; i-- {
-			if t.StackValue.At(i).ContainsKey(key) {
-				return true
-			}
 		}
 	}
 	return false
@@ -169,7 +185,7 @@ func (t *JsonObject) Equals(value JsonType) bool {
 		return false
 	}
 	if b, ok := value.(*JsonObject); ok {
-		return IsEqualObject(*AsObject(t.Unbox()).Value, *AsObject(b.Unbox()).Value)
+		return IsEqualObject(AsObject(t.Unbox()).Value, AsObject(b.Unbox()).Value)
 	}
 	return false
 }
@@ -211,45 +227,37 @@ func (t *JsonObject) Add(i JsonType) JsonType {
 }
 
 func (t *JsonObject) IsEmpty() bool {
-	if t.Value != nil {
+	if t.StackValue == nil {
 		return t.Value.IsEmpty()
 	}
-	if t.StackValue != nil {
-		if !t.StackTarget.IsEmpty() {
+	if !t.StackTarget.IsEmpty() {
+		return false
+	}
+	for i := 0; i < t.StackValue.Len(); i++ {
+		if !t.StackValue.At(i).IsEmpty() {
 			return false
-		}
-		for i := 0; i < t.StackValue.Len(); i++ {
-			if !t.StackValue.At(i).IsEmpty() {
-				return false
-			}
 		}
 	}
 	return true
 }
 
 func (t *JsonObject) Size() int {
-	if t.Value != nil {
+	if t.StackValue == nil {
 		return t.Value.Size()
 	}
-	if t.StackValue != nil {
-		return len(t.Keys())
-	}
-	return 0
+	return len(t.Keys())
 }
 
 func (t *JsonObject) Values() []JsonType {
-	if t.Value != nil {
+	if t.StackValue == nil {
 		return t.Value.Values()
 	}
-	if t.StackValue != nil {
-		values := make([]JsonType, 0)
-		keys := t.Keys()
-		for _, k := range keys {
-			values = append(values, t.Get(k))
-		}
-		return values
+	values := make([]JsonType, 0)
+	keys := t.Keys()
+	for _, k := range keys {
+		values = append(values, t.Get(k))
 	}
-	return []JsonType{}
+	return values
 }
 
 // AsObject returns the given interface as a JSON object.
@@ -264,7 +272,7 @@ func AsObject(obj interface{}) *JsonObject {
 		return NewJsonObject()
 	}
 	if b, ok := obj.(utils.NavigableMap[string, JsonType]); ok {
-		return &JsonObject{&b, nil, nil, nil, nil}
+		return &JsonObject{Value: b}
 	}
 	if b, ok := obj.(utils.NavigableMap[string, interface{}]); ok {
 		result := NewJsonObject()
@@ -348,14 +356,8 @@ func MergeObject(template, parent *JsonObject, keepOverrides bool, path string) 
 	if parent == nil {
 		parent = NewJsonObject()
 	}
-	templateCapacity := 0
-	if template.Value != nil {
-		templateCapacity = template.Value.Size()
-	}
-	parentCapacity := 0
-	if parent.Value != nil {
-		parentCapacity = parent.Value.Size()
-	}
+	templateCapacity := template.Value.Size()
+	parentCapacity := parent.Value.Size()
 	result := NewJsonObjectWithCapacity(templateCapacity + parentCapacity)
 	forEachEntry(template, func(key string, value JsonType) {
 		switch typed := value.(type) {
@@ -491,8 +493,7 @@ func DeepCopyObject(object *JsonObject) *JsonObject {
 		return NewJsonObject()
 	}
 	result := NewJsonObjectWithCapacity(object.Size())
-	for _, k := range object.Keys() {
-		v := object.Get(k)
+	object.RangeEntries(func(k string, v JsonType) bool {
 		switch typed := v.(type) {
 		case *JsonObject:
 			result.Put(k, DeepCopyObject(typed))
@@ -501,19 +502,18 @@ func DeepCopyObject(object *JsonObject) *JsonObject {
 		default:
 			result.Put(k, v)
 		}
-	}
+		return false
+	})
 	return result
 }
 
 func NewJsonObject() *JsonObject {
-	navigableMap := utils.NewNavigableMap[string, JsonType]()
-	return &JsonObject{&navigableMap, nil, nil, nil, nil}
+	return &JsonObject{Value: utils.NewNavigableMap[string, JsonType]()}
 }
 
 // NewJsonObjectWithCapacity creates a JsonObject preallocating internal storage.
 func NewJsonObjectWithCapacity(capacity int) *JsonObject {
-	navigableMap := utils.NewNavigableMapWithCapacity[string, JsonType](capacity)
-	return &JsonObject{&navigableMap, nil, nil, nil, nil}
+	return &JsonObject{Value: utils.NewNavigableMapWithCapacity[string, JsonType](capacity)}
 }
 
 func IsReservedKey(k string) bool {
