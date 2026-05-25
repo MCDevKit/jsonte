@@ -12,6 +12,11 @@ import (
 // expressionCache stores parsed expression trees keyed by their original text.
 var expressionCache sync.Map
 
+// exprVisitorPool pools ExpressionVisitor objects to avoid per-call heap escapes.
+var exprVisitorPool = sync.Pool{
+	New: func() interface{} { return &ExpressionVisitor{} },
+}
+
 // Result is the result of evaluating an expression
 type Result struct {
 	Value         types.JsonType
@@ -88,7 +93,7 @@ func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Resul
 		name:          DefaultName,
 		indexName:     DefaultIndexName,
 		variableScope: types.NewJsonObject(),
-		path:          &path,
+
 	}
 	r, err := visitor.Visit(tree)
 	return Result{
@@ -122,7 +127,7 @@ func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) 
 		name:          DefaultName,
 		indexName:     DefaultIndexName,
 		variableScope: types.NewJsonObject(),
-		path:          &path,
+
 	}
 	r, err := visitor.Visit(tree)
 	return Result{
@@ -135,7 +140,7 @@ func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) 
 
 // evalWithExtraScope evaluates text using scope as the primary scope and extraScope as secondary,
 // avoiding the allocation of a merged deque copy.
-func evalWithExtraScope(text string, scope deque.Deque[*types.JsonObject], extraScope *deque.Deque[*types.JsonObject], path string) (Result, error) {
+func evalWithExtraScope(text string, scope *deque.Deque[*types.JsonObject], extraScope *deque.Deque[*types.JsonObject]) (Result, error) {
 	var tree antlr.ParseTree
 	if cached, ok := expressionCache.Load(text); ok {
 		tree = cached.(antlr.ParseTree)
@@ -156,22 +161,31 @@ func evalWithExtraScope(text string, scope deque.Deque[*types.JsonObject], extra
 		}
 		expressionCache.Store(text, tree)
 	}
-	visitor := ExpressionVisitor{
-		scope:      scope,
-		extraScope: extraScope,
-		name:       DefaultName,
-		indexName:  DefaultIndexName,
-		path:       &path,
-	}
-	r, err := visitor.Visit(tree)
-	return Result{
+	v := exprVisitorPool.Get().(*ExpressionVisitor)
+	v.scope = *scope
+	v.extraScope = extraScope
+	v.name = DefaultName
+	v.indexName = DefaultIndexName
+	v.action = 0
+	v.variableScope = nil
+	v.globalScope = nil
+	v.usedVariables = v.usedVariables[:0]
+
+	r, err := v.Visit(tree)
+	result := Result{
 		Value:         r,
-		Action:        visitor.action,
-		Name:          visitor.name,
-		IndexName:     visitor.indexName,
-		VariableScope: visitor.variableScope,
-		Scope:         scope,
-	}, err
+		Action:        v.action,
+		Name:          v.name,
+		IndexName:     v.indexName,
+		VariableScope: v.variableScope,
+		Scope:         *scope,
+	}
+	// Wyczyść referencje przed zwrotem do puli.
+	v.scope = deque.Deque[*types.JsonObject]{}
+	v.extraScope = nil
+	v.variableScope = nil
+	exprVisitorPool.Put(v)
+	return result, err
 }
 
 // EvalWithTempScope evaluates the given expression and returns the result
@@ -212,7 +226,7 @@ func EvalJsonteFile(text string, scope *types.JsonObject, path string) error {
 		name:          DefaultName,
 		indexName:     DefaultIndexName,
 		variableScope: types.NewJsonObject(),
-		path:          &path,
+
 		globalScope:   scope,
 	}
 	_, err := visitor.Visit(tree)

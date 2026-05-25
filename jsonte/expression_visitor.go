@@ -2,6 +2,7 @@
 
 import (
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/Bedrock-OSS/go-burrito/burrito"
@@ -20,6 +21,57 @@ const DefaultIndexName = "index"
 // This avoids repeated allocations in ResolveScope where the same names are looked up
 // thousands of times during array iteration.
 var jsonStringInternCache sync.Map
+
+// lambdaStringCache caches parsed lambda AST trees for string-lambda arguments.
+// Keyed by the raw lambda source string.
+var lambdaStringCache sync.Map
+
+// lambdaCtxInfo holds precomputed metadata for a LambdaContext.
+type lambdaCtxInfo struct {
+	text   string
+	vars   []string
+	args   []string // lv.arguments — all args including nested lambdas; used for JsonLambda.Arguments
+	params []string // direct outer params only (ctx.AllName()); used for scope push/pop and arity check
+}
+
+// lambdaInfoCache caches metadata for LambdaContext pointers from the expression cache.
+// Since the expression cache keeps parse trees alive, the *LambdaContext pointer is stable.
+var lambdaInfoCache sync.Map
+
+// nodeTextCache caches the GetText() result for stable parse-tree nodes.
+// ANTLR creates an Interval on every GetText() call (never memoizes), so caching here
+// saves one heap allocation per node per visit.
+var nodeTextCache sync.Map
+
+// spreadFieldCache caches the AllSpread_field() slice per ArrayContext pointer.
+// ANTLR's All* methods allocate a new slice each call; caching avoids this for
+// expressions that appear repeatedly inside loops.
+var spreadFieldCache sync.Map
+
+// nodeNumberCache caches *types.JsonNumber per NUMBER terminal node pointer.
+// NUMBER literals in expressions are never indexed (no UpdateParent call), so
+// sharing the same *JsonNumber across evaluations is safe.
+var nodeNumberCache sync.Map
+
+// cachedGetText returns GetText() for any stable parse-tree node, caching the result.
+func cachedGetText(node antlr.ParseTree) string {
+	if v, ok := nodeTextCache.Load(node); ok {
+		return v.(string)
+	}
+	text := node.GetText()
+	nodeTextCache.Store(node, text)
+	return text
+}
+
+// cachedNodeNumber returns a *types.JsonNumber for a NUMBER terminal node, caching by node pointer.
+func cachedNodeNumber(node antlr.TerminalNode) *types.JsonNumber {
+	if v, ok := nodeNumberCache.Load(node); ok {
+		return v.(*types.JsonNumber)
+	}
+	n := types.AsNumber(node.GetText())
+	nodeNumberCache.Store(node, n)
+	return n
+}
 
 func internedJsonString(s string) *types.JsonString {
 	if v, ok := jsonStringInternCache.Load(s); ok {
@@ -52,7 +104,6 @@ type ExpressionVisitor struct {
 	// extraScope holds an additional scope layer (e.g. moduleScope from TemplateVisitor)
 	// searched after scope so that scope entries take priority.
 	extraScope    *deque.Deque[*types.JsonObject]
-	path          *string
 	usedVariables []string
 	variableScope *types.JsonObject
 	// globalScope, when non-nil, enables the $scope pseudo-variable in .jsonte scripts.
@@ -146,6 +197,9 @@ func isInLeftSideOfAssignment(context antlr.Tree) bool {
 
 // resolveLambdaTree resolves a string to an AST tree
 func (v *ExpressionVisitor) resolveLambdaTree(src string) parser.ILambdaContext {
+	if cached, ok := lambdaStringCache.Load(src); ok {
+		return cached.(parser.ILambdaContext)
+	}
 	is := antlr.NewInputStream(src)
 	lexer := NewTemplateAwareLexer(is)
 	lexer.JsonTemplateLexer.RemoveErrorListeners()
@@ -155,7 +209,9 @@ func (v *ExpressionVisitor) resolveLambdaTree(src string) parser.ILambdaContext 
 	p.RemoveErrorListeners()
 	p.AddErrorListener(antlr.NewConsoleErrorListener())
 	p.BuildParseTrees = true
-	return p.Lambda()
+	ctx := p.Lambda()
+	lambdaStringCache.Store(src, ctx)
+	return ctx
 }
 
 // pushScope pushes a new scope to the stack
@@ -199,14 +255,12 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 	// $scope is a write-through proxy to the global scope, available only in .jsonte scripts.
 	if name == "$scope" && v.globalScope != nil {
 		return &types.JsonObject{
-			Value:       nil,
 			StackValue:  &v.scope,
 			StackTarget: v.globalScope,
 		}
 	}
 	if name == "this" {
 		return &types.JsonObject{
-			Value:       nil,
 			StackValue:  &v.scope,
 			StackTarget: v.initVarScope(),
 		}
@@ -286,7 +340,7 @@ func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.
 		for i, value := range arr.(*types.JsonArray).Value {
 			v.pushScopePair(valueName, value)
 			if hasIndex {
-				v.pushScopePair(indexName, types.AsNumber(i))
+				v.pushScopePair(indexName, types.NewIntNumber(int64(i)))
 			}
 			val, err := v.Visit(ctx.Statements(0))
 			if hasIndex {
@@ -660,37 +714,19 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				return types.CreateRange(n1.IntValue(), n2.IntValue()), nil
 			} else if n1.Decimal || n2.Decimal {
 				if context.Subtract() != nil {
-					return &types.JsonNumber{
-						Value:   n1.FloatValue() - n2.FloatValue(),
-						Decimal: true,
-					}, nil
+					return types.NewFloatNumber(n1.FloatValue() - n2.FloatValue()), nil
 				} else if context.Divide() != nil {
-					return &types.JsonNumber{
-						Value:   n1.FloatValue() / n2.FloatValue(),
-						Decimal: true,
-					}, nil
+					return types.NewFloatNumber(n1.FloatValue() / n2.FloatValue()), nil
 				} else if context.Multiply() != nil {
-					return &types.JsonNumber{
-						Value:   n1.FloatValue() * n2.FloatValue(),
-						Decimal: true,
-					}, nil
+					return types.NewFloatNumber(n1.FloatValue() * n2.FloatValue()), nil
 				}
 			} else {
 				if context.Subtract() != nil {
-					return &types.JsonNumber{
-						Value:   float64(n1.IntValue() - n2.IntValue()),
-						Decimal: false,
-					}, nil
+					return types.NewIntNumber(int64(n1.IntValue()) - int64(n2.IntValue())), nil
 				} else if context.Divide() != nil {
-					return &types.JsonNumber{
-						Value:   float64(n1.IntValue() / n2.IntValue()),
-						Decimal: false,
-					}, nil
+					return types.NewIntNumber(int64(n1.IntValue()) / int64(n2.IntValue())), nil
 				} else if context.Multiply() != nil {
-					return &types.JsonNumber{
-						Value:   float64(n1.IntValue() * n2.IntValue()),
-						Decimal: false,
-					}, nil
+					return types.NewIntNumber(int64(n1.IntValue()) * int64(n2.IntValue())), nil
 				}
 			}
 		} else {
@@ -766,7 +802,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			var methodName *string = nil
 			for _, child := range context.Field(0).GetChildren() {
 				if b, ok := child.(parser.INameContext); ok {
-					text := b.GetText()
+					text := cachedGetText(b.(antlr.ParseTree))
 					methodName = &text
 					break
 				}
@@ -789,7 +825,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	}
 	// handle accessing a property of an object or calling an instance function
 	if context.Name() != nil && len(context.AllField()) == 1 {
-		text := context.Name().GetText()
+		text := cachedGetText(context.Name())
 		object, err := v.Visit(context.Field(0))
 		if err != nil {
 			return types.Null, burrito.PassError(err)
@@ -852,10 +888,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		return index, nil
 	}
 	if context.NUMBER() != nil {
-		return types.AsNumber(context.NUMBER().GetText()), nil
+		return cachedNodeNumber(context.NUMBER()), nil
 	}
 	if context.ESCAPED_STRING() != nil {
-		return types.NewString(unescapeString(types.ToString(context.ESCAPED_STRING().GetText()))), nil
+		return types.NewString(unescapeString(types.ToString(cachedGetText(context.ESCAPED_STRING())))), nil
 	}
 	// template string literal
 	if context.Template_string() != nil {
@@ -888,7 +924,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 }
 
 func (v *ExpressionVisitor) VisitName(context *parser.NameContext) (types.JsonType, error) {
-	text := context.GetText()
+	text := cachedGetText(context)
 	newScope := v.ResolveScope(text)
 
 	back := v.scope.Len() - 1
@@ -904,10 +940,10 @@ func (v *ExpressionVisitor) VisitName(context *parser.NameContext) (types.JsonTy
 
 func (v *ExpressionVisitor) VisitIndex(context *parser.IndexContext) (types.JsonType, error) {
 	if context.NUMBER() != nil {
-		return types.AsNumber(context.NUMBER().GetText()), nil
+		return cachedNodeNumber(context.NUMBER()), nil
 	}
 	if context.ESCAPED_STRING() != nil {
-		return types.NewString(unescapeString(types.ToString(context.ESCAPED_STRING().GetText()))), nil
+		return types.NewString(unescapeString(types.ToString(cachedGetText(context.ESCAPED_STRING())))), nil
 	}
 	if context.Field() != nil {
 		return v.Visit(context.Field())
@@ -916,8 +952,15 @@ func (v *ExpressionVisitor) VisitIndex(context *parser.IndexContext) (types.Json
 }
 
 func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) (types.JsonType, error) {
-	result := make([]types.JsonType, 0)
-	for _, f := range context.AllSpread_field() {
+	var spreadFields []parser.ISpread_fieldContext
+	if cached, ok := spreadFieldCache.Load(context); ok {
+		spreadFields = cached.([]parser.ISpread_fieldContext)
+	} else {
+		spreadFields = context.AllSpread_field()
+		spreadFieldCache.Store(context, spreadFields)
+	}
+	a := types.NewJsonArrayInline()
+	for _, f := range spreadFields {
 		sf := f.(*parser.Spread_fieldContext)
 		r, err := v.Visit(sf.Field())
 		if err != nil {
@@ -927,24 +970,41 @@ func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) (types.Json
 			if _, ok := r.(*types.JsonArray); !ok {
 				return types.Null, burrito.WrappedErrorf("Cannot spread %s into an array", r.StringValue())
 			}
-			result = append(result, r.(*types.JsonArray).Value...)
+			a.Value = append(a.Value, r.(*types.JsonArray).Value...)
 		} else {
-			result = append(result, r)
+			a.Value = append(a.Value, r)
 		}
 	}
-	return &types.JsonArray{Value: result}, nil
+	return a, nil
 }
 
 func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) (types.JsonType, error) {
 	result := types.NewJsonObject()
 	for _, f := range context.AllObject_field() {
-		obj, err := v.Visit(f)
-		if err != nil {
-			return types.Null, burrito.PassError(err)
-		}
-		u := obj.(*types.JsonObject)
-		for _, key := range u.Keys() {
-			result.Put(key, u.Get(key))
+		sf := f.(*parser.Object_fieldContext)
+		if sf.Spread() != nil {
+			obj, err := v.Visit(sf.Field())
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			if u, ok := obj.(*types.JsonObject); ok {
+				u.RangeEntries(func(key string, value types.JsonType) bool {
+					result.Put(key, value)
+					return false
+				})
+			}
+		} else {
+			var name string
+			if sf.ESCAPED_STRING() != nil {
+				name = unescapeString(types.ToString(cachedGetText(sf.ESCAPED_STRING())))
+			} else {
+				name = cachedGetText(sf.Name())
+			}
+			field, err := v.Visit(sf.Field())
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			result.Put(name, field)
 		}
 	}
 	return result, nil
@@ -953,11 +1013,11 @@ func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) (types.Js
 func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContext) (types.JsonType, error) {
 	name := ""
 	if context.ESCAPED_STRING() != nil {
-		name = unescapeString(types.ToString(context.ESCAPED_STRING().GetText()))
+		name = unescapeString(types.ToString(cachedGetText(context.ESCAPED_STRING())))
 	} else if context.Spread() != nil {
 		return v.Visit(context.Field())
 	} else {
-		name = context.Name().GetText()
+		name = cachedGetText(context.Name())
 	}
 	field, err := v.Visit(context.Field())
 	if err != nil {
@@ -969,20 +1029,34 @@ func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContex
 }
 
 func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonType, error) {
-	lv := LambdaVisitor{}
-	lv.Visit(ctx)
-	vars := lv.usedVariables
-	args := lv.arguments
-	lambdaText := ctx.GetStart().GetInputStream().GetText(ctx.GetStart().GetStart(), ctx.GetStop().GetStop())
+	var info lambdaCtxInfo
+	if cached, ok := lambdaInfoCache.Load(ctx); ok {
+		info = cached.(lambdaCtxInfo)
+	} else {
+		lv := LambdaVisitor{}
+		lv.Visit(ctx)
+		directNames := ctx.AllName()
+		params := make([]string, len(directNames))
+		for i, n := range directNames {
+			params[i] = n.GetText()
+		}
+		info = lambdaCtxInfo{
+			text:   ctx.GetStart().GetInputStream().GetText(ctx.GetStart().GetStart(), ctx.GetStop().GetStop()),
+			vars:   lv.usedVariables,
+			args:   lv.arguments,
+			params: params,
+		}
+		lambdaInfoCache.Store(ctx, info)
+	}
 	hasBlock := ctx.Statements() != nil
+	params := info.params
 	return types.NewLambda(
 		func(this *types.JsonLambda, o []types.JsonType) (types.JsonType, error) {
-			if len(ctx.AllName()) > len(o) {
-				return types.Null, burrito.WrappedErrorf("Lambda expects %d arguments, but got %d", len(ctx.AllName()), len(o))
+			if len(params) > len(o) {
+				return types.Null, burrito.WrappedErrorf("Lambda expects %d arguments, but got %d", len(params), len(o))
 			}
-			for i, context := range ctx.AllName() {
-				// Ensure we get boxed type
-				v.pushScopePair(context.GetText(), o[i])
+			for i, argName := range params {
+				v.pushScopePair(argName, o[i])
 			}
 			var result types.JsonType
 			var err error
@@ -998,7 +1072,7 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			} else {
 				result, err = v.Visit(ctx.Field())
 			}
-			for i := 0; i < len(ctx.AllName()); i++ {
+			for range params {
 				v.popScopeObject()
 			}
 			if err != nil {
@@ -1006,9 +1080,9 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			}
 			return result, nil
 		},
-		lambdaText,
-		vars,
-		args,
+		info.text,
+		info.vars,
+		info.args,
 	), nil
 }
 
@@ -1023,20 +1097,20 @@ func (v *ExpressionVisitor) VisitFunction_param(ctx *parser.Function_paramContex
 }
 
 func (v *ExpressionVisitor) VisitTemplate_string(ctx *parser.Template_stringContext) (types.JsonType, error) {
-	result := ""
+	var sb strings.Builder
 	for _, part := range ctx.AllTemplate_string_part() {
 		partCtx := part.(*parser.Template_string_partContext)
 		if partCtx.TEMPLATE_TEXT() != nil {
-			result += unescapeTemplateText(partCtx.TEMPLATE_TEXT().GetText())
+			sb.WriteString(unescapeTemplateText(cachedGetText(partCtx.TEMPLATE_TEXT())))
 		} else {
 			val, err := v.Visit(partCtx.Field())
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
-			result += val.StringValue()
+			sb.WriteString(val.StringValue())
 		}
 	}
-	return types.NewString(result), nil
+	return types.NewString(sb.String()), nil
 }
 
 func (v *ExpressionVisitor) VisitTemplate_string_part(ctx *parser.Template_string_partContext) (types.JsonType, error) {
@@ -1044,7 +1118,7 @@ func (v *ExpressionVisitor) VisitTemplate_string_part(ctx *parser.Template_strin
 		return v.Visit(ctx.Field())
 	}
 	if ctx.TEMPLATE_TEXT() != nil {
-		return types.NewString(unescapeTemplateText(ctx.TEMPLATE_TEXT().GetText())), nil
+		return types.NewString(unescapeTemplateText(cachedGetText(ctx.TEMPLATE_TEXT()))), nil
 	}
 	return types.NewString(""), nil
 }

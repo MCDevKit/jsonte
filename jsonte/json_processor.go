@@ -28,12 +28,22 @@ type TemplateVisitor struct {
 	moduleScope deque.Deque[*types.JsonObject]
 	globalScope *types.JsonObject
 	deadline    int64
+	// keysBuffer is a reusable scratch buffer for visitArrayElement.
+	// Safe to share because the function always returns before re-entering the range loop.
+	keysBuffer []string
+	// pathBuf holds the current JSON path as a growing byte buffer.
+	// Callers set it via pathSet/pathPush/pathPop to avoid per-key string allocations.
+	pathBuf []byte
 }
 
 const MaxInt64 = int64(^uint64(0) >> 1)
 
+// strBuf wraps a []byte so the pool can recycle the backing array across calls.
+// strings.Builder.Reset() sets buf=nil, destroying capacity; this avoids that.
+type strBuf struct{ b []byte }
+
 var stringBuilderPool = sync.Pool{
-	New: func() interface{} { return &strings.Builder{} },
+	New: func() interface{} { return &strBuf{b: make([]byte, 0, 128)} },
 }
 
 // LoadModule loads a module from a file and returns a JsonModule
@@ -66,7 +76,8 @@ func LoadModule(input string, globalScope *types.JsonObject, timeout int64) (Jso
 			globalScope: globalScope,
 			deadline:    deadline,
 		}
-		object, err := scopeVisitor.visitObject(types.DeepCopyObject(*s), "$scope")
+		scopeVisitor.pathSet("$scope")
+		object, err := scopeVisitor.visitObject(types.DeepCopyObject(*s))
 		if err != nil {
 			return JsonModule{}, burrito.WrapErrorf(err, "Failed to template scope")
 		}
@@ -117,7 +128,8 @@ func ProcessAssertionsFile(name, input string, globalScope *types.JsonObject, ti
 		deadline:    deadline,
 	}
 
-	err = visitor.visitAssert(root, name+"#/")
+	visitor.pathSet(name + "#/")
+	err = visitor.visitAssert(root)
 	if err != nil {
 		return burrito.PassError(err)
 	}
@@ -153,7 +165,8 @@ func Process(name, input string, globalScope *types.JsonObject, modules map[stri
 			globalScope: globalScope,
 			deadline:    deadline,
 		}
-		object, err := scopeVisitor.visitObject(types.DeepCopyObject(*s), "$scope")
+		scopeVisitor.pathSet("$scope")
+		object, err := scopeVisitor.visitObject(types.DeepCopyObject(*s))
 		if err != nil {
 			return result, burrito.WrapErrorf(err, "Failed to template scope")
 		}
@@ -198,7 +211,7 @@ func Process(name, input string, globalScope *types.JsonObject, modules map[stri
 		if err != nil {
 			return result, utils.WrapJsonErrorf("$files", err, "Invalid array expression")
 		}
-		array, err := evalWithExtraScope((*arrayExpression).StringValue(), visitor.scope, &visitor.moduleScope, "$files.array")
+		array, err := evalWithExtraScope((*arrayExpression).StringValue(), &visitor.scope, &visitor.moduleScope)
 		if err != nil {
 			return result, burrito.WrapErrorf(err, "Failed to evaluate $files.array")
 		}
@@ -256,18 +269,21 @@ func Process(name, input string, globalScope *types.JsonObject, modules map[stri
 				if err != nil {
 					return result, utils.WrapJsonErrorf("$files", err, "Invalid file name")
 				}
-				mFileName, err := visitor.visitString((*fName).StringValue(), "$files.filename")
+				visitor.pathSet("$files.filename")
+				mFileName, err := visitor.visitString((*fName).StringValue())
 				if err != nil {
 					return result, burrito.WrapErrorf(err, "Failed to evaluate $files.filename")
 				}
 				var f types.JsonType
 				if v, ok := template.(*types.JsonObject); ok {
-					f, err = visitor.visitObject(types.DeepCopyObject(v), "$template")
+					visitor.pathSet("$template")
+					f, err = visitor.visitObject(types.DeepCopyObject(v))
 					if err != nil {
 						return result, burrito.PassError(err)
 					}
 				} else if v, ok := template.(*types.JsonArray); ok {
-					f, err = visitor.visitArray(types.DeepCopyArray(v), "$template")
+					visitor.pathSet("$template")
+					f, err = visitor.visitArray(types.DeepCopyArray(v))
 					if err != nil {
 						return result, burrito.PassError(err)
 					}
@@ -326,13 +342,15 @@ func Process(name, input string, globalScope *types.JsonObject, modules map[stri
 		}
 		var f types.JsonType
 		if v, ok := template.(*types.JsonObject); ok {
-			f, err = visitor.visitObject(types.DeepCopyObject(v), "$template")
+			visitor.pathSet("$template")
+			f, err = visitor.visitObject(types.DeepCopyObject(v))
 			if err != nil {
 				return result, burrito.PassError(err)
 			}
 			result.Put(name, types.MergeObject(types.NewJsonObject(), f.(*types.JsonObject), false, "#"))
 		} else if v, ok := template.(*types.JsonArray); ok {
-			f, err = visitor.visitArray(types.DeepCopyArray(v), "$template")
+			visitor.pathSet("$template")
+			f, err = visitor.visitArray(types.DeepCopyArray(v))
 			if err != nil {
 				return result, burrito.PassError(err)
 			}
@@ -372,7 +390,8 @@ func processCopy(c types.JsonType, visitor TemplateVisitor, modules map[string]J
 	}
 	for i, c := range copies {
 		loopPath := fmt.Sprintf("%s[%d]", path, i)
-		c, err := visitor.visitString(c.StringValue(), path)
+		visitor.pathBuf = []byte(path)
+		c, err := visitor.visitString(c.StringValue())
 		if err != nil {
 			return types.Null, utils.WrapJsonErrorf(loopPath, err, "Failed to evaluate $copy")
 		}
@@ -464,7 +483,8 @@ func extendTemplate(extend types.JsonType, template *types.JsonObject, visitor *
 			return types.NewJsonObject(), resolvedModules, utils.WrapJsonErrorf(path, err, "Failed to parse template %s", str)
 		}
 		if len(matches) > 0 {
-			eval, err := visitor.visitString(str, path)
+			visitor.pathBuf = []byte(path)
+			eval, err := visitor.visitString(str)
 			if err != nil {
 				return types.NewJsonObject(), resolvedModules, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", path)
 			}
@@ -501,7 +521,8 @@ func extendTemplate(extend types.JsonType, template *types.JsonObject, visitor *
 			template = types.MergeObject(object.(*types.JsonObject), template, true, "#")
 		}
 		if !mod.Template.IsEmpty() {
-			parent, err := visitor.visitObject(mod.Template, "[Module "+module+"]")
+			visitor.pathBuf = []byte("[Module " + module + "]")
+			parent, err := visitor.visitObject(mod.Template)
 			if err != nil {
 				return types.NewJsonObject(), resolvedModules, burrito.WrapErrorf(err, "Error processing template for module %s", mod.Name.StringValue())
 			}
@@ -535,166 +556,262 @@ func (v *TemplateVisitor) getScope() deque.Deque[*types.JsonObject] {
 	return result
 }
 
-func (v *TemplateVisitor) visit(obj types.JsonType, path string) (types.JsonType, error) {
+// pathSet initialises pathBuf to path, using a fresh allocation to avoid sharing backing arrays with callers that pass visitor by value.
+func (v *TemplateVisitor) pathSet(path string) {
+	v.pathBuf = []byte(path)
+}
+
+// pathPush appends "/" + seg to pathBuf and returns the old length for later restoration.
+func (v *TemplateVisitor) pathPush(seg string) int {
+	n := len(v.pathBuf)
+	v.pathBuf = append(v.pathBuf, '/')
+	v.pathBuf = append(v.pathBuf, seg...)
+	return n
+}
+
+// pathPushIndex appends "[i]" to pathBuf and returns the old length.
+func (v *TemplateVisitor) pathPushIndex(i int) int {
+	n := len(v.pathBuf)
+	v.pathBuf = append(v.pathBuf, '[')
+	v.pathBuf = strconv.AppendInt(v.pathBuf, int64(i), 10)
+	v.pathBuf = append(v.pathBuf, ']')
+	return n
+}
+
+// pathPop restores pathBuf to the length saved by a prior pathPush/pathPushIndex.
+func (v *TemplateVisitor) pathPop(n int) {
+	v.pathBuf = v.pathBuf[:n]
+}
+
+// pathStr returns the current path as a string. Only call in error paths to avoid allocs.
+func (v *TemplateVisitor) pathStr() string {
+	return string(v.pathBuf)
+}
+
+// pathStrAt returns pathBuf[:n] as a string (the parent path). Only call in error paths.
+func (v *TemplateVisitor) pathStrAt(n int) string {
+	return string(v.pathBuf[:n])
+}
+
+func (v *TemplateVisitor) visit(obj types.JsonType) (types.JsonType, error) {
 	if obj == nil {
 		return nil, nil
 	}
 	if str, ok := obj.(*types.JsonString); ok {
-		return v.visitString(str.StringValue(), path)
+		return v.visitString(str.StringValue())
 	}
 	if arr, ok := obj.(*types.JsonArray); ok {
-		return v.visitArray(arr, path)
+		return v.visitArray(arr)
 	}
 	if objMap, ok := obj.(*types.JsonObject); ok {
-		return v.visitObject(objMap, path)
+		return v.visitObject(objMap)
 	}
 	return obj, nil
 }
 
-func (v *TemplateVisitor) visitObject(obj *types.JsonObject, path string) (types.JsonType, error) {
+func (v *TemplateVisitor) visitObject(obj *types.JsonObject) (types.JsonType, error) {
 	var result = types.NewJsonObjectWithCapacity(obj.Size())
-	for _, key := range obj.Keys() {
-		err := checkDeadline(v.deadline)
-		if err != nil {
-			return result, err
+	var outerErr error
+	nilResult := false
+	parentPathLen := len(v.pathBuf)
+
+	obj.RangeEntries(func(key string, value types.JsonType) bool {
+		if err := checkDeadline(v.deadline); err != nil {
+			outerErr = err
+			return true
 		}
-		value := obj.Get(key)
 		// The only keys, that can be with $ prefix are ones specified in MergeObject function
 		if strings.EqualFold(key, "$comment") {
-			continue
+			return false
 		}
 		if strings.EqualFold(key, "$assert") {
-			if err = v.visitAssert(value, path+"/$assert"); err != nil {
-				return result, err
-			}
-			continue
-		}
-		if strings.HasPrefix(key, "{{") && strings.HasSuffix(key, "}}") && (key[2] == '#' || key[2] == '?') {
-			keyPath := path + "/" + key
-			eval, err := evalWithExtraScope(key, v.scope, &v.moduleScope, keyPath)
+			n := v.pathPush("$assert")
+			err := v.visitAssert(value)
+			v.pathPop(n)
 			if err != nil {
-				return nil, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", key)
+				outerErr = err
+				return true
+			}
+			return false
+		}
+		if strings.HasPrefix(key, "{{") && strings.HasSuffix(key, "}}") && len(key) > 2 && (key[2] == '#' || key[2] == '?') {
+			nk := v.pathPush(key)
+			eval, err := evalWithExtraScope(key, &v.scope, &v.moduleScope)
+			if err != nil {
+				v.pathPop(nk)
+				nilResult = true
+				outerErr = utils.WrapJsonErrorf(v.pathStrAt(parentPathLen), err, "Failed to evaluate %s", key)
+				return true
 			}
 			switch eval.Action {
 			case types.Iteration:
 				if _, ok := value.(*types.JsonObject); !ok {
-					return nil, utils.WrappedJsonErrorf(path, "The value of the iteration key must be an object")
+					v.pathPop(nk)
+					nilResult = true
+					outerErr = utils.WrappedJsonErrorf(v.pathStrAt(parentPathLen), "The value of the iteration key must be an object")
+					return true
 				}
 				if arr, ok := eval.Value.(*types.JsonArray); ok {
 					for i, val := range arr.Value {
 						scopeObj := getScopeObject()
-						scopeObj.Put(eval.IndexName, types.AsNumber(i))
+						scopeObj.Put(eval.IndexName, types.NewIntNumber(int64(i)))
 						scopeObj.Put(eval.Name, val)
 						v.pushScope(scopeObj)
-						if obj, ok := val.(*types.JsonObject); ok {
-							v.pushScope(obj)
+						if innerObj, ok := val.(*types.JsonObject); ok {
+							v.pushScope(innerObj)
 						}
-						o, err := v.visit(value, keyPath+"["+strconv.Itoa(i)+"]")
+						ni := v.pathPushIndex(i)
+						o, iterErr := v.visit(value)
+						v.pathPop(ni)
 						if _, ok := val.(*types.JsonObject); ok {
 							v.popScope()
 						}
 						v.popScope()
 						putScopeObject(scopeObj)
-						if err != nil {
-							return nil, burrito.PassError(err)
+						if iterErr != nil {
+							v.pathPop(nk)
+							nilResult = true
+							outerErr = burrito.PassError(iterErr)
+							return true
 						}
 						u := o.(*types.JsonObject)
 						iterKeys := 0
-						if u.Value != nil {
-							var iterErr error
-							u.Value.Range(func(k string, v types.JsonType) bool {
-								iterKeys++
-								iterErr = PutValue(result, k, v, path)
-								return iterErr != nil
-							})
-							if iterErr != nil {
-								return nil, burrito.PassError(iterErr)
-							}
-						} else {
-							for _, k := range u.Keys() {
-								iterKeys++
-								err = PutValue(result, k, u.Get(k), path)
-								if err != nil {
-									return nil, burrito.PassError(err)
-								}
-							}
+						u.RangeEntries(func(k string, v2 types.JsonType) bool {
+							iterKeys++
+							iterErr = PutValue(result, k, v2, v, parentPathLen)
+							return iterErr != nil
+						})
+						if iterErr != nil {
+							v.pathPop(nk)
+							nilResult = true
+							outerErr = burrito.PassError(iterErr)
+							return true
 						}
-						if i == 0 && len(arr.Value) > 1 && iterKeys > 0 && result.Value != nil {
+						if i == 0 && len(arr.Value) > 1 && iterKeys > 0 {
 							result.Value.Reserve((len(arr.Value) - 1) * iterKeys)
 						}
 					}
 				} else {
-					return nil, utils.WrappedJsonErrorf(path, "Iteration action must evaluate to an array")
+					v.pathPop(nk)
+					nilResult = true
+					outerErr = utils.WrappedJsonErrorf(v.pathStrAt(parentPathLen), "Iteration action must evaluate to an array")
+					return true
 				}
 			case types.Predicate:
 				if eval.Value.BoolValue() {
-					o, err := v.visit(value, keyPath)
+					o, err := v.visit(value)
 					if err != nil {
-						return nil, burrito.PassError(err)
+						v.pathPop(nk)
+						nilResult = true
+						outerErr = burrito.PassError(err)
+						return true
 					}
-					if obj, ok := o.(*types.JsonObject); ok {
-						for _, k := range obj.Keys() {
-							err = PutValue(result, k, obj.Get(k), path)
-							if err != nil {
-								return nil, burrito.PassError(err)
-							}
+					if predObj, ok := o.(*types.JsonObject); ok {
+						var predErr error
+						predObj.RangeEntries(func(k string, v2 types.JsonType) bool {
+							predErr = PutValue(result, k, v2, v, parentPathLen)
+							return predErr != nil
+						})
+						if predErr != nil {
+							v.pathPop(nk)
+							nilResult = true
+							outerErr = burrito.PassError(predErr)
+							return true
 						}
 					} else {
-						return nil, utils.WrappedJsonErrorf(path, "The value of the predicate key must be an object")
+						v.pathPop(nk)
+						nilResult = true
+						outerErr = utils.WrappedJsonErrorf(v.pathStrAt(parentPathLen), "The value of the predicate key must be an object")
+						return true
 					}
 				}
 			case types.Value:
-				k, err := v.visitString(key, keyPath)
+				k, err := v.visitString(key)
 				if err != nil {
-					return nil, burrito.PassError(err)
+					v.pathPop(nk)
+					nilResult = true
+					outerErr = burrito.PassError(err)
+					return true
 				}
-				r, err := v.visit(value, keyPath)
+				r, err := v.visit(value)
 				if err != nil {
-					return nil, burrito.PassError(err)
+					v.pathPop(nk)
+					nilResult = true
+					outerErr = burrito.PassError(err)
+					return true
 				}
-				err = PutValue(result, k.StringValue(), r, path)
-				if err != nil {
-					return nil, burrito.PassError(err)
+				if err = PutValue(result, k.StringValue(), r, v, parentPathLen); err != nil {
+					v.pathPop(nk)
+					nilResult = true
+					outerErr = burrito.PassError(err)
+					return true
 				}
 			default:
-				return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", eval.Action.String())
+				v.pathPop(nk)
+				nilResult = true
+				outerErr = utils.WrappedJsonErrorf(v.pathStrAt(parentPathLen), "Unsupported action %s", eval.Action.String())
+				return true
 			}
+			v.pathPop(nk)
 		} else {
 			matches, err := FindTemplateMatches(key, "{", "}")
 			if err != nil {
-				return nil, utils.WrapJsonErrorf(path, err, "Failed to parse template %s", key)
+				nilResult = true
+				outerErr = utils.WrapJsonErrorf(v.pathStrAt(parentPathLen), err, "Failed to parse template %s", key)
+				return true
 			}
 			if len(matches) > 0 {
-				keyPath := path + "/" + key
-				k, err := v.visitString(key, keyPath)
+				nk := v.pathPush(key)
+				k, err := v.visitString(key)
 				if err != nil {
-					return nil, burrito.PassError(err)
+					v.pathPop(nk)
+					nilResult = true
+					outerErr = burrito.PassError(err)
+					return true
 				}
-				r, err := v.visit(value, keyPath)
+				r, err := v.visit(value)
 				if err != nil {
-					return nil, burrito.PassError(err)
+					v.pathPop(nk)
+					nilResult = true
+					outerErr = burrito.PassError(err)
+					return true
 				}
-				err = PutValue(result, k.StringValue(), r, path)
-				if err != nil {
-					return nil, burrito.PassError(err)
+				v.pathPop(nk)
+				if err = PutValue(result, k.StringValue(), r, v, parentPathLen); err != nil {
+					nilResult = true
+					outerErr = burrito.PassError(err)
+					return true
 				}
 			} else {
-				var err error
-				r, err := v.visit(value, path+"/"+key)
+				// HOT PATH: plain key, no template substitution — push/pop avoids string allocation
+				nk := v.pathPush(key)
+				r, err := v.visit(value)
+				v.pathPop(nk)
 				if err != nil {
-					return nil, burrito.PassError(err)
+					nilResult = true
+					outerErr = burrito.PassError(err)
+					return true
 				}
-				err = PutValue(result, key, r, path)
-				if err != nil {
-					return nil, burrito.PassError(err)
+				if err = PutValue(result, key, r, v, parentPathLen); err != nil {
+					nilResult = true
+					outerErr = burrito.PassError(err)
+					return true
 				}
 			}
 		}
+		return false
+	})
+
+	if outerErr != nil {
+		if nilResult {
+			return nil, outerErr
+		}
+		return result, outerErr
 	}
 	return result, nil
 }
 
-func PutValue(result *types.JsonObject, key string, r types.JsonType, path string) error {
+func PutValue(result *types.JsonObject, key string, r types.JsonType, v *TemplateVisitor, parentPathLen int) error {
 	if r == nil || types.IsNull(r) {
 		result.Put(key, types.Null)
 	} else {
@@ -712,7 +829,7 @@ func PutValue(result *types.JsonObject, key string, r types.JsonType, path strin
 		if types.IsObject(existing) && types.IsObject(r) {
 			merged, err := types.MergeJSON(existing, r, true)
 			if err != nil {
-				return utils.WrapJsonErrorf(path, err, "Failed to merge %s", key)
+				return utils.WrapJsonErrorf(v.pathStrAt(parentPathLen), err, "Failed to merge %s", key)
 			}
 			result.Put(key, merged)
 			return nil
@@ -721,7 +838,7 @@ func PutValue(result *types.JsonObject, key string, r types.JsonType, path strin
 		if types.IsArray(existing) && types.IsArray(r) {
 			merged, err := types.MergeJSON(existing, r, true)
 			if err != nil {
-				return utils.WrapJsonErrorf(path, err, "Failed to merge %s", key)
+				return utils.WrapJsonErrorf(v.pathStrAt(parentPathLen), err, "Failed to merge %s", key)
 			}
 			result.Put(key, merged)
 			return nil
@@ -732,14 +849,16 @@ func PutValue(result *types.JsonObject, key string, r types.JsonType, path strin
 	return nil
 }
 
-func (v *TemplateVisitor) visitArray(arr *types.JsonArray, path string) (types.JsonType, error) {
+func (v *TemplateVisitor) visitArray(arr *types.JsonArray) (types.JsonType, error) {
 	var result = make([]types.JsonType, 0, len(arr.Value))
 	for i, value := range arr.Value {
 		err := checkDeadline(v.deadline)
 		if err != nil {
 			return &types.JsonArray{Value: result}, err
 		}
-		a, err := v.visitArrayElement(result, value, path+"["+strconv.Itoa(i)+"]")
+		n := v.pathPushIndex(i)
+		a, err := v.visitArrayElement(result, value)
+		v.pathPop(n)
 		if err != nil {
 			return nil, burrito.PassError(err)
 		}
@@ -749,34 +868,40 @@ func (v *TemplateVisitor) visitArray(arr *types.JsonArray, path string) (types.J
 }
 
 // Special visitor for cases when the array element is an object, that generates multiple values
-func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element types.JsonType, path string) ([]types.JsonType, error) {
+func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element types.JsonType) ([]types.JsonType, error) {
 	if obj, ok := element.(*types.JsonObject); ok {
-		filteredKeys := make([]string, 0, obj.Size())
-		for _, key := range obj.Keys() {
+		// Reuse keysBuffer to avoid allocating a new []string each call.
+		// Safe: the loop always returns before v.keysBuffer could be re-overwritten by recursion.
+		v.keysBuffer = obj.AppendKeys(v.keysBuffer[:0])
+		keys := v.keysBuffer
+		filteredCount := 0
+		for _, key := range keys {
 			if key != "$assert" && key != "$comment" {
-				filteredKeys = append(filteredKeys, key)
+				filteredCount++
 			}
 		}
-		if len(filteredKeys) == 1 || obj.Size() == 1 {
-			for _, key := range obj.Keys() {
+		if filteredCount == 1 || obj.Size() == 1 {
+			for _, key := range keys {
 				value := obj.Get(key)
-				if strings.HasPrefix(key, "{{") && strings.HasSuffix(key, "}}") && (key[2] == '#' || key[2] == '?') {
-					eval, err := evalWithExtraScope(key, v.scope, &v.moduleScope, path)
+				if strings.HasPrefix(key, "{{") && strings.HasSuffix(key, "}}") && len(key) > 2 && (key[2] == '#' || key[2] == '?') {
+					eval, err := evalWithExtraScope(key, &v.scope, &v.moduleScope)
 					if err != nil {
-						return array, utils.WrapJsonErrorf(path, err, "Failed to evaluate %s", key)
+						return array, utils.WrapJsonErrorf(v.pathStr(), err, "Failed to evaluate %s", key)
 					}
 					switch eval.Action {
 					case types.Iteration:
 						if arr, ok := eval.Value.(*types.JsonArray); ok {
 							for i, val := range arr.Value {
 								scopeObj := getScopeObject()
-								scopeObj.Put(eval.IndexName, types.AsNumber(i))
+								scopeObj.Put(eval.IndexName, types.NewIntNumber(int64(i)))
 								scopeObj.Put(eval.Name, val)
 								v.pushScope(scopeObj)
-								if obj, ok := val.(*types.JsonObject); ok {
-									v.pushScope(obj)
+								if innerObj, ok := val.(*types.JsonObject); ok {
+									v.pushScope(innerObj)
 								}
-								a, err := v.visitArrayElement(array, value, path+"["+strconv.Itoa(i)+"]")
+								n := v.pathPushIndex(i)
+								a, err := v.visitArrayElement(array, value)
+								v.pathPop(n)
 								array = a
 								if _, ok := val.(*types.JsonObject); ok {
 									v.popScope()
@@ -789,25 +914,25 @@ func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element type
 							}
 							return array, nil
 						} else {
-							return nil, utils.WrappedJsonErrorf(path, "Iteration action must evaluate to an array")
+							return nil, utils.WrappedJsonErrorf(v.pathStr(), "Iteration action must evaluate to an array")
 						}
 					case types.Predicate:
 						if eval.Value.BoolValue() {
-							return v.visitArrayElement(array, value, path)
+							return v.visitArrayElement(array, value)
 						}
 						return array, nil
 					case types.Value:
-						visit, err := v.visit(element, path)
+						visit, err := v.visit(element)
 						if err != nil {
 							return nil, burrito.PassError(err)
 						}
 						array = append(array, visit)
 						return array, nil
 					default:
-						return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", eval.Action.String())
+						return nil, utils.WrappedJsonErrorf(v.pathStr(), "Unsupported action %s", eval.Action.String())
 					}
 				} else if key == "$assert" {
-					err := v.visitAssert(value, path)
+					err := v.visitAssert(value)
 					if err != nil {
 						return nil, burrito.PassError(err)
 					}
@@ -818,7 +943,7 @@ func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element type
 			}
 		}
 	}
-	visit, err := v.visit(element, path)
+	visit, err := v.visit(element)
 	if err != nil {
 		return nil, burrito.PassError(err)
 	}
@@ -831,7 +956,7 @@ func (v *TemplateVisitor) visitArrayElement(array []types.JsonType, element type
 	return array, nil
 }
 
-func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, error) {
+func (v *TemplateVisitor) visitString(str string) (types.JsonType, error) {
 	err := checkDeadline(v.deadline)
 	if err != nil {
 		return nil, err
@@ -843,85 +968,101 @@ func (v *TemplateVisitor) visitString(str string, path string) (types.JsonType, 
 	if len(matches) == 0 {
 		return types.NewString(str), nil
 	}
-	sb := stringBuilderPool.Get().(*strings.Builder)
-	sb.Reset()
-	sb.Grow(len(str))
-	defer stringBuilderPool.Put(sb)
+	sbp := stringBuilderPool.Get().(*strBuf)
+	buf := sbp.b[:0]
+	if cap(buf) < len(str) {
+		buf = make([]byte, 0, len(str))
+	}
 	lastMatchEnd := 0
 	for _, match := range matches {
 		if match.StartByte > lastMatchEnd {
-			sb.WriteString(str[lastMatchEnd:match.StartByte])
+			buf = append(buf, str[lastMatchEnd:match.StartByte]...)
 		}
-		result, err := evalWithExtraScope(match.EscapedMatch, v.scope, &v.moduleScope, path)
+		result, err := evalWithExtraScope(match.EscapedMatch, &v.scope, &v.moduleScope)
 		if err != nil {
+			sbp.b = buf
+			stringBuilderPool.Put(sbp)
 			return nil, burrito.WrapErrorf(err, "Error evaluating '%s'", match.EscapedMatch)
 		}
 		if result.Value == nil {
-			return nil, utils.WrappedJsonErrorf(path, "The expression '%s' evaluated to null", match.EscapedMatch)
+			sbp.b = buf
+			stringBuilderPool.Put(sbp)
+			return nil, utils.WrappedJsonErrorf(v.pathStr(), "The expression '%s' evaluated to null", match.EscapedMatch)
 		}
 		if result.Action == types.Literal {
+			sbp.b = buf
+			stringBuilderPool.Put(sbp)
 			return result.Value, nil
 		} else if result.Action == types.Value {
 			// Moved this check here to avoid not checking the action
 			if _, ok := result.Value.(*types.JsonString); !ok && str == match.EscapedMatch {
+				sbp.b = buf
+				stringBuilderPool.Put(sbp)
 				return result.Value, nil
 			}
-			sb.WriteString(types.ToString(result.Value))
+			buf = append(buf, types.ToString(result.Value)...)
 			lastMatchEnd = match.EndByte
 		} else {
-			return nil, utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())
+			sbp.b = buf
+			stringBuilderPool.Put(sbp)
+			return nil, utils.WrappedJsonErrorf(v.pathStr(), "Unsupported action %s", result.Action.String())
 		}
 	}
 	if lastMatchEnd < len(str) {
-		sb.WriteString(str[lastMatchEnd:])
+		buf = append(buf, str[lastMatchEnd:]...)
 	}
-	return types.NewString(sb.String()), nil
+	s := string(buf)
+	sbp.b = buf
+	stringBuilderPool.Put(sbp)
+	return types.NewString(s), nil
 }
 
-func (v *TemplateVisitor) visitAssert(value interface{}, path string) error {
+func (v *TemplateVisitor) visitAssert(value interface{}) error {
 	if arr, ok := value.(*types.JsonArray); ok {
 		for i, i2 := range arr.Value {
-			err := v.visitAssert(i2, path+"["+strconv.Itoa(i)+"]")
+			n := v.pathPushIndex(i)
+			err := v.visitAssert(i2)
+			v.pathPop(n)
 			if err != nil {
 				return burrito.PassError(err)
 			}
 		}
 	} else if str, ok := value.(*types.JsonString); ok {
-		result, err := evalWithExtraScope(str.StringValue(), v.scope, &v.moduleScope, path)
+		result, err := evalWithExtraScope(str.StringValue(), &v.scope, &v.moduleScope)
 		if err != nil {
-			return utils.WrapJsonErrorf(path, err, "Error evaluating '%s'", str.StringValue())
+			return utils.WrapJsonErrorf(v.pathStr(), err, "Error evaluating '%s'", str.StringValue())
 		}
 		if result.Action != types.Value {
-			return utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())
+			return utils.WrappedJsonErrorf(v.pathStr(), "Unsupported action %s", result.Action.String())
 		}
 		if !result.Value.BoolValue() {
-			return utils.WrappedJsonErrorf(path, "Assertion failed for '%s'", str.StringValue())
+			return utils.WrappedJsonErrorf(v.pathStr(), "Assertion failed for '%s'", str.StringValue())
 		}
 	} else if obj, ok := value.(*types.JsonObject); ok {
 		condition, err := FindAnyCase[*types.JsonString](obj, "condition")
 		if err != nil {
-			return utils.WrapJsonErrorf(path, err, "Invalid condition")
+			return utils.WrapJsonErrorf(v.pathStr(), err, "Invalid condition")
 		}
-		result, err := evalWithExtraScope((*condition).StringValue(), v.scope, &v.moduleScope, path)
+		result, err := evalWithExtraScope((*condition).StringValue(), &v.scope, &v.moduleScope)
 		if err != nil {
-			return utils.WrapJsonErrorf(path, err, "Error evaluating '%s'", (*condition).StringValue())
+			return utils.WrapJsonErrorf(v.pathStr(), err, "Error evaluating '%s'", (*condition).StringValue())
 		}
 		if result.Action != types.Value {
-			return utils.WrappedJsonErrorf(path, "Unsupported action %s", result.Action.String())
+			return utils.WrappedJsonErrorf(v.pathStr(), "Unsupported action %s", result.Action.String())
 		}
 		if !result.Value.BoolValue() {
 			message, err := FindAnyCase[*types.JsonString](obj, "message")
 			if err != nil {
 				if burrito.HasTag(err, WrongTypeErrTag) {
-					return utils.WrapJsonErrorf(path, err, "Invalid assertion message")
+					return utils.WrapJsonErrorf(v.pathStr(), err, "Invalid assertion message")
 				}
-				return utils.WrapJsonErrorf(path, err, "Assertion failed for '%s'", str.StringValue())
+				return utils.WrapJsonErrorf(v.pathStr(), err, "Assertion failed for '%s'", str.StringValue())
 			}
-			msg, err := v.visitString((*message).StringValue(), path)
+			msg, err := v.visitString((*message).StringValue())
 			if err != nil {
-				return utils.WrappedJsonErrorf(path, "Error evaluating message '%s'", (*message).StringValue())
+				return utils.WrappedJsonErrorf(v.pathStr(), "Error evaluating message '%s'", (*message).StringValue())
 			}
-			return utils.WrappedJsonErrorf(path, types.ToPrettyString(msg))
+			return utils.WrappedJsonErrorf(v.pathStr(), types.ToPrettyString(msg))
 		}
 	}
 	return nil
