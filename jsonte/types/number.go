@@ -7,6 +7,46 @@ import (
 	"strconv"
 )
 
+const smallIntMax = 4096
+const smallIntNegMin = -128
+
+var smallIntCache [smallIntMax]*JsonNumber
+var smallIntNegCache [128]*JsonNumber // indices for [-128, -1]
+var smallFloatCache [smallIntMax]*JsonNumber
+var smallIntStrings [smallIntMax]string
+var smallIntNegStrings [128]string // strings for [-128, -1]
+
+func init() {
+	for i := 0; i < smallIntMax; i++ {
+		smallIntCache[i] = &JsonNumber{Value: float64(i), Decimal: false}
+		smallFloatCache[i] = &JsonNumber{Value: float64(i), Decimal: true}
+		smallIntStrings[i] = strconv.FormatInt(int64(i), 10)
+	}
+	for i := 0; i < 128; i++ {
+		v := -(i + 1)
+		smallIntNegCache[i] = &JsonNumber{Value: float64(v), Decimal: false}
+		smallIntNegStrings[i] = strconv.FormatInt(int64(v), 10)
+	}
+}
+
+func cachedInt(n int64) *JsonNumber {
+	if n >= 0 && n < smallIntMax {
+		return smallIntCache[n]
+	}
+	if n >= smallIntNegMin && n < 0 {
+		return smallIntNegCache[-(n + 1)]
+	}
+	return nil
+}
+
+func cachedFloat(f float64) *JsonNumber {
+	i := int64(f)
+	if f == float64(i) && i >= 0 && i < smallIntMax {
+		return smallFloatCache[i]
+	}
+	return nil
+}
+
 // Number is an interface that represents a number, that can be either integer or decimal.
 type Number interface {
 	// IntValue returns the number as an integer.
@@ -75,7 +115,14 @@ func (t *JsonNumber) StringValue() string {
 	if t.Decimal {
 		return strconv.FormatFloat(t.FloatValue(), 'f', -1, 64)
 	}
-	return strconv.FormatInt(int64(t.IntValue()), 10)
+	iv := t.IntValue()
+	if iv >= 0 && int(iv) < smallIntMax {
+		return smallIntStrings[iv]
+	}
+	if iv < 0 && iv >= smallIntNegMin {
+		return smallIntNegStrings[-(iv + 1)]
+	}
+	return strconv.FormatInt(int64(iv), 10)
 }
 
 func (t *JsonNumber) Equals(value JsonType) bool {
@@ -108,30 +155,64 @@ func (t *JsonNumber) Index(i JsonType) (JsonType, error) {
 
 func (t *JsonNumber) Add(i JsonType) JsonType {
 	if IsNull(i) {
-		return &JsonNumber{
-			Value:   t.FloatValue(),
-			Decimal: t.Decimal,
+		if !t.Decimal {
+			if c := cachedInt(int64(t.IntValue())); c != nil {
+				return c
+			}
 		}
+		return &JsonNumber{Value: t.FloatValue(), Decimal: t.Decimal}
 	}
 	if IsNumber(i) {
-		return &JsonNumber{
-			Value:   t.FloatValue() + AsNumber(i).FloatValue(),
-			Decimal: t.Decimal || AsNumber(i).Decimal,
+		n := AsNumber(i)
+		decimal := t.Decimal || n.Decimal
+		sum := t.FloatValue() + n.FloatValue()
+		if !decimal {
+			iv := int64(sum)
+			if float64(iv) == sum {
+				if c := cachedInt(iv); c != nil {
+					return c
+				}
+			}
+		} else {
+			if c := cachedFloat(sum); c != nil {
+				return c
+			}
 		}
+		return &JsonNumber{Value: sum, Decimal: decimal}
 	}
 	if IsBool(i) {
 		if i.BoolValue() {
-			return &JsonNumber{
-				Value:   t.FloatValue() + 1,
-				Decimal: t.Decimal,
+			sum := t.FloatValue() + 1
+			if !t.Decimal {
+				iv := int64(sum)
+				if c := cachedInt(iv); c != nil {
+					return c
+				}
 			}
+			return &JsonNumber{Value: sum, Decimal: t.Decimal}
 		}
-		return &JsonNumber{
-			Value:   t.FloatValue(),
-			Decimal: t.Decimal || AsNumber(i).Decimal,
+		if c := cachedInt(int64(t.IntValue())); !t.Decimal && c != nil {
+			return c
 		}
+		return &JsonNumber{Value: t.FloatValue(), Decimal: t.Decimal}
 	}
 	return NewString(t.StringValue() + i.StringValue())
+}
+
+// NewIntNumber returns a *JsonNumber for the given integer, using the cache for small non-negative values.
+func NewIntNumber(n int64) *JsonNumber {
+	if c := cachedInt(n); c != nil {
+		return c
+	}
+	return &JsonNumber{Value: float64(n), Decimal: false}
+}
+
+// NewFloatNumber returns a *JsonNumber for the given float, using the integer cache when the value is a whole number.
+func NewFloatNumber(f float64) *JsonNumber {
+	if c := cachedFloat(f); c != nil {
+		return c
+	}
+	return &JsonNumber{Value: f, Decimal: true}
 }
 
 // AsNumber converts an interface to a JSON number.
@@ -150,40 +231,40 @@ func AsNumber(obj interface{}) *JsonNumber {
 	}
 	// Past this point, we are dealing with a primitive type.
 	if b, ok := obj.(float64); ok {
-		return &JsonNumber{
-			Value:   b,
-			Decimal: true,
+		if c := cachedFloat(b); c != nil {
+			return c
 		}
+		return &JsonNumber{Value: b, Decimal: true}
 	}
 	if b, ok := obj.(float32); ok {
-		return &JsonNumber{
-			Value:   float64(b),
-			Decimal: true,
+		if c := cachedFloat(float64(b)); c != nil {
+			return c
 		}
+		return &JsonNumber{Value: float64(b), Decimal: true}
 	}
 	if b, ok := obj.(int); ok {
-		return &JsonNumber{
-			Value:   float64(b),
-			Decimal: false,
+		if c := cachedInt(int64(b)); c != nil {
+			return c
 		}
+		return &JsonNumber{Value: float64(b), Decimal: false}
 	}
 	if b, ok := obj.(int32); ok {
-		return &JsonNumber{
-			Value:   float64(b),
-			Decimal: false,
+		if c := cachedInt(int64(b)); c != nil {
+			return c
 		}
+		return &JsonNumber{Value: float64(b), Decimal: false}
 	}
 	if b, ok := obj.(uint32); ok {
-		return &JsonNumber{
-			Value:   float64(b),
-			Decimal: false,
+		if c := cachedInt(int64(b)); c != nil {
+			return c
 		}
+		return &JsonNumber{Value: float64(b), Decimal: false}
 	}
 	if b, ok := obj.(int64); ok {
-		return &JsonNumber{
-			Value:   float64(b),
-			Decimal: false,
+		if c := cachedInt(b); c != nil {
+			return c
 		}
+		return &JsonNumber{Value: float64(b), Decimal: false}
 	}
 	if b, ok := obj.(bool); ok && b {
 		return &JsonNumber{
