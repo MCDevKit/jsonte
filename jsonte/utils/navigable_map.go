@@ -4,12 +4,19 @@ import (
 	"sort"
 )
 
+// nmEntry holds a key-value pair for NavigableMap.
+// Combining key and value in a single slice halves heap allocations vs. separate key/value slices.
+type nmEntry[K comparable, V any] struct {
+	key   K
+	value V
+}
+
 type NavigableMap[K comparable, V any] struct {
-	keys   []K
-	values []V
-	data   map[K]V
-	index  map[K]int
-	valid  []bool
+	entries []nmEntry[K, V]
+	data    map[K]V
+	// valid is nil when there are no tombstones (common case).
+	// Allocated lazily on first Remove; len(valid) == len(entries) when non-nil.
+	valid []bool
 
 	live       int // number of valid entries
 	tombstones int // number of invalidated slots
@@ -22,24 +29,25 @@ type NavigableMap[K comparable, V any] struct {
 
 // NewNavigableMap creates a new NavigableMap.
 func NewNavigableMap[K comparable, V any]() NavigableMap[K, V] {
-	return NewNavigableMapWithCapacity[K, V](8)
+	return NewNavigableMapWithCapacity[K, V](4)
 }
 
+// mapThreshold is the number of live entries at which the hash map is created.
+// Below this threshold, TryGet/ContainsKey use a linear scan over the slice.
+const mapThreshold = 8
+
 // NewNavigableMapWithCapacity creates a new NavigableMap with preallocated storage.
+// The internal hash map is not allocated until the number of entries reaches mapThreshold,
+// avoiding heap allocations for small maps.
 func NewNavigableMapWithCapacity[K comparable, V any](capacity int) NavigableMap[K, V] {
 	if capacity < 0 {
 		capacity = 0
 	}
-	m := NavigableMap[K, V]{
-		data:           make(map[K]V, capacity),
-		keys:           make([]K, 0, capacity),
-		values:         make([]V, 0, capacity),
-		index:          make(map[K]int, capacity),
-		valid:          make([]bool, 0, capacity),
+	return NavigableMap[K, V]{
+		entries:        make([]nmEntry[K, V], 0, capacity),
 		autoCompactPct: 33,
 		autoCompactMin: 128,
 	}
-	return m
 }
 
 // ToNavigableMap creates a new NavigableMap with given keys and values.
@@ -83,18 +91,13 @@ func (m *NavigableMap[K, V]) Reserve(n int) {
 	if n <= 0 {
 		return
 	}
-	target := len(m.keys) + n
-	if cap(m.keys) < target {
-		newK := make([]K, len(m.keys), target)
-		copy(newK, m.keys)
-		m.keys = newK
+	target := len(m.entries) + n
+	if cap(m.entries) < target {
+		newE := make([]nmEntry[K, V], len(m.entries), target)
+		copy(newE, m.entries)
+		m.entries = newE
 	}
-	if cap(m.values) < target {
-		newV := make([]V, len(m.values), target)
-		copy(newV, m.values)
-		m.values = newV
-	}
-	if cap(m.valid) < target {
+	if m.valid != nil && cap(m.valid) < target {
 		newB := make([]bool, len(m.valid), target)
 		copy(newB, m.valid)
 		m.valid = newB
@@ -102,32 +105,124 @@ func (m *NavigableMap[K, V]) Reserve(n int) {
 }
 
 func (m *NavigableMap[K, V]) Get(key K) V {
-	return m.data[key]
+	if m.data != nil {
+		return m.data[key]
+	}
+	if m.valid == nil {
+		for i := range m.entries {
+			if m.entries[i].key == key {
+				return m.entries[i].value
+			}
+		}
+	} else {
+		for i := range m.entries {
+			if m.entries[i].key == key && m.valid[i] {
+				return m.entries[i].value
+			}
+		}
+	}
+	var zero V
+	return zero
 }
 
 func (m *NavigableMap[K, V]) TryGet(key K) (V, bool) {
-	v, ok := m.data[key]
-	return v, ok
+	if m.data != nil {
+		v, ok := m.data[key]
+		return v, ok
+	}
+	if m.valid == nil {
+		for i := range m.entries {
+			if m.entries[i].key == key {
+				return m.entries[i].value, true
+			}
+		}
+	} else {
+		for i := range m.entries {
+			if m.entries[i].key == key && m.valid[i] {
+				return m.entries[i].value, true
+			}
+		}
+	}
+	var zero V
+	return zero, false
 }
 
 func (m *NavigableMap[K, V]) ContainsKey(key K) bool {
-	_, ok := m.data[key]
-	return ok
+	if m.data != nil {
+		_, ok := m.data[key]
+		return ok
+	}
+	if m.valid == nil {
+		for i := range m.entries {
+			if m.entries[i].key == key {
+				return true
+			}
+		}
+	} else {
+		for i := range m.entries {
+			if m.entries[i].key == key && m.valid[i] {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (m *NavigableMap[K, V]) Put(key K, value V) {
 	if m.data == nil {
-		*m = NewNavigableMapWithCapacity[K, V](8)
+		if m.valid == nil {
+			for i := range m.entries {
+				if m.entries[i].key == key {
+					m.entries[i].value = value
+					return
+				}
+			}
+		} else {
+			for i := range m.entries {
+				if m.entries[i].key == key && m.valid[i] {
+					m.entries[i].value = value
+					return
+				}
+			}
+		}
+		m.entries = append(m.entries, nmEntry[K, V]{key: key, value: value})
+		if m.valid != nil {
+			m.valid = append(m.valid, true)
+		}
+		m.live++
+		// Lazy promotion: create hash map after threshold.
+		if m.live >= mapThreshold {
+			m.data = make(map[K]V, m.live)
+			for i := range m.entries {
+				if m.valid == nil || m.valid[i] {
+					m.data[m.entries[i].key] = m.entries[i].value
+				}
+			}
+		}
+		return
 	}
 	if _, exists := m.data[key]; !exists {
-		m.keys = append(m.keys, key)
-		m.values = append(m.values, value)
-		m.valid = append(m.valid, true)
-		m.index[key] = len(m.keys) - 1
+		m.entries = append(m.entries, nmEntry[K, V]{key: key, value: value})
+		if m.valid != nil {
+			m.valid = append(m.valid, true)
+		}
 		m.live++
 	} else {
-		if idx, ok := m.index[key]; ok && idx < len(m.values) && m.valid[idx] {
-			m.values[idx] = value
+		// Update in-place: find the live slot for this key.
+		if m.valid == nil {
+			for i := range m.entries {
+				if m.entries[i].key == key {
+					m.entries[i].value = value
+					break
+				}
+			}
+		} else {
+			for i := range m.entries {
+				if m.entries[i].key == key && m.valid[i] {
+					m.entries[i].value = value
+					break
+				}
+			}
 		}
 	}
 	m.data[key] = value
@@ -138,24 +233,47 @@ func (m *NavigableMap[K, V]) Remove(key K) {
 	if m == nil {
 		return
 	}
-	if _, ok := m.data[key]; !ok {
-		return
+	if m.data != nil {
+		if _, ok := m.data[key]; !ok {
+			return
+		}
+		delete(m.data, key)
+	} else {
+		found := false
+		if m.valid == nil {
+			for i := range m.entries {
+				if m.entries[i].key == key {
+					found = true
+					break
+				}
+			}
+		} else {
+			for i := range m.entries {
+				if m.entries[i].key == key && m.valid[i] {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			return
+		}
 	}
-	delete(m.data, key)
-	if idx, ok := m.index[key]; ok {
-		delete(m.index, key)
-		var zk K
-		var zv V
-		if idx < len(m.keys) {
-			m.keys[idx] = zk
+	// Lazily allocate valid on first Remove.
+	if m.valid == nil {
+		m.valid = make([]bool, len(m.entries))
+		for i := range m.valid {
+			m.valid[i] = true
 		}
-		if idx < len(m.values) {
-			m.values[idx] = zv
-		}
-		if idx < len(m.valid) && m.valid[idx] {
-			m.valid[idx] = false
+	}
+	var zero nmEntry[K, V]
+	for i := range m.entries {
+		if m.entries[i].key == key && m.valid[i] {
+			m.entries[i] = zero
+			m.valid[i] = false
 			m.live--
 			m.tombstones++
+			break
 		}
 	}
 	m.autoCompactMaybe()
@@ -165,10 +283,8 @@ func (m *NavigableMap[K, V]) Size() int     { return m.live }
 func (m *NavigableMap[K, V]) IsEmpty() bool { return m.live == 0 }
 
 func (m *NavigableMap[K, V]) Clear() {
-	m.keys = nil
-	m.values = nil
+	m.entries = nil
 	m.data = nil
-	m.index = nil
 	m.valid = nil
 	m.live = 0
 	m.tombstones = 0
@@ -182,23 +298,12 @@ func (m *NavigableMap[K, V]) Reset() {
 	for k := range m.data {
 		delete(m.data, k)
 	}
-	for k := range m.index {
-		delete(m.index, k)
+	var zero nmEntry[K, V]
+	for i := range m.entries {
+		m.entries[i] = zero
 	}
-	var zk K
-	var zv V
-	for i := range m.keys {
-		m.keys[i] = zk
-	}
-	for i := range m.values {
-		m.values[i] = zv
-	}
-	for i := range m.valid {
-		m.valid[i] = false
-	}
-	m.keys = m.keys[:0]
-	m.values = m.values[:0]
-	m.valid = m.valid[:0]
+	m.entries = m.entries[:0]
+	m.valid = nil
 	m.live = 0
 	m.tombstones = 0
 }
@@ -207,9 +312,17 @@ func (m *NavigableMap[K, V]) Range(fn func(K, V) bool) {
 	if m == nil || fn == nil {
 		return
 	}
-	for i, k := range m.keys {
-		if i < len(m.valid) && m.valid[i] {
-			if fn(k, m.values[i]) {
+	if m.valid == nil {
+		for i := range m.entries {
+			if fn(m.entries[i].key, m.entries[i].value) {
+				return
+			}
+		}
+		return
+	}
+	for i := range m.entries {
+		if m.valid[i] {
+			if fn(m.entries[i].key, m.entries[i].value) {
 				return
 			}
 		}
@@ -241,7 +354,7 @@ func (m *NavigableMap[K, V]) ContainsMatchingKey(match func(K) bool) bool {
 	m.Range(func(k K, _ V) bool {
 		if match(k) {
 			found = true
-			return true // stop iteration
+			return true
 		}
 		return false
 	})
@@ -252,9 +365,15 @@ func (m *NavigableMap[K, V]) ContainsMatchingKey(match func(K) bool) bool {
 
 func (m *NavigableMap[K, V]) Keys() []K {
 	out := make([]K, 0, m.live)
-	for i, k := range m.keys {
-		if i < len(m.valid) && m.valid[i] {
-			out = append(out, k)
+	if m.valid == nil {
+		for i := range m.entries {
+			out = append(out, m.entries[i].key)
+		}
+		return out
+	}
+	for i := range m.entries {
+		if m.valid[i] {
+			out = append(out, m.entries[i].key)
 		}
 	}
 	return out
@@ -262,27 +381,45 @@ func (m *NavigableMap[K, V]) Keys() []K {
 
 func (m *NavigableMap[K, V]) Values() []V {
 	out := make([]V, 0, m.live)
-	for i := range m.keys {
-		if i < len(m.valid) && m.valid[i] {
-			out = append(out, m.values[i])
+	if m.valid == nil {
+		for i := range m.entries {
+			out = append(out, m.entries[i].value)
+		}
+		return out
+	}
+	for i := range m.entries {
+		if m.valid[i] {
+			out = append(out, m.entries[i].value)
 		}
 	}
 	return out
 }
 
 func (m *NavigableMap[K, V]) AppendKeys(dst []K) []K {
-	for i, k := range m.keys {
-		if i < len(m.valid) && m.valid[i] {
-			dst = append(dst, k)
+	if m.valid == nil {
+		for i := range m.entries {
+			dst = append(dst, m.entries[i].key)
+		}
+		return dst
+	}
+	for i := range m.entries {
+		if m.valid[i] {
+			dst = append(dst, m.entries[i].key)
 		}
 	}
 	return dst
 }
 
 func (m *NavigableMap[K, V]) AppendValues(dst []V) []V {
-	for i := range m.keys {
-		if i < len(m.valid) && m.valid[i] {
-			dst = append(dst, m.values[i])
+	if m.valid == nil {
+		for i := range m.entries {
+			dst = append(dst, m.entries[i].value)
+		}
+		return dst
+	}
+	for i := range m.entries {
+		if m.valid[i] {
+			dst = append(dst, m.entries[i].value)
 		}
 	}
 	return dst
@@ -291,55 +428,42 @@ func (m *NavigableMap[K, V]) AppendValues(dst []V) []V {
 // ===== Sorting =====
 
 // Sort orders valid entries by the provided comparer while keeping stability.
-// It avoids touching tombstones during compare/swap by sorting a dense index list,
-// then applies the permutation once to keys/values/valid and rebuilds index.
 func (m *NavigableMap[K, V]) Sort(comparer func(K, K) int) {
 	if comparer == nil || m.live <= 1 {
 		return
 	}
 
+	if m.valid == nil {
+		sort.SliceStable(m.entries, func(a, b int) bool {
+			return comparer(m.entries[a].key, m.entries[b].key) < 0
+		})
+		return
+	}
+
 	// Build dense list of valid indices
 	idxs := make([]int, 0, m.live)
-	for i := range m.keys {
-		if i < len(m.valid) && m.valid[i] {
+	for i := range m.entries {
+		if m.valid[i] {
 			idxs = append(idxs, i)
 		}
 	}
 
 	// Stable sort by keys at those indices
 	sort.SliceStable(idxs, func(a, b int) bool {
-		ia, ib := idxs[a], idxs[b]
-		return comparer(m.keys[ia], m.keys[ib]) < 0
+		return comparer(m.entries[idxs[a]].key, m.entries[idxs[b]].key) < 0
 	})
 
-	// Apply permutation in one pass by building new arrays (dense, compact)
-	newKeys := make([]K, 0, m.live)
-	newVals := make([]V, 0, m.live)
+	// Build compacted & sorted entries
+	newEntries := make([]nmEntry[K, V], 0, m.live)
 	newValid := make([]bool, 0, m.live)
 	for _, i := range idxs {
-		newKeys = append(newKeys, m.keys[i])
-		newVals = append(newVals, m.values[i])
+		newEntries = append(newEntries, m.entries[i])
 		newValid = append(newValid, true)
 	}
 
-	// Swap in compacted & sorted storage
-	m.keys = newKeys
-	m.values = newVals
+	m.entries = newEntries
 	m.valid = newValid
 	m.tombstones = 0
-
-	// Rebuild index quickly
-	if m.index == nil {
-		m.index = make(map[K]int, m.live)
-	} else {
-		for k := range m.index {
-			delete(m.index, k)
-		}
-	}
-	for i, k := range m.keys {
-		m.index[k] = i
-	}
-	// m.data is already correct; no change needed
 }
 
 // ===== Compaction =====
@@ -348,44 +472,25 @@ func (m *NavigableMap[K, V]) Compact() {
 	if m == nil || m.tombstones == 0 {
 		return
 	}
-	newKeys := make([]K, 0, m.live)
-	newVals := make([]V, 0, m.live)
-	newValid := make([]bool, 0, m.live)
-
-	// Rebuild index fresh
-	if m.index == nil {
-		m.index = make(map[K]int, m.live)
-	} else {
-		for k := range m.index {
-			delete(m.index, k)
+	newEntries := make([]nmEntry[K, V], 0, m.live)
+	for i := range m.entries {
+		if m.valid[i] {
+			newEntries = append(newEntries, m.entries[i])
 		}
 	}
-
-	for i, k := range m.keys {
-		if i < len(m.valid) && m.valid[i] {
-			pos := len(newKeys)
-			newKeys = append(newKeys, k)
-			newVals = append(newVals, m.values[i])
-			newValid = append(newValid, true)
-			m.index[k] = pos
-		}
-	}
-	m.keys = newKeys
-	m.values = newVals
-	m.valid = newValid
+	m.entries = newEntries
+	m.valid = nil
 	m.tombstones = 0
-	// m.data already only contains live entries
 }
 
 func (m *NavigableMap[K, V]) autoCompactMaybe() {
-	if m.tombstones == 0 || len(m.keys) == 0 {
+	if m.autoCompactPct == 0 || m.tombstones == 0 || len(m.entries) == 0 {
 		return
 	}
 	if m.tombstones < m.autoCompactMin {
 		return
 	}
-	// percentage check without float math
-	if m.tombstones*100/len(m.keys) >= m.autoCompactPct {
+	if m.tombstones*100/len(m.entries) >= m.autoCompactPct {
 		m.Compact()
 	}
 }
