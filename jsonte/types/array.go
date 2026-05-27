@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"reflect"
+
+	"github.com/Bedrock-OSS/go-burrito/burrito"
 )
 
 // JsonArrayInlineSize is the maximum number of elements stored inline in JsonArray
@@ -10,6 +11,8 @@ import (
 const JsonArrayInlineSize = 4
 
 type JsonArray struct {
+	// Adding an array with constant size allocates it as part of the JsonArray struct and not as a separate
+	// allocation on the heap, which can reduce memory usage and improve performance for small arrays.
 	inline      [JsonArrayInlineSize]JsonType
 	Value       []JsonType
 	parent      JsonType
