@@ -78,8 +78,11 @@ func internedJsonString(s string) *types.JsonString {
 		return v.(*types.JsonString)
 	}
 	js := types.NewString(s)
-	actual, _ := jsonStringInternCache.LoadOrStore(s, js)
-	return actual.(*types.JsonString)
+	actual, loaded := jsonStringInternCache.LoadOrStore(s, js)
+	if loaded {
+		return actual.(*types.JsonString)
+	}
+	return js
 }
 
 var scopeObjectPool = sync.Pool{
@@ -95,6 +98,19 @@ func putScopeObject(obj *types.JsonObject) {
 	scopeObjectPool.Put(obj)
 }
 
+var localVarPool = sync.Pool{
+	New: func() interface{} { return types.NewJsonObjectWithCapacity(4) },
+}
+
+func getLocalVarObject() *types.JsonObject {
+	return localVarPool.Get().(*types.JsonObject)
+}
+
+func putLocalVarObject(obj *types.JsonObject) {
+	obj.Reset()
+	localVarPool.Put(obj)
+}
+
 type ExpressionVisitor struct {
 	parser.BaseJsonTemplateVisitor
 	action    types.JsonAction
@@ -106,6 +122,11 @@ type ExpressionVisitor struct {
 	extraScope    *deque.Deque[*types.JsonObject]
 	usedVariables []string
 	variableScope *types.JsonObject
+	// localVarTarget, when non-nil, is the object where new variable assignments land.
+	// It is set to a fresh object on each lambda call and restored on return, so that
+	// variables assigned inside a lambda body are local to that call and don't leak into
+	// variableScope (which is shared across all lambda calls on the same visitor).
+	localVarTarget *types.JsonObject
 	// globalScope, when non-nil, enables the $scope pseudo-variable in .jsonte scripts.
 	// $scope.key = value writes directly into the global scope object.
 	globalScope *types.JsonObject
@@ -222,7 +243,13 @@ func (v *ExpressionVisitor) pushScope(scope map[string]interface{}) {
 // pushScopePair pushes a single key-value pair onto the scope stack without reflection overhead.
 func (v *ExpressionVisitor) pushScopePair(key string, value interface{}) {
 	obj := getScopeObject()
-	obj.Put(key, types.Box(value))
+	// Fast path for JsonNumber and JsonString to avoid boxing overhead when we already have a JsonType.
+	switch val := value.(type) {
+	case types.JsonType:
+		obj.Put(key, val)
+	default:
+		obj.Put(key, types.Box(value))
+	}
 	v.scope.PushBack(obj)
 }
 
@@ -250,6 +277,15 @@ func (v *ExpressionVisitor) initVarScope() *types.JsonObject {
 	return v.variableScope
 }
 
+// assignmentTarget returns the object where new variable assignments should land.
+// Inside a lambda body it is the lambda-local scope; at script level it is variableScope.
+func (v *ExpressionVisitor) assignmentTarget() *types.JsonObject {
+	if v.localVarTarget != nil {
+		return v.localVarTarget
+	}
+	return v.initVarScope()
+}
+
 // ResolveScope resolves a value from the scope by name
 func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 	// $scope is a write-through proxy to the global scope, available only in .jsonte scripts.
@@ -266,9 +302,9 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 		}
 	}
 	nameStr := internedJsonString(name)
-	if v.variableScope != nil && v.variableScope.ContainsKey(name) {
-		get := v.variableScope.Get(name)
-		get.UpdateParent(v.variableScope, nameStr)
+	if v.localVarTarget != nil && v.localVarTarget.ContainsKey(name) {
+		get := v.localVarTarget.Get(name)
+		get.UpdateParent(v.localVarTarget, nameStr)
 		return get
 	}
 	for i := v.scope.Len() - 1; i >= 0; i-- {
@@ -278,6 +314,11 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 			get.UpdateParent(m, nameStr)
 			return get
 		}
+	}
+	if v.variableScope != nil && v.variableScope.ContainsKey(name) {
+		get := v.variableScope.Get(name)
+		get.UpdateParent(v.variableScope, nameStr)
+		return get
 	}
 	if v.extraScope != nil {
 		for i := v.extraScope.Len() - 1; i >= 0; i-- {
@@ -289,7 +330,7 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 			}
 		}
 	}
-	return types.NullWithParent(v.initVarScope(), nameStr)
+	return types.NullWithParent(v.assignmentTarget(), nameStr)
 }
 
 func (v *ExpressionVisitor) VisitScript(ctx *parser.ScriptContext) (types.JsonType, error) {
@@ -1058,6 +1099,8 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			for i, argName := range params {
 				v.pushScopePair(argName, o[i])
 			}
+			outerLocalVarTarget := v.localVarTarget
+			v.localVarTarget = getLocalVarObject()
 			var result types.JsonType
 			var err error
 			if hasBlock {
@@ -1072,6 +1115,8 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			} else {
 				result, err = v.Visit(ctx.Field())
 			}
+			putLocalVarObject(v.localVarTarget)
+			v.localVarTarget = outerLocalVarTarget
 			for range params {
 				v.popScopeObject()
 			}
@@ -1137,5 +1182,3 @@ func unescapeString(str string) string {
 	str = string(runes[1 : len(runes)-1])
 	return UnescapeString(str)
 }
-
-

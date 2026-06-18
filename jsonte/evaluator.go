@@ -1,12 +1,13 @@
 ﻿package jsonte
 
 import (
+	"sync"
+
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/parser"
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"github.com/gammazero/deque"
-	"sync"
 )
 
 // expressionCache stores parsed expression trees keyed by their original text.
@@ -93,7 +94,6 @@ func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Resul
 		name:          DefaultName,
 		indexName:     DefaultIndexName,
 		variableScope: types.NewJsonObject(),
-
 	}
 	r, err := visitor.Visit(tree)
 	return Result{
@@ -127,7 +127,6 @@ func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) 
 		name:          DefaultName,
 		indexName:     DefaultIndexName,
 		variableScope: types.NewJsonObject(),
-
 	}
 	r, err := visitor.Visit(tree)
 	return Result{
@@ -168,6 +167,7 @@ func evalWithExtraScope(text string, scope *deque.Deque[*types.JsonObject], extr
 	v.indexName = DefaultIndexName
 	v.action = 0
 	v.variableScope = nil
+	v.localVarTarget = nil
 	v.globalScope = nil
 	v.usedVariables = v.usedVariables[:0]
 
@@ -180,10 +180,11 @@ func evalWithExtraScope(text string, scope *deque.Deque[*types.JsonObject], extr
 		VariableScope: v.variableScope,
 		Scope:         *scope,
 	}
-	// Wyczyść referencje przed zwrotem do puli.
+	// Clear reference before returning to the pool
 	v.scope = deque.Deque[*types.JsonObject]{}
 	v.extraScope = nil
 	v.variableScope = nil
+	v.localVarTarget = nil
 	exprVisitorPool.Put(v)
 	return result, err
 }
@@ -227,7 +228,7 @@ func EvalJsonteFile(text string, scope *types.JsonObject, path string) error {
 		indexName:     DefaultIndexName,
 		variableScope: types.NewJsonObject(),
 
-		globalScope:   scope,
+		globalScope: scope,
 	}
 	_, err := visitor.Visit(tree)
 	if err != nil {
@@ -255,5 +256,3 @@ func ParseLambda(text string) ([]string, []string, error) {
 	visitor.Visit(tree)
 	return visitor.usedVariables, visitor.arguments, nil
 }
-
-

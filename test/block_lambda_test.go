@@ -97,6 +97,63 @@ func TestBlockLambdaReturnFromMap(t *testing.T) {
 	assertArray(t, jsonte.Result{Value: signal.Value, Action: types.Value}, types.AsArray([]interface{}{2, 4, 6, 8, 10}))
 }
 
+func TestLambdaLocalVarsIsolatedPerCall(t *testing.T) {
+	// Internal variables assigned inside a lambda body must not leak between calls
+	// or into variableScope.
+	eval := evaluateScript(t, `
+		makeRect = (i) => { rx = 'r' + i; ry = 's' + i; return [rx, ry]; };
+		usePoint = (rx, ry) => [rx, ry];
+		makeRect(0);
+		makeRect(1);
+		makeRect(2);
+		return usePoint('0', '0');
+	`)
+	signal, ok := eval.Value.(*types.JsonSignal)
+	if !ok {
+		t.Fatalf("Expected return signal, got %T", eval.Value)
+	}
+	expected := types.AsArray([]interface{}{"0", "0"})
+	if !signal.Value.Equals(expected) {
+		t.Fatalf("Expected ['0', '0'], got %s", signal.Value.StringValue())
+	}
+}
+
+func TestLambdaLocalVarsNotVisibleOutside(t *testing.T) {
+	// A variable assigned inside a lambda must not be visible in the outer script scope.
+	eval := evaluateScript(t, `
+		fn = () => { inner = 42; };
+		fn();
+		return inner;
+	`)
+	signal, ok := eval.Value.(*types.JsonSignal)
+	if !ok {
+		t.Fatalf("Expected return signal, got %T", eval.Value)
+	}
+	if !types.IsNull(signal.Value) {
+		t.Fatalf("Expected null (inner not visible outside lambda), got %s", signal.Value.StringValue())
+	}
+}
+
+func TestLambdaCanReadScriptLevelVar(t *testing.T) {
+	// A lambda should be able to read variables defined at script level (in variableScope).
+	eval := evaluateScript(t, `
+		multiplier = 3;
+		fn = (x) => x * multiplier;
+		return fn(7);
+	`)
+	assertReturn(t, eval, types.AsNumber(21))
+}
+
+func TestLambdaThisWritesToScriptScope(t *testing.T) {
+	// this.x = value inside a lambda is the explicit escape hatch for writing to script scope.
+	eval := evaluateScript(t, `
+		fn = () => { this.exported = 99; };
+		fn();
+		return exported;
+	`)
+	assertReturn(t, eval, types.AsNumber(99))
+}
+
 func TestLineComment(t *testing.T) {
 	eval := evaluateScript(t, `
 		// this is a comment
