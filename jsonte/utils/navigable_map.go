@@ -25,6 +25,25 @@ type NavigableMap[K comparable, V any] struct {
 	// trigger when tombstones percentage >= autoCompactPct AND tombstones >= autoCompactMin
 	autoCompactPct int // 0..100
 	autoCompactMin int
+
+	// inline backs entries for small maps initialized via InitInline,
+	// avoiding a separate heap allocation. Unused otherwise.
+	inline [NavigableMapInlineCap]nmEntry[K, V]
+}
+
+// NavigableMapInlineCap is the number of entries InitInline can store without a heap allocation.
+const NavigableMapInlineCap = 2
+
+// InitInline points entry storage at the map's inline array, so maps that stay
+// at or below nmInlineCap entries need no separate heap allocation.
+// Only call it through a pointer whose pointee will not be copied or moved
+// (e.g. a freshly heap-allocated struct embedding the map): entries aliases
+// the inline array, so copying the map by value leaves the copy's slice
+// pointing into the original.
+func (m *NavigableMap[K, V]) InitInline() {
+	m.entries = m.inline[:0]
+	m.autoCompactPct = 33
+	m.autoCompactMin = 128
 }
 
 // NewNavigableMap creates a new NavigableMap.

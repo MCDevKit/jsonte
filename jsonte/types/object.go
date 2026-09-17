@@ -508,12 +508,20 @@ func DeepCopyObject(object *JsonObject) *JsonObject {
 }
 
 func NewJsonObject() *JsonObject {
-	return &JsonObject{Value: utils.NewNavigableMap[string, JsonType]()}
+	obj := &JsonObject{}
+	obj.Value.InitInline()
+	return obj
 }
 
 // NewJsonObjectWithCapacity creates a JsonObject preallocating internal storage.
 func NewJsonObjectWithCapacity(capacity int) *JsonObject {
-	return &JsonObject{Value: utils.NewNavigableMapWithCapacity[string, JsonType](capacity)}
+	obj := &JsonObject{}
+	if capacity <= utils.NavigableMapInlineCap {
+		obj.Value.InitInline()
+	} else {
+		obj.Value = utils.NewNavigableMapWithCapacity[string, JsonType](capacity)
+	}
+	return obj
 }
 
 func IsReservedKey(k string) bool {
