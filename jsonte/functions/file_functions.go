@@ -316,7 +316,7 @@ func load(s *types.JsonString) (*types.JsonObject, error) {
 		if err != nil {
 			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
 		}
-		readAll, err := io.ReadAll(resolver)
+		readAll, err := readAllFile(resolver)
 		if err != nil {
 			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read file %s", s.StringValue())
 		}
@@ -341,7 +341,7 @@ func loadText(s *types.JsonString) (*types.JsonString, error) {
 		if err != nil {
 			return types.EmptyString, burrito.WrapErrorf(err, "Failed to resolve path %s", s.StringValue())
 		}
-		readAll, err := io.ReadAll(resolver)
+		readAll, err := readAllFile(resolver)
 		if err != nil {
 			return types.EmptyString, burrito.WrapErrorf(err, "Failed to read file %s", s.StringValue())
 		}
@@ -444,4 +444,15 @@ func isDir(s *types.JsonString) (*types.JsonBool, error) {
 		return types.False(), burrito.WrapErrorf(err, "Failed to stat path %s", s.StringValue())
 	}
 	return types.AsBool(stat.IsDir()), nil
+}
+
+// readAllFile reads the whole file. When the size is known up front (e.g. entries of a .brarchive),
+// the buffer is allocated once instead of being grown by io.ReadAll.
+func readAllFile(r io.Reader) ([]byte, error) {
+	if s, ok := r.(interface{ Size() int64 }); ok {
+		buf := make([]byte, s.Size())
+		_, err := io.ReadFull(r, buf)
+		return buf, err
+	}
+	return io.ReadAll(r)
 }

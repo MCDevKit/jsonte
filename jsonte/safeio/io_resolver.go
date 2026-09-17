@@ -2,6 +2,7 @@ package safeio
 
 import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
+	"github.com/MCDevKit/jsonte/jsonte/brarchive"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"io"
 	"io/fs"
@@ -28,9 +29,21 @@ type IOResolver struct {
 // Resolver Current Resolver used by jsonte to access IO
 var Resolver = DefaultIOResolver
 
-// DefaultIOResolver Default IO Resolver, that uses the os package
+// DefaultIOResolver Default IO Resolver, that uses the os package.
+// Paths of the form <archive>.brarchive#/<name> refer to files inside a Minecraft .brarchive file.
 var DefaultIOResolver = IOResolver{
 	Open: func(path string) (ReadAtWriteCloser, error) {
+		if archive, name, ok := brarchive.SplitPath(path); ok {
+			a, err := brarchive.Open(archive)
+			if err != nil {
+				return nil, err
+			}
+			r, err := a.Open(name)
+			if err != nil {
+				return nil, err
+			}
+			return &archiveFile{r}, nil
+		}
 		return os.Open(path)
 	},
 	OpenDirRecursive: func(path string) ([]string, error) {
@@ -82,11 +95,31 @@ var DefaultIOResolver = IOResolver{
 		return os.Create(path)
 	},
 	Stat: func(path string) (fs.FileInfo, error) {
+		if archive, name, ok := brarchive.SplitPath(path); ok {
+			a, err := brarchive.Open(archive)
+			if err != nil {
+				return nil, err
+			}
+			return a.Stat(name)
+		}
 		return os.Stat(path)
 	},
 	ExecCommand: func(name string, arg ...string) ([]byte, error) {
 		return exec.Command(name, arg...).Output()
 	},
+}
+
+// archiveFile is a read-only file inside a .brarchive
+type archiveFile struct {
+	*io.SectionReader
+}
+
+func (f *archiveFile) Write([]byte) (int, error) {
+	return 0, burrito.WrappedErrorf("Files inside .brarchive are read-only")
+}
+
+func (f *archiveFile) Close() error {
+	return nil
 }
 
 // NoIOResolver Resolver that does not allow any IO
@@ -133,8 +166,36 @@ func CreateFakeFS(fs map[string]interface{}, withNetwork bool) IOResolver {
 			panic("Invalid data type")
 		}
 	}
+	archives := make(map[string]*brarchive.Archive)
+	openArchive := func(path string) (*brarchive.Archive, error) {
+		path = filepath.Clean(path)
+		if a, ok := archives[path]; ok {
+			return a, nil
+		}
+		data, ok := files[path]
+		if !ok {
+			return nil, os.ErrNotExist
+		}
+		a, err := brarchive.Parse(data, int64(len(data.data)), time.Now())
+		if err != nil {
+			return nil, err
+		}
+		archives[path] = a
+		return a, nil
+	}
 	return IOResolver{
 		Open: func(path string) (ReadAtWriteCloser, error) {
+			if archive, name, ok := brarchive.SplitPath(path); ok {
+				a, err := openArchive(archive)
+				if err != nil {
+					return nil, err
+				}
+				r, err := a.Open(name)
+				if err != nil {
+					return nil, err
+				}
+				return &archiveFile{r}, nil
+			}
 			path = filepath.Clean(path)
 			if data, ok := files[path]; ok {
 				return data, nil
@@ -186,6 +247,13 @@ func CreateFakeFS(fs map[string]interface{}, withNetwork bool) IOResolver {
 			return data, nil
 		},
 		Stat: func(path string) (os.FileInfo, error) {
+			if archive, name, ok := brarchive.SplitPath(path); ok {
+				a, err := openArchive(archive)
+				if err != nil {
+					return nil, err
+				}
+				return a.Stat(name)
+			}
 			path = filepath.Clean(path)
 			if data, ok := files[path]; ok {
 				return &FakeFileInfo{

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
+	"github.com/MCDevKit/jsonte/jsonte/brarchive"
 	json2 "github.com/MCDevKit/jsonte/jsonte/json"
 	"github.com/MCDevKit/jsonte/jsonte/safeio"
 	"github.com/MCDevKit/jsonte/jsonte/types"
@@ -17,6 +18,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -53,7 +55,7 @@ func RegisterMinecraftFunctions() {
 		Body:     getLatestBPFile,
 		IsUnsafe: true,
 		Docs: Docs{
-			Summary: "Returns a path to the latest behavior pack file.",
+			Summary: "Returns a path to the latest behavior pack file.\n\nIf the file is stored inside a `.brarchive` (newer Minecraft versions), the returned path has the form `<archive>.brarchive#/<file name>`. Such paths can be used with `load`, `loadText`, `fileExists` and other file functions.",
 			Arguments: []Argument{
 				{
 					Name:    "path",
@@ -88,7 +90,7 @@ func RegisterMinecraftFunctions() {
 		Body:     getBPFile,
 		IsUnsafe: true,
 		Docs: Docs{
-			Summary: "Returns a path to the latest behavior pack file.",
+			Summary: "Returns a path to the latest behavior pack file.\n\nIf the file is stored inside a `.brarchive` (newer Minecraft versions), the returned path has the form `<archive>.brarchive#/<file name>`. Such paths can be used with `load`, `loadText`, `fileExists` and other file functions.",
 			Arguments: []Argument{
 				{
 					Name:    "path",
@@ -127,7 +129,7 @@ func RegisterMinecraftFunctions() {
 		Body:     getLatestRPFile,
 		IsUnsafe: true,
 		Docs: Docs{
-			Summary: "Returns a path to the latest resource pack file.",
+			Summary: "Returns a path to the latest resource pack file.\n\nIf the file is stored inside a `.brarchive` (newer Minecraft versions), the returned path has the form `<archive>.brarchive#/<file name>`. Such paths can be used with `load`, `loadText`, `fileExists` and other file functions.",
 			Arguments: []Argument{
 				{
 					Name:    "path",
@@ -162,7 +164,7 @@ func RegisterMinecraftFunctions() {
 		Body:     getRPFile,
 		IsUnsafe: true,
 		Docs: Docs{
-			Summary: "Returns a path to the latest resource pack file.",
+			Summary: "Returns a path to the latest resource pack file.\n\nIf the file is stored inside a `.brarchive` (newer Minecraft versions), the returned path has the form `<archive>.brarchive#/<file name>`. Such paths can be used with `load`, `loadText`, `fileExists` and other file functions.",
 			Arguments: []Argument{
 				{
 					Name:    "path",
@@ -200,7 +202,7 @@ func RegisterMinecraftFunctions() {
 		Name:  "listLatestRPFiles",
 		Body:  listLatestRPFiles,
 		Docs: Docs{
-			Summary: "Returns an array of paths to the latest files in resource pack within given path.",
+			Summary: "Returns an array of paths to the latest files in resource pack within given path.\n\nFiles stored inside a `.brarchive` (newer Minecraft versions) are returned as `<archive>.brarchive#/<file name>` paths.",
 			Arguments: []Argument{
 				{
 					Name:    "path",
@@ -222,7 +224,7 @@ func RegisterMinecraftFunctions() {
 		Name:  "listLatestBPFiles",
 		Body:  listLatestBPFiles,
 		Docs: Docs{
-			Summary: "Returns an array of paths to the latest files in behavior pack within given path.",
+			Summary: "Returns an array of paths to the latest files in behavior pack within given path.\n\nFiles stored inside a `.brarchive` (newer Minecraft versions) are returned as `<archive>.brarchive#/<file name>` paths.",
 			Arguments: []Argument{
 				{
 					Name:    "path",
@@ -244,7 +246,7 @@ func RegisterMinecraftFunctions() {
 		Name:  "listRPFiles",
 		Body:  listRPFiles,
 		Docs: Docs{
-			Summary: "Returns an array of paths to the latest files in resource pack within given path.",
+			Summary: "Returns an array of paths to the latest files in resource pack within given path.\n\nFiles stored inside a `.brarchive` (newer Minecraft versions) are returned as `<archive>.brarchive#/<file name>` paths.",
 			Arguments: []Argument{
 				{
 					Name:    "path",
@@ -270,7 +272,7 @@ func RegisterMinecraftFunctions() {
 		Name:  "listBPFiles",
 		Body:  listBPFiles,
 		Docs: Docs{
-			Summary: "Returns an array of paths to the latest files in behavior pack within given path.",
+			Summary: "Returns an array of paths to the latest files in behavior pack within given path.\n\nFiles stored inside a `.brarchive` (newer Minecraft versions) are returned as `<archive>.brarchive#/<file name>` paths.",
 			Arguments: []Argument{
 				{
 					Name:    "path",
@@ -451,7 +453,7 @@ func getBPFile(p *types.JsonString, version *types.Semver, shouldFail *types.Jso
 		}
 		bpFiles = bp
 	}
-	file, err := getLatestFile(p.StringValue(), bpFiles, version)
+	file, err := cachedLatestFile("BP", p.StringValue(), bpFiles, version)
 	if !shouldFail.BoolValue() && err != nil && burrito.AsBurritoError(err).HasTag(os.ErrNotExist.Error()) {
 		return types.Null, nil
 	}
@@ -478,7 +480,7 @@ func getRPFile(p *types.JsonString, version *types.Semver, shouldFail *types.Jso
 		}
 		rpFiles = rp
 	}
-	file, err := getLatestFile(p.StringValue(), rpFiles, version)
+	file, err := cachedLatestFile("RP", p.StringValue(), rpFiles, version)
 	if !shouldFail.BoolValue() && err != nil && burrito.AsBurritoError(err).HasTag(os.ErrNotExist.Error()) {
 		return types.Null, nil
 	}
@@ -531,26 +533,27 @@ func listLatestFiles(p string, m utils.NavigableMap[string, string], version *ty
 		}
 		s := path.Join(m.Get(keys[i]), p)
 		_, err := safeio.Resolver.Stat(s)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			} else {
+		if err == nil {
+			recursive, err := safeio.Resolver.OpenDirRecursive(s)
+			if err != nil {
 				return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while reading file %s", p)
 			}
-		}
-		recursive, err := safeio.Resolver.OpenDirRecursive(s)
-		if err != nil {
+			for _, f := range recursive {
+				joined := filepath.Join(s, f)
+				rel, err := filepath.Rel(s, joined)
+				if err != nil {
+					return types.NewJsonArray(), err
+				}
+				if _, ok := result[rel]; !ok {
+					result[rel] = joined
+				}
+			}
+		} else if !os.IsNotExist(err) {
 			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while reading file %s", p)
 		}
-		for _, f := range recursive {
-			joined := filepath.Join(s, f)
-			rel, err := filepath.Rel(s, joined)
-			if err != nil {
-				return types.NewJsonArray(), err
-			}
-			if _, ok := result[rel]; !ok {
-				result[rel] = joined
-			}
+		err = listArchiveFiles(m.Get(keys[i]), p, result)
+		if err != nil {
+			return types.NewJsonArray(), burrito.WrapErrorf(err, "An error occurred while reading archives for %s", p)
 		}
 	}
 	arr := make([]types.JsonType, len(result))
@@ -577,6 +580,13 @@ func getLatestFile(p string, m utils.NavigableMap[string, string], version *type
 		}
 		s := path.Join(m.Get(keys[i]), p)
 		_, err := safeio.Resolver.Stat(s)
+		if err != nil && os.IsNotExist(err) {
+			// Newer Minecraft versions store vanilla files inside .brarchive files
+			if a := archiveFilePath(m.Get(keys[i]), p); a != "" {
+				s = a
+				_, err = safeio.Resolver.Stat(s)
+			}
+		}
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -586,9 +596,96 @@ func getLatestFile(p string, m utils.NavigableMap[string, string], version *type
 		}
 		return types.NewString(s), nil
 	}
+	return nil, fileNotExistError(p)
+}
+
+func fileNotExistError(p string) error {
 	err := burrito.AsBurritoError(burrito.WrapErrorf(os.ErrNotExist, "File '%s' does not exist", p))
 	err.AddTag(os.ErrNotExist.Error())
-	return nil, err
+	return err
+}
+
+var latestFileCache = map[string]*types.JsonString{}
+var latestFileCacheMu sync.RWMutex
+
+// cachedLatestFile is getLatestFile with results (including misses) cached per pack kind, version and path,
+// so repeated lookups do not stat every pack version again.
+func cachedLatestFile(kind, p string, m utils.NavigableMap[string, string], version *types.Semver) (*types.JsonString, error) {
+	key := kind + "\x00" + p
+	if version != nil && !version.IsEmpty() {
+		key += "\x00" + version.StringValue()
+	}
+	latestFileCacheMu.RLock()
+	file, ok := latestFileCache[key]
+	latestFileCacheMu.RUnlock()
+	if ok {
+		if file == nil {
+			return nil, fileNotExistError(p)
+		}
+		return file, nil
+	}
+	file, err := getLatestFile(p, m, version)
+	if err == nil || burrito.AsBurritoError(err).HasTag(os.ErrNotExist.Error()) {
+		latestFileCacheMu.Lock()
+		latestFileCache[key] = file
+		latestFileCacheMu.Unlock()
+	}
+	return file, err
+}
+
+// archiveFilePath returns the pseudo path of a pack file stored inside a .brarchive
+// (<pack>/__brarchive/<dir>.brarchive#/<name>), or "" for files in the pack root.
+func archiveFilePath(packDir, p string) string {
+	dir, name := path.Split(p)
+	dir = strings.TrimSuffix(dir, "/")
+	if dir == "" {
+		return ""
+	}
+	return brarchive.JoinPath(path.Join(packDir, "__brarchive", dir)+brarchive.Extension, name)
+}
+
+// listArchiveFiles adds files stored inside .brarchive files under the pack directory p to result,
+// keyed by path relative to p. Existing keys are kept.
+func listArchiveFiles(packDir, p string, result map[string]string) error {
+	base := path.Join(packDir, "__brarchive", p)
+	// archive path -> directory relative to p
+	archives := map[string]string{}
+	if _, err := safeio.Resolver.Stat(base + brarchive.Extension); err == nil {
+		archives[base+brarchive.Extension] = ""
+	}
+	if stat, err := safeio.Resolver.Stat(base); err == nil && stat.IsDir() {
+		nested, err := safeio.Resolver.OpenDirRecursive(base)
+		if err != nil {
+			return err
+		}
+		for _, f := range nested {
+			if strings.HasSuffix(f, brarchive.Extension) {
+				archives[path.Join(base, f)] = strings.TrimSuffix(f, brarchive.Extension)
+			}
+		}
+	}
+	for archivePath, dir := range archives {
+		a, err := brarchive.Open(archivePath)
+		if err != nil {
+			return err
+		}
+		for _, name := range a.Names() {
+			rel := filepath.Join(dir, name)
+			if _, ok := result[rel]; !ok {
+				result[rel] = brarchive.JoinPath(archivePath, name)
+			}
+		}
+	}
+	return nil
+}
+
+// ClearPackCache clears the cached vanilla pack locations, so they are resolved again on next use.
+func ClearPackCache() {
+	bpFiles = utils.NavigableMap[string, string]{}
+	rpFiles = utils.NavigableMap[string, string]{}
+	latestFileCacheMu.Lock()
+	latestFileCache = map[string]*types.JsonString{}
+	latestFileCacheMu.Unlock()
 }
 
 // From https://stackoverflow.com/a/24792688/6459649
