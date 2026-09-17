@@ -688,24 +688,25 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) (type
 
 // storeIntoParent writes value into the container that left was resolved from
 // (assignment machinery shared by +=, -=, *=, /=, %=, ++ and --) and returns the stored value.
-func storeIntoParent(left, value types.JsonType) (types.JsonType, error) {
-	if left.Parent() == nil {
+// parent and parentIndex must be read from left right after resolving it: see assignTarget.
+func storeIntoParent(parent, parentIndex, value types.JsonType) (types.JsonType, error) {
+	if parent == nil {
 		return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
 	}
-	if left.ParentIndex() == nil {
+	if parentIndex == nil {
 		utils.BadDeveloperError("Invalid parent index type")
 	}
-	if b, ok := (left.Parent()).(*types.JsonObject); ok {
-		if i, ok1 := left.ParentIndex().(*types.JsonString); ok1 {
+	if b, ok := parent.(*types.JsonObject); ok {
+		if i, ok1 := parentIndex.(*types.JsonString); ok1 {
 			b.Put(i.StringValue(), value)
 			return value, nil
-		} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
-			return i.Set(left.Parent(), value)
+		} else if i, ok1 := parentIndex.(*types.JsonPath); ok1 {
+			return i.Set(parent, value)
 		} else {
-			return types.Null, burrito.WrappedErrorf("Invalid index type. Expected string or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
+			return types.Null, burrito.WrappedErrorf("Invalid index type. Expected string or Json Path, but got %s", reflect.TypeOf(parentIndex).String())
 		}
-	} else if b, ok := (left.Parent()).(*types.JsonArray); ok {
-		if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
+	} else if b, ok := parent.(*types.JsonArray); ok {
+		if i, ok1 := parentIndex.(*types.JsonNumber); ok1 {
 			index := int(i.IntValue())
 			if index < 0 {
 				index = len(b.Value) + index
@@ -716,14 +717,29 @@ func storeIntoParent(left, value types.JsonType) (types.JsonType, error) {
 			} else {
 				return types.Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
 			}
-		} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
-			return i.Set(left.Parent(), value)
+		} else if i, ok1 := parentIndex.(*types.JsonPath); ok1 {
+			return i.Set(parent, value)
 		} else {
-			return types.Null, burrito.WrappedErrorf("Invalid index type. Expected number or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
+			return types.Null, burrito.WrappedErrorf("Invalid index type. Expected number or Json Path, but got %s", reflect.TypeOf(parentIndex).String())
 		}
 	} else {
 		return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
 	}
+}
+
+// assignTarget resolves the left side of an assignment and returns where to store the new value.
+// The parent must be captured before anything else is evaluated: small numbers are shared instances
+// (see smallIntCache in types/number.go), so resolving another variable holding the same number
+// overwrites the parent of the left side.
+// TODO: This only fixes the evaluation order. Resolving a variable still mutates the shared cached
+// instance, which is a data race when templates are processed by multiple workers. Revisit by not
+// setting parents on cached numbers or by caching without shared mutable state.
+func (v *ExpressionVisitor) assignTarget(field antlr.ParseTree) (left, parent, parentIndex types.JsonType, err error) {
+	left, err = v.Visit(field)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return left, left.Parent(), left.ParentIndex(), nil
 }
 
 // numericCompound computes the value for -=, *=, /= and %= mirroring the binary
@@ -783,7 +799,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		return types.AsBool(!visit.BoolValue()), nil
 	}
 	if info.hasIncrement || info.hasDecrement {
-		left, err := v.Visit(info.fields[0])
+		left, parent, parentIndex, err := v.assignTarget(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
@@ -801,10 +817,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		} else {
 			value = types.NewIntNumber(int64(n.IntValue()) + delta)
 		}
-		return storeIntoParent(left, value)
+		return storeIntoParent(parent, parentIndex, value)
 	}
 	if info.hasAddAssign || info.hasSubtractAssign || info.hasMultiplyAssign || info.hasDivideAssign || info.hasModuloAssign {
-		left, err := v.Visit(info.fields[0])
+		left, parent, parentIndex, err := v.assignTarget(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.WrapErrorf(err, "Error resolving left side of the statement")
 		}
@@ -818,10 +834,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		} else {
 			value = numericCompound(left, right, info)
 		}
-		return storeIntoParent(left, value)
+		return storeIntoParent(parent, parentIndex, value)
 	}
 	if info.hasLiteral {
-		left, err := v.Visit(info.fields[0])
+		_, parent, parentIndex, err := v.assignTarget(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.WrapErrorf(err, "Error resolving left side of the statement")
 		}
@@ -833,23 +849,23 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		if _, ok := right.(*types.JsonLambda); !ok {
 			right = types.Box(right.Unbox())
 		}
-		if left.Parent() == nil {
+		if parent == nil {
 			return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
 		}
-		if left.ParentIndex() == nil {
+		if parentIndex == nil {
 			utils.BadDeveloperError("Invalid parent index type")
 		}
-		if b, ok := (left.Parent()).(*types.JsonObject); ok {
-			if i, ok1 := left.ParentIndex().(*types.JsonString); ok1 {
+		if b, ok := parent.(*types.JsonObject); ok {
+			if i, ok1 := parentIndex.(*types.JsonString); ok1 {
 				b.Put(i.StringValue(), right)
 				return right, nil
-			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
-				return i.Set(left.Parent(), right)
+			} else if i, ok1 := parentIndex.(*types.JsonPath); ok1 {
+				return i.Set(parent, right)
 			} else {
-				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected string or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
+				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected string or Json Path, but got %s", reflect.TypeOf(parentIndex).String())
 			}
-		} else if b, ok := (left.Parent()).(*types.JsonArray); ok {
-			if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
+		} else if b, ok := parent.(*types.JsonArray); ok {
+			if i, ok1 := parentIndex.(*types.JsonNumber); ok1 {
 				index := int(i.IntValue())
 				if index < 0 {
 					index = len(b.Value) + index
@@ -860,13 +876,13 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				} else {
 					return types.Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
 				}
-			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
-				return i.Set(left.Parent(), right)
+			} else if i, ok1 := parentIndex.(*types.JsonPath); ok1 {
+				return i.Set(parent, right)
 			} else {
-				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected number or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
+				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected number or Json Path, but got %s", reflect.TypeOf(parentIndex).String())
 			}
-		} else if b, ok := (left.Parent()).(*types.JsonPath); ok {
-			if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
+		} else if b, ok := parent.(*types.JsonPath); ok {
+			if i, ok1 := parentIndex.(*types.JsonNumber); ok1 {
 				index := int(i.IntValue())
 				if index < 0 {
 					index = len(b.Path) + index

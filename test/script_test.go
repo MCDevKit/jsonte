@@ -273,3 +273,30 @@ func TestIfMultipleElseIfStatement(t *testing.T) {
 	AssertTestFunctionNotCalled(t, "false")
 	AssertTestFunctionNotCalled(t, "else")
 }
+
+// Small numbers are shared cached instances; assigning to one variable must not
+// land in another variable that holds the same number.
+func TestAssignmentWithSameSmallNumbers(t *testing.T) {
+	eval := evaluateScript(t, "x = 1; y = 1; x = x + y; return [x, y];")
+	assertReturn(t, eval, types.Box([]interface{}{2, 1}))
+}
+
+func TestCompoundAssignmentWithSameSmallNumbers(t *testing.T) {
+	eval := evaluateScript(t, "x = 2; y = 2; x += y; x -= y; x *= y; return [x, y];")
+	assertReturn(t, eval, types.Box([]interface{}{4, 2}))
+}
+
+func TestIncrementWithSameSmallNumbers(t *testing.T) {
+	eval := evaluateScript(t, "x = 3; y = 3; y++; return [x, y];")
+	assertReturn(t, eval, types.Box([]interface{}{3, 4}))
+}
+
+func TestWhileLoopNumericAccumulation(t *testing.T) {
+	eval := evaluateScript(t, "total = 0; i = 1; while i <= 3 { total = total + i; i++; } return total;")
+	assertReturn(t, eval, types.AsNumber(6))
+}
+
+func TestForLoopNumericAccumulation(t *testing.T) {
+	eval := evaluateScript(t, "total = 0; for i in 1..3 { total += i; } return total;")
+	assertReturn(t, eval, types.AsNumber(6))
+}
