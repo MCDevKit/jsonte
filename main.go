@@ -4,6 +4,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io/fs"
 	"math/rand"
@@ -47,6 +48,7 @@ func main() {
 	silent := false
 	removeSrc := false
 	minify := false
+	disableMolangValidation := false
 	scope := make([]string, 0)
 	out := ""
 	include := make([]string, 0)
@@ -81,6 +83,10 @@ func main() {
 		Name:  "minify",
 		Usage: "Minify the output",
 	}, &minify)
+	app.BoolFlag(Flag{
+		Name:  "disable-molang-validation",
+		Usage: "Output processed .molang files that are not valid Molang instead of failing",
+	}, &disableMolangValidation)
 	app.StringSliceFlag(Flag{
 		Name:  "scope",
 		Usage: "Scope of the output",
@@ -205,9 +211,9 @@ func main() {
 							appendErr(burrito.WrapErrorf(err, "An error occurred while reading the molang file %s", file))
 							return
 						}
-						output, err := jsonte.ProcessMolangFile(string(bytes), object)
+						output, err := jsonte.ProcessMolangFileWithValidation(string(bytes), object, !disableMolangValidation)
 						if err != nil {
-							appendErr(burrito.WrapErrorf(err, "An error occurred while processing the molang file %s", file))
+							appendErr(wrapMolangError(err, file))
 							return
 						}
 						molangCh <- molangRes{base: base, file: file, data: output}
@@ -232,9 +238,9 @@ func main() {
 								appendErr(burrito.WrapErrorf(err, "An error occurred while reading the molang file %s", file))
 								return
 							}
-							output, err := jsonte.ProcessMolangFile(string(bytes), object)
+							output, err := jsonte.ProcessMolangFileWithValidation(string(bytes), object, !disableMolangValidation)
 							if err != nil {
-								appendErr(burrito.WrapErrorf(err, "An error occurred while processing the molang file %s", file))
+								appendErr(wrapMolangError(err, file))
 								return
 							}
 							molangCh <- molangRes{base: base, file: file, data: output}
@@ -875,4 +881,13 @@ func repl(scope *types.JsonObject) {
 		}
 		fmt.Print("> ")
 	}
+}
+
+// wrapMolangError wraps an error from processing a molang file, pointing invalid Molang at the flag that allows it.
+func wrapMolangError(err error, file string) error {
+	var invalid *jsonte.InvalidMolangError
+	if errors.As(err, &invalid) {
+		return burrito.WrappedErrorf("The molang file %s is not valid Molang: %s. Use --disable-molang-validation to output it anyway.", file, invalid)
+	}
+	return burrito.WrapErrorf(err, "An error occurred while processing the molang file %s", file)
 }

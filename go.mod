@@ -1,6 +1,6 @@
 module github.com/MCDevKit/jsonte
 
-go 1.21
+go 1.26.4
 
 require (
 	github.com/Bedrock-OSS/go-burrito v1.0.4
@@ -12,6 +12,7 @@ require (
 	github.com/james-barrow/golang-ipc v1.2.4
 	github.com/paul-mannino/go-fuzzywuzzy v0.0.0-20200127021948-54652b135d0e
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d
+	github.com/stirante/molang-go v0.0.0-20260917122549-6abea1d70a0d
 	github.com/zeebo/xxh3 v1.0.2
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
@@ -31,3 +32,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 )
+
+// Since Go 1.24 rand.Seed is NOP, we need to bring it back for --seed flag
+// TODO: switch to own rand implementation, that replicated that of Go
+godebug randseednop=0

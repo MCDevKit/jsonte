@@ -1,6 +1,8 @@
 package test
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/MCDevKit/jsonte/jsonte"
@@ -45,7 +47,7 @@ func assertMolangWithScope(t *testing.T, template, expected string, scope map[st
 // No expressions - file should only be minified
 func TestNoOperationMolang(t *testing.T) {
 	input := `variable.x = 1.0; return variable.x;`
-	expected := `v.x=1.0;return v.x;`
+	expected := `v.x=1;return v.x;`
 	assertMolang(t, input, expected)
 }
 
@@ -82,7 +84,7 @@ func TestMolangCommentsStripped(t *testing.T) {
 	input := `# this is a comment
 variable.x = 1.0;
 return variable.x;`
-	expected := `v.x=1.0;return v.x;`
+	expected := `v.x=1;return v.x;`
 	assertMolang(t, input, expected)
 }
 
@@ -120,7 +122,14 @@ func TestMolangNestedBraces(t *testing.T) {
 func TestMolangStringWithBrace(t *testing.T) {
 	input := `#{'hello world'}`
 	expected := `hello world`
-	assertMolang(t, input, expected)
+	// "hello world" is not valid Molang, so this checks the expression handling with validation disabled
+	process, err := jsonte.ProcessMolangFileWithValidation(input, types.NewJsonObject(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if process != expected {
+		t.Fatalf("Expected: \n%s\ngot: \n%s", expected, process)
+	}
 }
 
 // Empty file
@@ -134,7 +143,7 @@ func TestMolangOnlyMinify(t *testing.T) {
 		query.life_time < 0.01 ? 0.0 : variable.hand_bob + 1;
 		return variable.hand_bob;
 	`
-	expected := `q.life_time<0.01?0.0:v.hand_bob+1;return v.hand_bob;`
+	expected := `q.life_time<0.01?0:v.hand_bob+1;return v.hand_bob;`
 	assertMolang(t, input, expected)
 }
 
@@ -163,13 +172,13 @@ func TestMolangWithScopeMultiline(t *testing.T) {
 
 func TestMolangLineComment(t *testing.T) {
 	input := "variable.x = 1.0; # this is a comment\nreturn variable.x;"
-	expected := "v.x=1.0;return v.x;"
+	expected := "v.x=1;return v.x;"
 	assertMolang(t, input, expected)
 }
 
 func TestMolangLineCommentOnly(t *testing.T) {
 	input := "# full line comment\nvariable.x = 1.0;\nreturn variable.x;"
-	expected := "v.x=1.0;return v.x;"
+	expected := "v.x=1;return v.x;"
 	assertMolang(t, input, expected)
 }
 
@@ -192,4 +201,66 @@ func TestMolangCommentInsideStringNotStripped(t *testing.T) {
 	input := `variable.s = 'hello # world'; return variable.s;`
 	expected := `v.s='hello # world';return v.s;`
 	assertMolang(t, input, expected)
+}
+
+// Valid Molang is minified by molang-go, which also drops redundant parentheses
+func TestMolangMinifyRedundantParentheses(t *testing.T) {
+	input := `variable.x = (query.life_time > 0.5) ? (1 + 2) * 3 : 0;`
+	expected := `v.x=q.life_time>0.5?(1+2)*3:0;`
+	assertMolang(t, input, expected)
+}
+
+// A fragment that is not valid Molang (e.g. with a placeholder replaced later) fails by default
+func TestMolangInvalidFailsByDefault(t *testing.T) {
+	_, err := jsonte.ProcessMolangFile(`variable.i = __RECT_INDEX__;`, types.NewJsonObject())
+	var invalid *jsonte.InvalidMolangError
+	if !errors.As(err, &invalid) {
+		t.Fatalf("Expected InvalidMolangError, got %v", err)
+	}
+}
+
+// With validation disabled, invalid Molang falls back to token minification without an error
+func TestMolangPlaceholderFallback(t *testing.T) {
+	input := `variable.i = __RECT_INDEX__; variable.x = (1.0);`
+	expected := `v.i=__RECT_INDEX__;v.x=(1.0);`
+	output, err := jsonte.ProcessMolangFileWithValidation(input, types.NewJsonObject(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output != expected {
+		t.Fatalf("Expected: \n%s\ngot: \n%s", expected, output)
+	}
+}
+
+// Valid Molang is still minified by molang-go when validation is disabled
+func TestMolangValidWithValidationDisabled(t *testing.T) {
+	output, err := jsonte.ProcessMolangFileWithValidation(`variable.x = (1.0);`, types.NewJsonObject(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output != `v.x=1;` {
+		t.Fatalf("Expected v.x=1; got %s", output)
+	}
+}
+
+// Molang the game rejects at load time is an error
+func TestMolangErrorForEngineRule(t *testing.T) {
+	_, err := jsonte.ProcessMolangFile(`variable.x = query.y ?? 1;`, types.NewJsonObject())
+	var invalid *jsonte.InvalidMolangError
+	if !errors.As(err, &invalid) {
+		t.Fatalf("Expected InvalidMolangError for ?? with a query on the left-hand side, got %v", err)
+	}
+}
+
+// The error points at the line and column instead of embedding the whole source
+func TestMolangErrorPosition(t *testing.T) {
+	input := "variable.a = 1;\nvariable.i = __RECT_INDEX__;"
+	_, err := jsonte.ProcessMolangFile(input, types.NewJsonObject())
+	var invalid *jsonte.InvalidMolangError
+	if !errors.As(err, &invalid) {
+		t.Fatalf("Expected InvalidMolangError, got %v", err)
+	}
+	if invalid.Line != 2 || invalid.Column != 14 || strings.Contains(invalid.Error(), "variable.a") {
+		t.Fatalf("Unexpected error: %s", invalid)
+	}
 }

@@ -1,6 +1,8 @@
 package jsonte
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -9,6 +11,10 @@ import (
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"github.com/gammazero/deque"
+	molang "github.com/stirante/molang-go"
+	"github.com/stirante/molang-go/lexer"
+	"github.com/stirante/molang-go/parser"
+	"github.com/stirante/molang-go/printer"
 )
 
 // ProcessLangFile processes a lang file replacing all the jsonte expressions with their values
@@ -62,8 +68,16 @@ func stripMolangComments(input string) string {
 	return strings.Join(lines, "\n")
 }
 
-// ProcessMolangFile processes a molang file replacing all the jsonte expressions with their values, then minifies it
+// ProcessMolangFile processes a molang file replacing all the jsonte expressions with their values, then minifies it.
+// It returns an *InvalidMolangError if the result is not valid Molang.
 func ProcessMolangFile(input string, scope *types.JsonObject) (string, error) {
+	return ProcessMolangFileWithValidation(input, scope, true)
+}
+
+// ProcessMolangFileWithValidation is ProcessMolangFile with validation that can be turned off.
+// Valid Molang is minified by molang-go. When validate is false, anything else (e.g. a fragment with
+// placeholders replaced later) is minified token by token instead of returning an *InvalidMolangError.
+func ProcessMolangFileWithValidation(input string, scope *types.JsonObject, validate bool) (string, error) {
 	str, err := json.ConvertToUTF8([]byte(input))
 	if err != nil {
 		return input, burrito.PassError(err)
@@ -73,7 +87,67 @@ func ProcessMolangFile(input string, scope *types.JsonObject) (string, error) {
 	if err != nil {
 		return "", burrito.PassError(err)
 	}
-	return utils.MinifyWithShortAccessors(output), nil
+	if strings.TrimSpace(output) == "" {
+		return "", nil
+	}
+	prog, parseErr := molang.ParseWith(output, molang.Extensions{Comments: true})
+	if parseErr != nil {
+		if validate {
+			return "", newInvalidMolangError(parseErr, output)
+		}
+		return utils.MinifyWithShortAccessors(output), nil
+	}
+	return printer.Minify(prog), nil
+}
+
+// InvalidMolangError reports a processed molang file that is not valid Molang.
+// Line and Column point into the processed file, after comments are removed and expressions are evaluated.
+type InvalidMolangError struct {
+	Msg     string
+	Line    int
+	Column  int
+	Snippet string
+}
+
+func (e *InvalidMolangError) Error() string {
+	return fmt.Sprintf("%s (line %d, column %d of the processed file: %s)", e.Msg, e.Line, e.Column, e.Snippet)
+}
+
+// newInvalidMolangError replaces molang-go's error text, which embeds the whole source, with the message,
+// the line and column in the processed source, and that line.
+func newInvalidMolangError(err error, source string) error {
+	var msg string
+	var pos int
+	var parseErr *parser.Error
+	var lexErr *lexer.Error
+	switch {
+	case errors.As(err, &parseErr):
+		msg, pos = parseErr.Msg, parseErr.Pos
+	case errors.As(err, &lexErr):
+		msg, pos = lexErr.Msg, lexErr.Pos
+	default:
+		return err
+	}
+	pos = min(max(pos, 0), len(source))
+	lineStart := strings.LastIndexByte(source[:pos], '\n') + 1
+	lineEnd := strings.IndexByte(source[pos:], '\n')
+	if lineEnd < 0 {
+		lineEnd = len(source)
+	} else {
+		lineEnd += pos
+	}
+	line := strings.Count(source[:pos], "\n") + 1
+	column := pos - lineStart + 1
+	// Keep long generated lines readable: show up to 60 bytes on each side of the error
+	from, to := max(lineStart, pos-60), min(lineEnd, pos+60)
+	snippet := strings.TrimSpace(source[from:to])
+	if from > lineStart {
+		snippet = "..." + snippet
+	}
+	if to < lineEnd {
+		snippet += "..."
+	}
+	return &InvalidMolangError{Msg: msg, Line: line, Column: column, Snippet: snippet}
 }
 
 // ProcessMCFunction processes a file replacing all the jsonte expressions with their values
