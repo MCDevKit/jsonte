@@ -143,6 +143,26 @@ func (t *JsonArray) Index(i JsonType) (JsonType, error) {
 	if b, ok := i.(*JsonPath); ok {
 		return b.Get(t)
 	}
+	// Indexing with an array of numbers (e.g. a range: arr[0..2]) gathers the
+	// elements at those indices into a new array.
+	if b, ok := i.(*JsonArray); ok {
+		result := NewJsonArrayWithCapacity(len(b.Value))
+		for _, idx := range b.Value {
+			n, ok := idx.(*JsonNumber)
+			if !ok {
+				return Null, burrito.WrappedErrorf("Array index must contain only numbers: %s", idx.StringValue())
+			}
+			index := int(n.IntValue())
+			if index < 0 {
+				index = len(t.Value) + index
+			}
+			if index < 0 || index >= len(t.Value) {
+				return Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
+			}
+			result.Value = append(result.Value, t.Value[index])
+		}
+		return result, nil
+	}
 	return Null, burrito.WrappedErrorf("Index must be a number: %s", i.StringValue())
 }
 

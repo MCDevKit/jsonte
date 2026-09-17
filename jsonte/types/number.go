@@ -273,6 +273,14 @@ func AsNumber(obj interface{}) *JsonNumber {
 		}
 	}
 	if b, ok := obj.(string); ok {
+		if len(b) > 2 && b[0] == '0' && (b[1] == 'x' || b[1] == 'X') {
+			if hexResult, err := strconv.ParseInt(b[2:], 16, 64); err == nil {
+				return &JsonNumber{
+					Value:   float64(hexResult),
+					Decimal: false,
+				}
+			}
+		}
 		result, err := strconv.ParseInt(b, 10, 64)
 		if err != nil {
 			result1, err := strconv.ParseFloat(b, 64)

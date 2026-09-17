@@ -12,10 +12,10 @@ statement
     | Return field? Semicolon
     | Break Semicolon
     | Continue Semicolon
-    | For (name (Comma name)?) In field statements
-    | If field statements (Else If field statements)* (Else statements)?
-    | While field statements
-    | Do statements While field Semicolon
+    | For (name (Comma name)?) In field statement
+    | If field statement (Else If field statement)* (Else statement)?
+    | While field statement
+    | Do statement While field Semicolon
     ;
 
 statements
@@ -56,22 +56,21 @@ field
     | field (Question? Dot name)
     | field (Question? LeftBracket index RightBracket)
     | field LeftParen (function_param (Comma function_param)*)? RightParen
+    | field Increment
+    | field Decrement
     | Subtract field
+    | Add field
     | Not field
     | field (Divide | Multiply) field
     | field (Add | Subtract) field
     | field Range field
-    | field NullCoalescing field
-    | field Equal field
-    | field Less field
-    | field LessOrEqual field
-    | field Greater field
-    | field GreaterOrEqual field
-    | field NotEqual field
+    | field (Less | LessOrEqual | Greater | GreaterOrEqual | In) field
+    | field (Equal | NotEqual) field
     | field And field
     | field Or field
+    | field NullCoalescing field
     | field Question field (Colon field)?
-    | field AddAssign field
+    | field (AddAssign | SubtractAssign | MultiplyAssign | DivideAssign | ModuloAssign) field
     | field Literal field
     ;
 
@@ -90,6 +89,7 @@ object
 object_field
     : name Colon field
     | ESCAPED_STRING Colon field
+    | LeftBracket field RightBracket Colon field
     | Spread? field
     ;
 

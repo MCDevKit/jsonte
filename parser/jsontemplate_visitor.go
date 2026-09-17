@@ -4,52 +4,52 @@ package parser // JsonTemplate
 
 import "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
-// A complete Visitor for a parse tree produced by JsonTemplateParser.
+// A complete Visitor for a parse tree produced by JsonTemplate.
 type JsonTemplateVisitor interface {
 	antlr.ParseTreeVisitor
 
-	// Visit a parse tree produced by JsonTemplateParser#script.
+	// Visit a parse tree produced by JsonTemplate#script.
 	VisitScript(ctx *ScriptContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#statement.
+	// Visit a parse tree produced by JsonTemplate#statement.
 	VisitStatement(ctx *StatementContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#statements.
+	// Visit a parse tree produced by JsonTemplate#statements.
 	VisitStatements(ctx *StatementsContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#expression.
+	// Visit a parse tree produced by JsonTemplate#expression.
 	VisitExpression(ctx *ExpressionContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#lambda.
+	// Visit a parse tree produced by JsonTemplate#lambda.
 	VisitLambda(ctx *LambdaContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#function_param.
+	// Visit a parse tree produced by JsonTemplate#function_param.
 	VisitFunction_param(ctx *Function_paramContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#field.
+	// Visit a parse tree produced by JsonTemplate#field.
 	VisitField(ctx *FieldContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#array.
+	// Visit a parse tree produced by JsonTemplate#array.
 	VisitArray(ctx *ArrayContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#spread_field.
+	// Visit a parse tree produced by JsonTemplate#spread_field.
 	VisitSpread_field(ctx *Spread_fieldContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#object.
+	// Visit a parse tree produced by JsonTemplate#object.
 	VisitObject(ctx *ObjectContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#object_field.
+	// Visit a parse tree produced by JsonTemplate#object_field.
 	VisitObject_field(ctx *Object_fieldContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#name.
-	VisitName(ctx *NameContext) interface{}
-
-	// Visit a parse tree produced by JsonTemplateParser#index.
-	VisitIndex(ctx *IndexContext) interface{}
-
-	// Visit a parse tree produced by JsonTemplateParser#template_string.
+	// Visit a parse tree produced by JsonTemplate#template_string.
 	VisitTemplate_string(ctx *Template_stringContext) interface{}
 
-	// Visit a parse tree produced by JsonTemplateParser#template_string_part.
+	// Visit a parse tree produced by JsonTemplate#template_string_part.
 	VisitTemplate_string_part(ctx *Template_string_partContext) interface{}
+
+	// Visit a parse tree produced by JsonTemplate#name.
+	VisitName(ctx *NameContext) interface{}
+
+	// Visit a parse tree produced by JsonTemplate#index.
+	VisitIndex(ctx *IndexContext) interface{}
 }

@@ -131,7 +131,9 @@ func (v *LambdaVisitor) VisitObject(context *parser.ObjectContext) {
 }
 
 func (v *LambdaVisitor) VisitObject_field(context *parser.Object_fieldContext) {
-	v.Visit(context.Field())
+	for _, f := range context.AllField() {
+		v.Visit(f)
+	}
 }
 
 func (v *LambdaVisitor) VisitLambda(ctx *parser.LambdaContext) {
@@ -156,8 +158,11 @@ func (v *LambdaVisitor) VisitStatement(ctx *parser.StatementContext) {
 	for _, f := range ctx.AllField() {
 		v.Visit(f)
 	}
-	for _, s := range ctx.AllStatements() {
+	for _, s := range ctx.AllStatement() {
 		v.Visit(s)
+	}
+	if ctx.Statements() != nil {
+		v.Visit(ctx.Statements())
 	}
 }
 

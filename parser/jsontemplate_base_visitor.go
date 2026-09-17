@@ -52,18 +52,18 @@ func (v *BaseJsonTemplateVisitor) VisitObject_field(ctx *Object_fieldContext) in
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseJsonTemplateVisitor) VisitName(ctx *NameContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseJsonTemplateVisitor) VisitIndex(ctx *IndexContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseJsonTemplateVisitor) VisitTemplate_string(ctx *Template_stringContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
 func (v *BaseJsonTemplateVisitor) VisitTemplate_string_part(ctx *Template_string_partContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseJsonTemplateVisitor) VisitName(ctx *NameContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseJsonTemplateVisitor) VisitIndex(ctx *IndexContext) interface{} {
 	return v.VisitChildren(ctx)
 }

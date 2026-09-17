@@ -1,6 +1,7 @@
 ﻿package jsonte
 
 import (
+	"math"
 	"reflect"
 	"strings"
 	"sync"
@@ -52,6 +53,131 @@ var spreadFieldCache sync.Map
 // NUMBER literals in expressions are never indexed (no UpdateParent call), so
 // sharing the same *JsonNumber across evaluations is safe.
 var nodeNumberCache sync.Map
+
+// fieldCtxInfo holds precomputed child/token lookups for a FieldContext.
+// ANTLR's generated accessors (GetToken, AllField, Name, ...) scan and
+// type-assert the children slice on every call; since parse trees are cached
+// and reused across evaluations, this metadata is computed once per node.
+type fieldCtxInfo struct {
+	fields         []parser.IFieldContext
+	params         []parser.IFunction_paramContext
+	name           parser.INameContext
+	index          parser.IIndexContext
+	number         antlr.TerminalNode
+	escapedString  antlr.TerminalNode
+	templateString parser.ITemplate_stringContext
+	array          parser.IArrayContext
+	object         parser.IObjectContext
+	lambda         parser.ILambdaContext
+
+	hasNull, hasTrue, hasFalse        bool
+	hasNot, hasAddAssign, hasLiteral  bool
+	hasAnd, hasOr, hasNullCoalescing  bool
+	hasAdd, hasEqual, hasNotEqual     bool
+	hasLess, hasGreater               bool
+	hasLessOrEqual, hasGreaterOrEqual bool
+	hasRange, hasSubtract             bool
+	hasDivide, hasMultiply            bool
+	hasQuestion, hasLeftParen         bool
+	hasIn                             bool
+	hasIncrement, hasDecrement        bool
+	hasSubtractAssign                 bool
+	hasMultiplyAssign                 bool
+	hasDivideAssign, hasModuloAssign  bool
+
+	// nameText/nameStr are the property name and its interned JsonString when
+	// name is non-nil; numberVal is the parsed literal when number is non-nil.
+	nameText  string
+	nameStr   *types.JsonString
+	numberVal *types.JsonNumber
+}
+
+// exprCtxInfo holds precomputed lookups for an ExpressionContext.
+type exprCtxInfo struct {
+	action    types.JsonAction
+	name      string
+	indexName string
+	field     parser.IFieldContext
+}
+
+func computeExprCtxInfo(ctx *parser.ExpressionContext) *exprCtxInfo {
+	info := &exprCtxInfo{
+		action:    types.Value,
+		name:      DefaultName,
+		indexName: DefaultIndexName,
+		field:     ctx.Field(),
+	}
+	if ctx.Iteration() != nil {
+		info.action = types.Iteration
+	}
+	if ctx.Literal() != nil {
+		info.action = types.Literal
+	}
+	if ctx.Question() != nil {
+		info.action = types.Predicate
+	}
+	if ctx.As() != nil {
+		if len(ctx.AllName()) > 0 {
+			info.name = ctx.Name(0).GetText()
+		}
+		if len(ctx.AllName()) > 1 {
+			info.indexName = ctx.Name(1).GetText()
+		}
+	}
+	return info
+}
+
+func computeFieldCtxInfo(ctx *parser.FieldContext) *fieldCtxInfo {
+	info := &fieldCtxInfo{
+		fields:            ctx.AllField(),
+		params:            ctx.AllFunction_param(),
+		name:              ctx.Name(),
+		index:             ctx.Index(),
+		number:            ctx.NUMBER(),
+		escapedString:     ctx.ESCAPED_STRING(),
+		templateString:    ctx.Template_string(),
+		array:             ctx.Array(),
+		object:            ctx.Object(),
+		lambda:            ctx.Lambda(),
+		hasNull:           ctx.Null() != nil,
+		hasTrue:           ctx.True() != nil,
+		hasFalse:          ctx.False() != nil,
+		hasNot:            ctx.Not() != nil,
+		hasAddAssign:      ctx.AddAssign() != nil,
+		hasLiteral:        ctx.Literal() != nil,
+		hasAnd:            ctx.And() != nil,
+		hasOr:             ctx.Or() != nil,
+		hasNullCoalescing: ctx.NullCoalescing() != nil,
+		hasAdd:            ctx.Add() != nil,
+		hasEqual:          ctx.Equal() != nil,
+		hasNotEqual:       ctx.NotEqual() != nil,
+		hasLess:           ctx.Less() != nil,
+		hasGreater:        ctx.Greater() != nil,
+		hasLessOrEqual:    ctx.LessOrEqual() != nil,
+		hasGreaterOrEqual: ctx.GreaterOrEqual() != nil,
+		hasRange:          ctx.Range() != nil,
+		hasSubtract:       ctx.Subtract() != nil,
+		hasDivide:         ctx.Divide() != nil,
+		hasMultiply:       ctx.Multiply() != nil,
+		hasQuestion:       ctx.Question() != nil,
+		hasLeftParen:      ctx.LeftParen() != nil,
+		hasIn:             ctx.In() != nil,
+		hasIncrement:      ctx.Increment() != nil,
+		hasDecrement:      ctx.Decrement() != nil,
+		hasSubtractAssign: ctx.SubtractAssign() != nil,
+		hasMultiplyAssign: ctx.MultiplyAssign() != nil,
+		hasDivideAssign:   ctx.DivideAssign() != nil,
+		hasModuloAssign:   ctx.ModuloAssign() != nil,
+	}
+	if info.name != nil {
+		info.nameText = cachedGetText(info.name)
+		info.nameStr = internedJsonString(info.nameText)
+	}
+	if info.number != nil {
+		info.numberVal = cachedNodeNumber(info.number)
+	}
+	return info
+}
 
 // cachedGetText returns GetText() for any stable parse-tree node, caching the result.
 func cachedGetText(node antlr.ParseTree) string {
@@ -130,6 +256,49 @@ type ExpressionVisitor struct {
 	// globalScope, when non-nil, enables the $scope pseudo-variable in .jsonte scripts.
 	// $scope.key = value writes directly into the global scope object.
 	globalScope *types.JsonObject
+	// fieldInfos/exprInfos memoize per-node parse-tree metadata. They are plain
+	// maps (the visitor is single-threaded) keyed by node pointer, which is much
+	// cheaper than an interface-keyed sync.Map. Pooled visitors keep them across
+	// evaluations on purpose; parse trees are cached and their nodes are stable.
+	fieldInfos map[*parser.FieldContext]*fieldCtxInfo
+	exprInfos  map[*parser.ExpressionContext]*exprCtxInfo
+	nameTexts  map[*parser.NameContext]string
+}
+
+func (v *ExpressionVisitor) nameText(ctx *parser.NameContext) string {
+	if text, ok := v.nameTexts[ctx]; ok {
+		return text
+	}
+	text := cachedGetText(ctx)
+	if v.nameTexts == nil {
+		v.nameTexts = make(map[*parser.NameContext]string, 64)
+	}
+	v.nameTexts[ctx] = text
+	return text
+}
+
+func (v *ExpressionVisitor) fieldInfo(ctx *parser.FieldContext) *fieldCtxInfo {
+	if info, ok := v.fieldInfos[ctx]; ok {
+		return info
+	}
+	info := computeFieldCtxInfo(ctx)
+	if v.fieldInfos == nil {
+		v.fieldInfos = make(map[*parser.FieldContext]*fieldCtxInfo, 64)
+	}
+	v.fieldInfos[ctx] = info
+	return info
+}
+
+func (v *ExpressionVisitor) exprInfo(ctx *parser.ExpressionContext) *exprCtxInfo {
+	if info, ok := v.exprInfos[ctx]; ok {
+		return info
+	}
+	info := computeExprCtxInfo(ctx)
+	if v.exprInfos == nil {
+		v.exprInfos = make(map[*parser.ExpressionContext]*exprCtxInfo, 16)
+	}
+	v.exprInfos[ctx] = info
+	return info
 }
 
 func (v *ExpressionVisitor) Visit(tree antlr.ParseTree) (types.JsonType, error) {
@@ -205,10 +374,11 @@ func treeMatches(context antlr.Tree, matchFunction func(ctx, parent antlr.Tree) 
 	}
 }
 
-func isInLeftSideOfAssignment(context antlr.Tree) bool {
+func (v *ExpressionVisitor) isInLeftSideOfAssignment(context antlr.Tree) bool {
 	return treeMatches(context, func(ctx, parent antlr.Tree) bool {
-		if f, ok := parent.(*parser.FieldContext); ok && len(f.AllField()) == 2 && f.Field(0) == ctx {
-			if f.Literal() != nil || f.AddAssign() != nil {
+		if f, ok := parent.(*parser.FieldContext); ok {
+			fi := v.fieldInfo(f)
+			if len(fi.fields) == 2 && antlr.Tree(fi.fields[0]) == ctx && (fi.hasLiteral || fi.hasAddAssign) {
 				return true
 			}
 		}
@@ -383,7 +553,7 @@ func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.
 			if hasIndex {
 				v.pushScopePair(indexName, types.NewIntNumber(int64(i)))
 			}
-			val, err := v.Visit(ctx.Statements(0))
+			val, err := v.Visit(ctx.Statement(0))
 			if hasIndex {
 				v.popScopeObject()
 			}
@@ -408,7 +578,7 @@ func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.
 				return types.Null, burrito.PassError(err)
 			}
 			if condition.BoolValue() {
-				val, err := v.Visit(ctx.Statements(i))
+				val, err := v.Visit(ctx.Statement(i))
 				if err != nil {
 					return types.Null, burrito.PassError(err)
 				}
@@ -416,7 +586,7 @@ func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.
 			}
 		}
 		if len(ctx.AllElse()) == len(ctx.AllIf()) {
-			val, err := v.Visit(ctx.Statements(len(ctx.AllIf())))
+			val, err := v.Visit(ctx.Statement(len(ctx.AllIf())))
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
@@ -424,7 +594,7 @@ func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.
 		}
 	} else if ctx.Do() != nil {
 		for {
-			val, err := v.Visit(ctx.Statements(0))
+			val, err := v.Visit(ctx.Statement(0))
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
@@ -454,7 +624,7 @@ func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.
 			if !condition.BoolValue() {
 				return types.Null, nil
 			}
-			val, err := v.Visit(ctx.Statements(0))
+			val, err := v.Visit(ctx.Statement(0))
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
@@ -470,8 +640,8 @@ func (v *ExpressionVisitor) VisitStatement(ctx *parser.StatementContext) (types.
 		}
 	} else if len(ctx.AllField()) == 1 {
 		return v.Visit(ctx.Field(0))
-	} else if len(ctx.AllStatements()) == 1 {
-		return v.Visit(ctx.Statements(0))
+	} else if ctx.Statements() != nil {
+		return v.Visit(ctx.Statements())
 	}
 	return types.Null, nil
 }
@@ -493,31 +663,11 @@ func (v *ExpressionVisitor) VisitStatements(ctx *parser.StatementsContext) (type
 }
 
 func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) (types.JsonType, error) {
-	// check the type of the expression
-	v.action = types.Value
-	if ctx.Iteration() != nil {
-		v.action = types.Iteration
-	}
-	if ctx.Literal() != nil {
-		v.action = types.Literal
-	}
-	if ctx.Question() != nil {
-		v.action = types.Predicate
-	}
-	// check if the iteration value is named
-	name := DefaultName
-	indexName := DefaultIndexName
-	if ctx.As() != nil {
-		if len(ctx.AllName()) > 0 {
-			name = ctx.Name(0).GetText()
-		}
-		if len(ctx.AllName()) > 1 {
-			indexName = ctx.Name(1).GetText()
-		}
-	}
-	v.name = name
-	v.indexName = indexName
-	result, err := v.Visit(ctx.Field())
+	info := v.exprInfo(ctx)
+	v.action = info.action
+	v.name = info.name
+	v.indexName = info.indexName
+	result, err := v.Visit(info.field)
 	if err != nil {
 		return types.Null, burrito.PassError(err)
 	}
@@ -536,75 +686,146 @@ func (v *ExpressionVisitor) VisitExpression(ctx *parser.ExpressionContext) (type
 	return result, nil
 }
 
+// storeIntoParent writes value into the container that left was resolved from
+// (assignment machinery shared by +=, -=, *=, /=, %=, ++ and --) and returns the stored value.
+func storeIntoParent(left, value types.JsonType) (types.JsonType, error) {
+	if left.Parent() == nil {
+		return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
+	}
+	if left.ParentIndex() == nil {
+		utils.BadDeveloperError("Invalid parent index type")
+	}
+	if b, ok := (left.Parent()).(*types.JsonObject); ok {
+		if i, ok1 := left.ParentIndex().(*types.JsonString); ok1 {
+			b.Put(i.StringValue(), value)
+			return value, nil
+		} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
+			return i.Set(left.Parent(), value)
+		} else {
+			return types.Null, burrito.WrappedErrorf("Invalid index type. Expected string or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
+		}
+	} else if b, ok := (left.Parent()).(*types.JsonArray); ok {
+		if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
+			index := int(i.IntValue())
+			if index < 0 {
+				index = len(b.Value) + index
+			}
+			if index >= 0 && index < len(b.Value) {
+				b.Value[index] = value
+				return value, nil
+			} else {
+				return types.Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
+			}
+		} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
+			return i.Set(left.Parent(), value)
+		} else {
+			return types.Null, burrito.WrappedErrorf("Invalid index type. Expected number or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
+		}
+	} else {
+		return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
+	}
+}
+
+// numericCompound computes the value for -=, *=, /= and %= mirroring the binary
+// operator semantics: numeric operands produce a number, anything else NaN.
+// Integer division or modulo by zero yields NaN instead of panicking.
+func numericCompound(left, right types.JsonType, info *fieldCtxInfo) types.JsonType {
+	if !types.IsNumber(left) || !types.IsNumber(right) {
+		return types.NaN()
+	}
+	n1 := types.AsNumber(left)
+	n2 := types.AsNumber(right)
+	if info.hasModuloAssign {
+		if n2.FloatValue() == 0 {
+			return types.NaN()
+		}
+		return &types.JsonNumber{Value: math.Mod(n1.FloatValue(), n2.FloatValue()), Decimal: n1.Decimal || n2.Decimal}
+	}
+	if n1.Decimal || n2.Decimal {
+		switch {
+		case info.hasSubtractAssign:
+			return types.NewFloatNumber(n1.FloatValue() - n2.FloatValue())
+		case info.hasMultiplyAssign:
+			return types.NewFloatNumber(n1.FloatValue() * n2.FloatValue())
+		default:
+			return types.NewFloatNumber(n1.FloatValue() / n2.FloatValue())
+		}
+	}
+	switch {
+	case info.hasSubtractAssign:
+		return types.NewIntNumber(int64(n1.IntValue()) - int64(n2.IntValue()))
+	case info.hasMultiplyAssign:
+		return types.NewIntNumber(int64(n1.IntValue()) * int64(n2.IntValue()))
+	default:
+		if n2.IntValue() == 0 {
+			return types.NaN()
+		}
+		return types.NewIntNumber(int64(n1.IntValue()) / int64(n2.IntValue()))
+	}
+}
+
 func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.JsonType, error) {
-	if context.Null() != nil {
+	info := v.fieldInfo(context)
+	if info.hasNull {
 		return types.Null, nil
 	}
-	if context.True() != nil {
+	if info.hasTrue {
 		return types.True(), nil
 	}
-	if context.False() != nil {
+	if info.hasFalse {
 		return types.False(), nil
 	}
-	if context.Not() != nil {
-		visit, err := v.Visit(context.Field(0))
+	if info.hasNot {
+		visit, err := v.Visit(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
 		return types.AsBool(!visit.BoolValue()), nil
 	}
-	if context.AddAssign() != nil {
-		left, err := v.Visit(context.Field(0))
+	if info.hasIncrement || info.hasDecrement {
+		left, err := v.Visit(info.fields[0])
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		if !types.IsNumber(left) {
+			return types.Null, burrito.WrappedErrorf("Cannot increment or decrement %s", left.StringValue())
+		}
+		n := types.AsNumber(left)
+		delta := int64(1)
+		if info.hasDecrement {
+			delta = -1
+		}
+		var value types.JsonType
+		if n.Decimal {
+			value = types.NewFloatNumber(n.FloatValue() + float64(delta))
+		} else {
+			value = types.NewIntNumber(int64(n.IntValue()) + delta)
+		}
+		return storeIntoParent(left, value)
+	}
+	if info.hasAddAssign || info.hasSubtractAssign || info.hasMultiplyAssign || info.hasDivideAssign || info.hasModuloAssign {
+		left, err := v.Visit(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.WrapErrorf(err, "Error resolving left side of the statement")
 		}
-		right, err := v.Visit(context.Field(1))
+		right, err := v.Visit(info.fields[1])
 		if err != nil {
 			return types.Null, burrito.WrapErrorf(err, "Error resolving right side of the statement")
 		}
-		right = types.Box(left.Add(right).Unbox())
-		if left.Parent() == nil {
-			return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
-		}
-		if left.ParentIndex() == nil {
-			utils.BadDeveloperError("Invalid parent index type")
-		}
-		if b, ok := (left.Parent()).(*types.JsonObject); ok {
-			if i, ok1 := left.ParentIndex().(*types.JsonString); ok1 {
-				b.Put(i.StringValue(), right)
-				return right, nil
-			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
-				return i.Set(left.Parent(), right)
-			} else {
-				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected string or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
-			}
-		} else if b, ok := (left.Parent()).(*types.JsonArray); ok {
-			if i, ok1 := left.ParentIndex().(*types.JsonNumber); ok1 {
-				index := int(i.IntValue())
-				if index < 0 {
-					index = len(b.Value) + index
-				}
-				if index >= 0 && index < len(b.Value) {
-					b.Value[index] = right
-					return right, nil
-				} else {
-					return types.Null, burrito.WrappedErrorf("Index out of bounds: %d", index)
-				}
-			} else if i, ok1 := left.ParentIndex().(*types.JsonPath); ok1 {
-				return i.Set(left.Parent(), right)
-			} else {
-				return types.Null, burrito.WrappedErrorf("Invalid index type. Expected number or Json Path, but got %s", reflect.TypeOf(left.ParentIndex()).String())
-			}
+		var value types.JsonType
+		if info.hasAddAssign {
+			value = types.Box(left.Add(right).Unbox())
 		} else {
-			return types.Null, burrito.WrappedErrorf("Cannot assign a value to this expression")
+			value = numericCompound(left, right, info)
 		}
+		return storeIntoParent(left, value)
 	}
-	if context.Literal() != nil {
-		left, err := v.Visit(context.Field(0))
+	if info.hasLiteral {
+		left, err := v.Visit(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.WrapErrorf(err, "Error resolving left side of the statement")
 		}
-		right, err := v.Visit(context.Field(1))
+		right, err := v.Visit(info.fields[1])
 		if err != nil {
 			return types.Null, burrito.WrapErrorf(err, "Error resolving right side of the statement")
 		}
@@ -664,15 +885,15 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		}
 	}
 	// process field composed of two other fields
-	if len(context.AllField()) == 2 {
-		f1, err := v.Visit(context.Field(0))
+	if len(info.fields) == 2 {
+		f1, err := v.Visit(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
 		// Move AND and OR here to make those operators short-circuiting
-		if context.And() != nil {
+		if info.hasAnd {
 			if f1.BoolValue() {
-				f2, err := v.Visit(context.Field(1))
+				f2, err := v.Visit(info.fields[1])
 				if err != nil {
 					return types.Null, burrito.PassError(err)
 				}
@@ -680,9 +901,9 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			} else {
 				return types.False(), nil
 			}
-		} else if context.Or() != nil {
+		} else if info.hasOr {
 			if !f1.BoolValue() {
-				f2, err := v.Visit(context.Field(1))
+				f2, err := v.Visit(info.fields[1])
 				if err != nil {
 					return types.Null, burrito.PassError(err)
 				}
@@ -690,29 +911,51 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			} else {
 				return types.True(), nil
 			}
+		} else if info.hasQuestion {
+			// Colonless ternary: `a ? b` evaluates to b when a is truthy, null otherwise.
+			if f1.BoolValue() {
+				return v.Visit(info.fields[1])
+			}
+			return types.Null, nil
 		}
-		f2, err := v.Visit(context.Field(1))
+		f2, err := v.Visit(info.fields[1])
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
 		_, f1IsLambda := f1.(*types.JsonLambda)
 		_, f2IsLambda := f2.(*types.JsonLambda)
-		if context.NullCoalescing() != nil {
+		if info.hasNullCoalescing {
 			if types.IsNull(f1) {
 				return f2, nil
 			} else {
 				return f1, nil
 			}
-		} else if context.Add() != nil {
+		} else if info.hasAdd {
 			if f1IsLambda || f2IsLambda {
 				return types.Null, burrito.WrappedErrorf("Cannot use a lambda in an addition or concatenation")
 			}
 			return f1.Add(f2), nil
-		} else if context.Equal() != nil {
+		} else if info.hasEqual {
 			return types.AsBool(f1.Equals(f2)), nil
-		} else if context.NotEqual() != nil {
+		} else if info.hasNotEqual {
 			return types.AsBool(!f1.Equals(f2)), nil
-		} else if context.Less() != nil {
+		} else if info.hasIn {
+			switch c := f2.(type) {
+			case *types.JsonObject:
+				return types.AsBool(c.ContainsKey(f1.StringValue())), nil
+			case *types.JsonArray:
+				for _, el := range c.Value {
+					if el.Equals(f1) {
+						return types.True(), nil
+					}
+				}
+				return types.False(), nil
+			case *types.JsonString:
+				return types.AsBool(strings.Contains(c.StringValue(), f1.StringValue())), nil
+			default:
+				return types.Null, burrito.WrappedErrorf("The 'in' operator requires an object, array or string on the right side, but got %s", f2.StringValue())
+			}
+		} else if info.hasLess {
 			if f1IsLambda || f2IsLambda {
 				return types.Null, burrito.WrappedErrorf("Cannot compare a lambda")
 			}
@@ -721,7 +964,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(than), nil
-		} else if context.Greater() != nil {
+		} else if info.hasGreater {
 			if f1IsLambda || f2IsLambda {
 				return types.Null, burrito.WrappedErrorf("Cannot compare a lambda")
 			}
@@ -730,7 +973,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(!than && !f1.Equals(f2)), nil
-		} else if context.LessOrEqual() != nil {
+		} else if info.hasLessOrEqual {
 			if f1IsLambda || f2IsLambda {
 				return types.Null, burrito.WrappedErrorf("Cannot compare a lambda")
 			}
@@ -739,7 +982,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				return types.Null, burrito.PassError(err)
 			}
 			return types.AsBool(than || f1.Equals(f2)), nil
-		} else if context.GreaterOrEqual() != nil {
+		} else if info.hasGreaterOrEqual {
 			if f1IsLambda || f2IsLambda {
 				return types.Null, burrito.WrappedErrorf("Cannot compare a lambda")
 			}
@@ -751,59 +994,59 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		} else if types.IsNumber(f1) && types.IsNumber(f2) {
 			n1 := types.AsNumber(f1)
 			n2 := types.AsNumber(f2)
-			if context.Range() != nil {
+			if info.hasRange {
 				return types.CreateRange(n1.IntValue(), n2.IntValue()), nil
 			} else if n1.Decimal || n2.Decimal {
-				if context.Subtract() != nil {
+				if info.hasSubtract {
 					return types.NewFloatNumber(n1.FloatValue() - n2.FloatValue()), nil
-				} else if context.Divide() != nil {
+				} else if info.hasDivide {
 					return types.NewFloatNumber(n1.FloatValue() / n2.FloatValue()), nil
-				} else if context.Multiply() != nil {
+				} else if info.hasMultiply {
 					return types.NewFloatNumber(n1.FloatValue() * n2.FloatValue()), nil
 				}
 			} else {
-				if context.Subtract() != nil {
+				if info.hasSubtract {
 					return types.NewIntNumber(int64(n1.IntValue()) - int64(n2.IntValue())), nil
-				} else if context.Divide() != nil {
+				} else if info.hasDivide {
 					return types.NewIntNumber(int64(n1.IntValue()) / int64(n2.IntValue())), nil
-				} else if context.Multiply() != nil {
+				} else if info.hasMultiply {
 					return types.NewIntNumber(int64(n1.IntValue()) * int64(n2.IntValue())), nil
 				}
 			}
 		} else {
 			if f1IsLambda || f2IsLambda {
-				if context.Range() != nil {
+				if info.hasRange {
 					return types.Null, burrito.WrappedErrorf("Cannot use a lambda in a range expression")
 				}
 				return types.Null, burrito.WrappedErrorf("Cannot use a lambda in an arithmetic operation")
 			}
 			return types.NaN(), nil
 		}
-	} else if len(context.AllField()) == 3 {
+	} else if len(info.fields) == 3 {
 		// handle ternary operator
-		if context.Question() != nil {
-			f1, err := v.Visit(context.Field(0))
+		if info.hasQuestion {
+			f1, err := v.Visit(info.fields[0])
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
 			if types.AsBool(f1).BoolValue() {
-				return v.Visit(context.Field(1))
+				return v.Visit(info.fields[1])
 			} else {
-				return v.Visit(context.Field(2))
+				return v.Visit(info.fields[2])
 			}
 		}
 	}
 	// if the field is another field in parentheses, return the value of that field
 	// we need to also check if the first element is not a field, because if it is, it will be a function call
-	if context.LeftParen() != nil && len(context.AllField()) == 1 && context.GetChild(0) != context.Field(0) {
-		return v.Visit(context.Field(0))
-	} else if context.LeftParen() != nil && len(context.AllField()) == 1 && context.GetChild(0) == context.Field(0) {
-		lambda, err := v.Visit(context.Field(0))
+	if info.hasLeftParen && len(info.fields) == 1 && context.GetChild(0) != info.fields[0] {
+		return v.Visit(info.fields[0])
+	} else if info.hasLeftParen && len(info.fields) == 1 && context.GetChild(0) == info.fields[0] {
+		lambda, err := v.Visit(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
 		params := make([]types.JsonType, 0)
-		for _, param := range context.AllFunction_param() {
+		for _, param := range info.params {
 			p, err := v.Visit(param)
 			if err != nil {
 				return types.Null, burrito.PassError(err)
@@ -841,7 +1084,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			return i, nil
 		} else {
 			var methodName *string = nil
-			for _, child := range context.Field(0).GetChildren() {
+			for _, child := range info.fields[0].GetChildren() {
 				if b, ok := child.(parser.INameContext); ok {
 					text := cachedGetText(b.(antlr.ParseTree))
 					methodName = &text
@@ -855,7 +1098,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 						return types.Null, burrito.WrappedErrorf("Function '%s' not found, did you mean '%s'?", *methodName, *find)
 					}
 				}
-				return types.Null, burrito.WrappedErrorf("Function '%s' not found!", context.Field(0).GetText())
+				return types.Null, burrito.WrappedErrorf("Function '%s' not found!", info.fields[0].GetText())
 			}
 			function, err := functions.CallFunction(*methodName, params, v.ResolveScope)
 			if err != nil {
@@ -865,9 +1108,9 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		}
 	}
 	// handle accessing a property of an object or calling an instance function
-	if context.Name() != nil && len(context.AllField()) == 1 {
-		text := cachedGetText(context.Name())
-		object, err := v.Visit(context.Field(0))
+	if info.name != nil && len(info.fields) == 1 {
+		text := info.nameText
+		object, err := v.Visit(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
@@ -885,10 +1128,10 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 				[]string{},
 			), nil
 		} else {
-			textStr := internedJsonString(text)
+			textStr := info.nameStr
 			index, err := object.Index(textStr)
 			if err != nil {
-				if context.Question() != nil || v.action == types.Predicate || isInLeftSideOfAssignment(context) {
+				if info.hasQuestion || v.action == types.Predicate || v.isInLeftSideOfAssignment(context) {
 					return types.NullWithParent(object, textStr), nil
 				} else {
 					return types.Null, burrito.WrapErrorf(err, "Cannot access %s", context.GetText())
@@ -898,19 +1141,19 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 			return index, nil
 		}
 	}
-	if context.Name() != nil {
-		return v.Visit(context.Name())
+	if info.name != nil {
+		return v.Visit(info.name)
 	}
 	// handle indexed access
-	if context.Index() != nil && len(context.AllField()) == 1 {
-		i, err := v.Visit(context.Index())
+	if info.index != nil && len(info.fields) == 1 {
+		i, err := v.Visit(info.index)
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
 		if _, ok := i.(*types.JsonLambda); ok {
 			return types.Null, burrito.WrappedErrorf("Cannot use a lambda as an index")
 		}
-		object, err := v.Visit(context.Field(0))
+		object, err := v.Visit(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
@@ -919,7 +1162,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		}
 		index, err := object.Index(i)
 		if err != nil {
-			if context.Question() != nil || v.action == types.Predicate || isInLeftSideOfAssignment(context) {
+			if info.hasQuestion || v.action == types.Predicate || v.isInLeftSideOfAssignment(context) {
 				return types.NullWithParent(object, i), nil
 			} else {
 				return types.Null, burrito.WrapErrorf(err, "Cannot access %s", context.GetText())
@@ -928,31 +1171,31 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		index.UpdateParent(object, i)
 		return index, nil
 	}
-	if context.NUMBER() != nil {
-		return cachedNodeNumber(context.NUMBER()), nil
+	if info.number != nil {
+		return info.numberVal, nil
 	}
-	if context.ESCAPED_STRING() != nil {
-		return types.NewString(unescapeString(types.ToString(cachedGetText(context.ESCAPED_STRING())))), nil
+	if info.escapedString != nil {
+		return types.NewString(unescapeString(types.ToString(cachedGetText(info.escapedString)))), nil
 	}
 	// template string literal
-	if context.Template_string() != nil {
-		return v.Visit(context.Template_string())
+	if info.templateString != nil {
+		return v.Visit(info.templateString)
 	}
 	// literal array notation
-	if context.Array() != nil {
-		return v.Visit(context.Array())
+	if info.array != nil {
+		return v.Visit(info.array)
 	}
 	// literal object notation
-	if context.Object() != nil {
-		return v.Visit(context.Object())
+	if info.object != nil {
+		return v.Visit(info.object)
 	}
 	// lambda literal in field position
-	if context.Lambda() != nil {
-		return v.Visit(context.Lambda())
+	if info.lambda != nil {
+		return v.Visit(info.lambda)
 	}
 	// negation
-	if context.Subtract() != nil && len(context.AllField()) == 1 {
-		f, err := v.Visit(context.Field(0))
+	if info.hasSubtract && len(info.fields) == 1 {
+		f, err := v.Visit(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
@@ -961,11 +1204,22 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		}
 		return f.Negate(), nil
 	}
+	// unary plus
+	if info.hasAdd && len(info.fields) == 1 {
+		f, err := v.Visit(info.fields[0])
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		if types.IsNumber(f) {
+			return f, nil
+		}
+		return types.NaN(), nil
+	}
 	return types.Null, burrito.WrappedErrorf("Failed to resolve '%s'", context.GetText())
 }
 
 func (v *ExpressionVisitor) VisitName(context *parser.NameContext) (types.JsonType, error) {
-	text := cachedGetText(context)
+	text := v.nameText(context)
 	newScope := v.ResolveScope(text)
 
 	back := v.scope.Len() - 1
@@ -1024,7 +1278,7 @@ func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) (types.Js
 	for _, f := range context.AllObject_field() {
 		sf := f.(*parser.Object_fieldContext)
 		if sf.Spread() != nil {
-			obj, err := v.Visit(sf.Field())
+			obj, err := v.Visit(sf.Field(0))
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
@@ -1035,13 +1289,7 @@ func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) (types.Js
 				})
 			}
 		} else {
-			var name string
-			if sf.ESCAPED_STRING() != nil {
-				name = unescapeString(types.ToString(cachedGetText(sf.ESCAPED_STRING())))
-			} else {
-				name = cachedGetText(sf.Name())
-			}
-			field, err := v.Visit(sf.Field())
+			name, field, err := v.visitObjectFieldEntry(sf)
 			if err != nil {
 				return types.Null, burrito.PassError(err)
 			}
@@ -1051,16 +1299,53 @@ func (v *ExpressionVisitor) VisitObject(context *parser.ObjectContext) (types.Js
 	return result, nil
 }
 
-func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContext) (types.JsonType, error) {
-	name := ""
-	if context.ESCAPED_STRING() != nil {
-		name = unescapeString(types.ToString(cachedGetText(context.ESCAPED_STRING())))
-	} else if context.Spread() != nil {
-		return v.Visit(context.Field())
+// visitObjectFieldEntry resolves a non-spread object literal entry to its key and value.
+// Supported shapes: `name: value`, `"string": value`, `[computed]: value` and the
+// shorthand `name` (equivalent to `name: name`).
+func (v *ExpressionVisitor) visitObjectFieldEntry(sf *parser.Object_fieldContext) (string, types.JsonType, error) {
+	var name string
+	if sf.ESCAPED_STRING() != nil {
+		name = unescapeString(types.ToString(cachedGetText(sf.ESCAPED_STRING())))
+	} else if sf.LeftBracket() != nil {
+		key, err := v.Visit(sf.Field(0))
+		if err != nil {
+			return "", types.Null, burrito.PassError(err)
+		}
+		if types.IsNull(key) {
+			return "", types.Null, burrito.WrappedErrorf("Computed object key evaluated to null")
+		}
+		name = key.StringValue()
+		field, err := v.Visit(sf.Field(1))
+		if err != nil {
+			return "", types.Null, burrito.PassError(err)
+		}
+		return name, field, nil
+	} else if sf.Name() != nil {
+		name = cachedGetText(sf.Name())
 	} else {
-		name = cachedGetText(context.Name())
+		// Bare field: shorthand `{a}` for `{a: a}` when the field is a plain name.
+		fCtx, ok := sf.Field(0).(*parser.FieldContext)
+		if !ok {
+			return "", types.Null, burrito.WrappedErrorf("Invalid object literal entry '%s'", sf.GetText())
+		}
+		fi := v.fieldInfo(fCtx)
+		if fi.name == nil || len(fi.fields) != 0 {
+			return "", types.Null, burrito.WrappedErrorf("Object literal entry '%s' must be 'key: value', a spread, or a plain name", sf.GetText())
+		}
+		name = fi.nameText
 	}
-	field, err := v.Visit(context.Field())
+	field, err := v.Visit(sf.Field(0))
+	if err != nil {
+		return "", types.Null, burrito.PassError(err)
+	}
+	return name, field, nil
+}
+
+func (v *ExpressionVisitor) VisitObject_field(context *parser.Object_fieldContext) (types.JsonType, error) {
+	if context.Spread() != nil {
+		return v.Visit(context.Field(0))
+	}
+	name, field, err := v.visitObjectFieldEntry(context)
 	if err != nil {
 		return types.Null, burrito.PassError(err)
 	}

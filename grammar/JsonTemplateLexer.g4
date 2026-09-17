@@ -25,6 +25,12 @@ RightBracket: ']';
 Iteration: '#';
 Question: '?';
 AddAssign: '+=';
+SubtractAssign: '-=';
+MultiplyAssign: '*=';
+DivideAssign: '/=';
+ModuloAssign: '%=';
+Increment: '++';
+Decrement: '--';
 Literal: '=';
 
 NullCoalescing: '??';
@@ -64,7 +70,9 @@ STRING
     ;
 
 NUMBER
-    : [0-9]+('.'[0-9]+)?
+    : '0' [xX] [0-9a-fA-F]+
+    | [0-9]+ ('.' [0-9]+)? ([eE] [+-]? [0-9]+)?
+    | '.' [0-9]+ ([eE] [+-]? [0-9]+)?
     ;
 
 LINE_COMMENT
