@@ -168,7 +168,7 @@ func main() {
 				}
 				outFile, err = filepath.Abs(out)
 			}
-			object, scopeMolangFiles, err := getScope(scope, -1)
+			object, err := getScope(scope, -1, !disableMolangValidation)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -199,32 +199,7 @@ func main() {
 
 			var wg sync.WaitGroup
 			molangCh := make(chan molangRes)
-			for base, files := range scopeMolangFiles {
-				for _, file := range files {
-					wg.Add(1)
-					go func(base, file string) {
-						defer wg.Done()
-						sem <- struct{}{}
-						defer func() { <-sem }()
-						bytes, err := os.ReadFile(file)
-						if err != nil {
-							appendErr(burrito.WrapErrorf(err, "An error occurred while reading the molang file %s", file))
-							return
-						}
-						output, err := jsonte.ProcessMolangFileWithValidation(string(bytes), object, !disableMolangValidation)
-						if err != nil {
-							appendErr(wrapMolangError(err, file))
-							return
-						}
-						molangCh <- molangRes{base: base, file: file, data: output}
-						if removeSrc {
-							if err := os.Remove(file); err != nil {
-								appendErr(burrito.WrapErrorf(err, "An error occurred while removing the molang file %s", file))
-							}
-						}
-					}(base, file)
-				}
-			}
+			// .molang files in scope directories are processed when loadText or loadMolang first loads them
 			for base, files := range fileSets {
 				for _, file := range files {
 					if strings.HasSuffix(file, ".molang") {
@@ -606,7 +581,7 @@ func main() {
 		Usage: "Evaluate a JSON expression or run a REPL",
 		Function: func(args []string) error {
 			functions.SetCacheAll(cacheAll)
-			object, _, err := getScope(scope, -1)
+			object, err := getScope(scope, -1, !disableMolangValidation)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -630,7 +605,7 @@ func main() {
 		Usage: "Evaluate a JSON expression or run a REPL",
 		Function: func(args []string) error {
 			functions.SetCacheAll(cacheAll)
-			object, _, err := getScope(scope, -1)
+			object, err := getScope(scope, -1, !disableMolangValidation)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -678,7 +653,7 @@ func main() {
 		Usage: "Start an IPC server",
 		Function: func(args []string) error {
 			functions.SetCacheAll(cacheAll)
-			object, _, err := getScope(scope, -1)
+			object, err := getScope(scope, -1, !disableMolangValidation)
 			if err != nil {
 				return burrito.WrapError(err, "An error occurred while reading the scope")
 			}
@@ -721,16 +696,16 @@ func main() {
 	}
 }
 
-func getScope(scope []string, timeout int64) (*types.JsonObject, map[string][]string, error) {
+func getScope(scope []string, timeout int64, validateMolang bool) (*types.JsonObject, error) {
 	assertionFiles := map[string]string{}
-	molangFiles := map[string][]string{}
+	var molangFiles []string
 	var jsonteFiles []string
 	result := types.NewJsonObject()
 	for _, path := range scope {
 		if strings.HasPrefix(path, "{") {
 			json, err := types.ParseJsonObject([]byte(path))
 			if err != nil {
-				return types.NewJsonObject(), nil, burrito.WrapErrorf(err, "An error occurred while parsing inline scope '%s'", path)
+				return types.NewJsonObject(), burrito.WrapErrorf(err, "An error occurred while parsing inline scope '%s'", path)
 			}
 			result = types.MergeObject(result, json, false, "#")
 			continue
@@ -764,7 +739,7 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, map[string][]st
 					}
 					assertionFiles[filePath] = string(file)
 				} else if strings.HasSuffix(filePath, ".molang") {
-					molangFiles[path] = append(molangFiles[path], filePath)
+					molangFiles = append(molangFiles, filePath)
 				} else {
 					utils.Logger.Debugf("Skipping non-scope file '%s'", filePath)
 				}
@@ -772,26 +747,28 @@ func getScope(scope []string, timeout int64) (*types.JsonObject, map[string][]st
 			return nil
 		})
 		if err != nil {
-			return types.NewJsonObject(), nil, burrito.WrapError(err, "An error occurred while reading the scope files")
+			return types.NewJsonObject(), burrito.WrapError(err, "An error occurred while reading the scope files")
 		}
 	}
+	// Molang files are processed on first load, so scripts can load them with the scope built so far
+	jsonte.EnableMolangLoading(result, molangFiles, validateMolang)
 	for path, file := range assertionFiles {
 		err := jsonte.ProcessAssertionsFile(path, file, result, timeout)
 		if err != nil {
-			return types.NewJsonObject(), nil, burrito.PassError(err)
+			return types.NewJsonObject(), burrito.PassError(err)
 		}
 	}
 	sort.Strings(jsonteFiles)
 	for _, file := range jsonteFiles {
 		bytes, err := os.ReadFile(file)
 		if err != nil {
-			return types.NewJsonObject(), nil, burrito.WrapErrorf(err, "Failed to read .jsonte scope file '%s'", file)
+			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to read .jsonte scope file '%s'", file)
 		}
 		if err := jsonte.EvalJsonteFile(string(bytes), result, file); err != nil {
-			return types.NewJsonObject(), nil, burrito.WrapErrorf(err, "Failed to evaluate .jsonte scope file '%s'", file)
+			return types.NewJsonObject(), burrito.WrapErrorf(err, "Failed to evaluate .jsonte scope file '%s'", file)
 		}
 	}
-	return result, molangFiles, nil
+	return result, nil
 }
 
 func getFileList(paths, include, exclude []string) (map[string][]string, error) {

@@ -198,7 +198,8 @@ func CreateFakeFS(fs map[string]interface{}, withNetwork bool) IOResolver {
 			}
 			path = filepath.Clean(path)
 			if data, ok := files[path]; ok {
-				return data, nil
+				// A new reader per Open, so a file can be read more than once
+				return CreateFakeFile(data.data), nil
 			}
 			return nil, os.ErrNotExist
 		},

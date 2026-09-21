@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/Bedrock-OSS/go-burrito/burrito"
+	"github.com/MCDevKit/jsonte/jsonte/functions"
 	"github.com/MCDevKit/jsonte/jsonte/json"
 	"github.com/MCDevKit/jsonte/jsonte/types"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
@@ -78,12 +79,61 @@ func ProcessMolangFile(input string, scope *types.JsonObject) (string, error) {
 // Valid Molang is minified by molang-go. When validate is false, anything else (e.g. a fragment with
 // placeholders replaced later) is minified token by token instead of returning an *InvalidMolangError.
 func ProcessMolangFileWithValidation(input string, scope *types.JsonObject, validate bool) (string, error) {
+	return processMolangFile(input, validate, scopeEvaluator(scope))
+}
+
+// EnableMolangLoading makes the loadMolang function process molang files with scope as the global scope.
+// scopeFiles are the .molang files found in scope directories: loadText returns them processed.
+// Call it after the JSON scope files are merged and before scope scripts run, so scripts can load molang too.
+func EnableMolangLoading(scope *types.JsonObject, scopeFiles []string, validate bool) {
+	// Results of expressions that do not mention any parameter are the same for every set of parameters,
+	// because lambdas from the scope cannot see the parameters. Caching them avoids evaluating heavy
+	// helper functions again for every loadMolang call with different parameters.
+	var independent sync.Map
+	functions.SetMolangLoader(func(source string, params *types.JsonObject) (string, error) {
+		scopes := deque.Deque[*types.JsonObject]{}
+		scopes.PushBack(scope)
+		scopes.PushBack(params)
+		keys := params.Keys()
+		eval := func(expr string) (Result, error) {
+			for _, key := range keys {
+				// Conservative: any occurrence, even inside a string like this['key'], counts as a use
+				if strings.Contains(expr, key) {
+					return Eval(expr, scopes, "#")
+				}
+			}
+			if cached, ok := independent.Load(expr); ok {
+				return cached.(Result), nil
+			}
+			result, err := Eval(expr, scopes, "#")
+			if err == nil {
+				independent.Store(expr, result)
+			}
+			return result, err
+		}
+		return processMolangFile(source, validate, eval)
+	}, scopeFiles)
+}
+
+// scopeEvaluator evaluates expressions with scope as the global scope.
+func scopeEvaluator(scope *types.JsonObject) func(expr string) (Result, error) {
+	var scopes deque.Deque[*types.JsonObject]
+	return func(expr string) (Result, error) {
+		if scopes.Len() == 0 {
+			scopes.PushBack(scope)
+		}
+		return Eval(expr, scopes, "#")
+	}
+}
+
+// processMolangFile processes a molang file, evaluating its expressions with eval.
+func processMolangFile(input string, validate bool, eval func(expr string) (Result, error)) (string, error) {
 	str, err := json.ConvertToUTF8([]byte(input))
 	if err != nil {
 		return input, burrito.PassError(err)
 	}
 	stripped := stripMolangComments(string(str))
-	output, err := ProcessString(stripped, scope, "#", "")
+	output, err := processString(stripped, "#", "", eval)
 	if err != nil {
 		return "", burrito.PassError(err)
 	}
@@ -165,6 +215,11 @@ func ProcessMCFunction(input string, scope *types.JsonObject) (string, error) {
 
 // ProcessString processes a string replacing all the jsonte expressions with their values
 func ProcessString(input string, scope *types.JsonObject, startToken, endToken string) (string, error) {
+	return processString(input, startToken, endToken, scopeEvaluator(scope))
+}
+
+// processString is ProcessString with a custom way to evaluate expressions.
+func processString(input string, startToken, endToken string, eval func(expr string) (Result, error)) (string, error) {
 	templateMatches, err := FindTemplateMatches(input, startToken, endToken)
 	if err != nil {
 		return "", burrito.PassError(err)
@@ -172,8 +227,6 @@ func ProcessString(input string, scope *types.JsonObject, startToken, endToken s
 	if len(templateMatches) == 0 {
 		return input, nil
 	}
-	globalScope := deque.Deque[*types.JsonObject]{}
-	globalScope.PushBack(scope)
 	var sb strings.Builder
 	sb.Grow(len(input))
 	lastMatchEnd := 0
@@ -181,7 +234,7 @@ func ProcessString(input string, scope *types.JsonObject, startToken, endToken s
 		if match.StartByte > lastMatchEnd {
 			sb.WriteString(input[lastMatchEnd:match.StartByte])
 		}
-		result, err := Eval(match.Match, globalScope, "#")
+		result, err := eval(match.Match)
 		if err != nil {
 			return "", burrito.WrapErrorf(err, "Failed to evaluate expression '%s'", match.EscapedMatch)
 		}
