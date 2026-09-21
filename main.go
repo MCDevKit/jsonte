@@ -151,6 +151,7 @@ func main() {
 				}()
 			}
 			functions.SetCacheAll(cacheAll)
+			jsonte.SetMolangValidation(!disableMolangValidation)
 			outFile := ""
 			if out != "" {
 				stat, err := os.Stat(out)

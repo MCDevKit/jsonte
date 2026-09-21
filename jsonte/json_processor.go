@@ -634,6 +634,37 @@ func (v *TemplateVisitor) visitObject(obj *types.JsonObject) (types.JsonType, er
 			}
 			return false
 		}
+		// A $molang: key marks a value, that is Molang: it is validated and minified after templating
+		if realKey, ok := types.MolangFieldKey(key); ok {
+			nk := v.pathPush(key)
+			k, err := v.visitString(realKey)
+			if err != nil {
+				v.pathPop(nk)
+				nilResult = true
+				outerErr = burrito.PassError(err)
+				return true
+			}
+			r, err := v.visit(value)
+			if err != nil {
+				v.pathPop(nk)
+				nilResult = true
+				outerErr = burrito.PassError(err)
+				return true
+			}
+			r, err = v.minifyMolangValue(r)
+			v.pathPop(nk)
+			if err != nil {
+				nilResult = true
+				outerErr = burrito.PassError(err)
+				return true
+			}
+			if err = PutValue(result, k.StringValue(), r, v, parentPathLen); err != nil {
+				nilResult = true
+				outerErr = burrito.PassError(err)
+				return true
+			}
+			return false
+		}
 		if strings.HasPrefix(key, "{{") && strings.HasSuffix(key, "}}") && len(key) > 2 && (key[2] == '#' || key[2] == '?') {
 			nk := v.pathPush(key)
 			eval, err := evalWithExtraScope(key, &v.scope, &v.moduleScope)

@@ -163,21 +163,33 @@ func (e *InvalidMolangError) Error() string {
 	return fmt.Sprintf("%s (line %d, column %d of the processed file: %s)", e.Msg, e.Line, e.Column, e.Snippet)
 }
 
-// newInvalidMolangError replaces molang-go's error text, which embeds the whole source, with the message,
-// the line and column in the processed source, and that line.
-func newInvalidMolangError(err error, source string) error {
-	var msg string
-	var pos int
+// molangParseError returns the message and the position in the source of a molang-go parse or lex error.
+func molangParseError(err error) (string, int, bool) {
 	var parseErr *parser.Error
 	var lexErr *lexer.Error
 	switch {
 	case errors.As(err, &parseErr):
-		msg, pos = parseErr.Msg, parseErr.Pos
+		return parseErr.Msg, parseErr.Pos, true
 	case errors.As(err, &lexErr):
-		msg, pos = lexErr.Msg, lexErr.Pos
-	default:
+		return lexErr.Msg, lexErr.Pos, true
+	}
+	return "", 0, false
+}
+
+// newInvalidMolangError replaces molang-go's error text, which embeds the whole source, with the message,
+// the line and column in the processed source, and that line.
+func newInvalidMolangError(err error, source string) error {
+	msg, pos, ok := molangParseError(err)
+	if !ok {
 		return err
 	}
+	line, column, snippet := molangErrorLocation(source, pos)
+	return &InvalidMolangError{Msg: msg, Line: line, Column: column, Snippet: snippet}
+}
+
+// molangErrorLocation returns the line and column of pos in source and the line around it,
+// shortened to keep long generated lines readable.
+func molangErrorLocation(source string, pos int) (int, int, string) {
 	pos = min(max(pos, 0), len(source))
 	lineStart := strings.LastIndexByte(source[:pos], '\n') + 1
 	lineEnd := strings.IndexByte(source[pos:], '\n')
@@ -197,7 +209,7 @@ func newInvalidMolangError(err error, source string) error {
 	if to < lineEnd {
 		snippet += "..."
 	}
-	return &InvalidMolangError{Msg: msg, Line: line, Column: column, Snippet: snippet}
+	return line, column, snippet
 }
 
 // ProcessMCFunction processes a file replacing all the jsonte expressions with their values

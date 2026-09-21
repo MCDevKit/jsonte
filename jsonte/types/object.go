@@ -525,5 +525,24 @@ func NewJsonObjectWithCapacity(capacity int) *JsonObject {
 }
 
 func IsReservedKey(k string) bool {
-	return strings.EqualFold(k, "$comment") || strings.EqualFold(k, "$assert")
+	if strings.EqualFold(k, "$comment") || strings.EqualFold(k, "$assert") {
+		return true
+	}
+	_, ok := MolangFieldKey(k)
+	return ok
+}
+
+// MolangFieldPrefix marks a key, whose value is Molang. The templating engine validates and
+// minifies the value and removes the prefix from the key.
+const MolangFieldPrefix = "$molang:"
+
+// MolangFieldKey returns the key without the MolangFieldPrefix and whether the key had it.
+func MolangFieldKey(k string) (string, bool) {
+	if len(k) <= len(MolangFieldPrefix) || k[0] != '$' {
+		return k, false
+	}
+	if !strings.EqualFold(k[:len(MolangFieldPrefix)], MolangFieldPrefix) {
+		return k, false
+	}
+	return k[len(MolangFieldPrefix):], true
 }
