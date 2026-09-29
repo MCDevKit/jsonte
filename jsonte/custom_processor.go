@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/functions"
@@ -20,13 +21,14 @@ import (
 
 // ProcessLangFile processes a lang file replacing all the jsonte expressions with their values
 func ProcessLangFile(input string, scope *types.JsonObject) (string, error) {
-	str, err := json.ConvertToUTF8([]byte(input))
+	str, err := json.ConvertStringToUTF8(input)
 	if err != nil {
 		return input, burrito.PassError(err)
 	}
-	lines := strings.Split(string(str), "\n")
+	lines := strings.Split(str, "\n")
+	eval := scopeEvaluator(scope)
 	for i, line := range lines {
-		lines[i], err = ProcessString(line, scope, "##", "")
+		lines[i], err = processString(line, "##", "", eval)
 		if err != nil {
 			return "", burrito.WrapErrorf(err, "Failed to process line %d", i+1)
 		}
@@ -37,6 +39,9 @@ func ProcessLangFile(input string, scope *types.JsonObject) (string, error) {
 // stripMolangLineComment removes a `# ` comment from a single line without
 // touching `#{` template prefixes or content inside string literals.
 func stripMolangLineComment(line string) string {
+	if strings.IndexByte(line, '#') < 0 {
+		return line
+	}
 	runes := []rune(line)
 	inString := false
 	var quote rune
@@ -122,17 +127,19 @@ func scopeEvaluator(scope *types.JsonObject) func(expr string) (Result, error) {
 		if scopes.Len() == 0 {
 			scopes.PushBack(scope)
 		}
-		return Eval(expr, scopes, "#")
+		// The result is converted to a string right away by processString, so it's safe to
+		// use a pooled visitor here: no value from the evaluation outlives the call.
+		return evalWithExtraScope(expr, &scopes, nil)
 	}
 }
 
 // processMolangFile processes a molang file, evaluating its expressions with eval.
 func processMolangFile(input string, validate bool, eval func(expr string) (Result, error)) (string, error) {
-	str, err := json.ConvertToUTF8([]byte(input))
+	str, err := json.ConvertStringToUTF8(input)
 	if err != nil {
 		return input, burrito.PassError(err)
 	}
-	stripped := stripMolangComments(string(str))
+	stripped := stripMolangComments(str)
 	output, err := processString(stripped, "#", "", eval)
 	if err != nil {
 		return "", burrito.PassError(err)
@@ -214,11 +221,11 @@ func molangErrorLocation(source string, pos int) (int, int, string) {
 
 // ProcessMCFunction processes a file replacing all the jsonte expressions with their values
 func ProcessMCFunction(input string, scope *types.JsonObject) (string, error) {
-	str, err := json.ConvertToUTF8([]byte(input))
+	str, err := json.ConvertStringToUTF8(input)
 	if err != nil {
 		return input, burrito.PassError(err)
 	}
-	output, err := ProcessString(string(str), scope, "#", "")
+	output, err := ProcessString(str, scope, "#", "")
 	if err != nil {
 		return "", burrito.PassError(err)
 	}
@@ -294,6 +301,123 @@ func FindTemplateMatches(input, startToken, endToken string) ([]TemplateMatch, e
 			return cached.([]TemplateMatch), nil
 		}
 	}
+	if matches, ok := findTemplateMatchesBytes(input, startToken, endToken); ok {
+		if isStandard {
+			templateMatchCache.Store(input, matches)
+		}
+		return matches, nil
+	}
+	return findTemplateMatchesRunes(input, startToken, endToken, isStandard)
+}
+
+// isASCII reports whether s contains only ASCII bytes.
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
+}
+
+// hasMoreRunesThan reports whether s holds more than n runes.
+func hasMoreRunesThan(s string, n int) bool {
+	count := 0
+	for range s {
+		count++
+		if count > n {
+			return true
+		}
+	}
+	return false
+}
+
+// findTemplateMatchesBytes is a byte-based version of findTemplateMatchesRunes for the common case.
+// Matches are substrings of input instead of rebuilt strings. It returns ok=false whenever the
+// result could differ from a plain substring scan (invalid UTF-8, non-ASCII tokens, escapes inside
+// string literals) or would be an error, so the caller falls back to the rune implementation,
+// which then produces the result and the error messages.
+func findTemplateMatchesBytes(input, startToken, endToken string) ([]TemplateMatch, bool) {
+	if !isASCII(startToken) || !isASCII(endToken) || !utf8.ValidString(input) {
+		return nil, false
+	}
+	marker := startToken + "{"
+	endLen := len(endToken)
+	matches := make([]TemplateMatch, 0)
+	pos := 0     // byte offset where scanning resumes
+	runePos := 0 // rune index of pos
+	for {
+		idx := strings.Index(input[pos:], marker)
+		if idx < 0 {
+			break
+		}
+		startByte := pos + idx
+		startRune := runePos + utf8.RuneCountInString(input[pos:startByte])
+		contentStart := startByte + len(marker)
+		depth := 1
+		bracePos := -1
+		for i := contentStart; i < len(input); {
+			c := input[i]
+			if c == '"' || c == '\'' {
+				j := strings.IndexByte(input[i+1:], c)
+				if j < 0 {
+					// Unclosed string: the rune implementation reports it
+					return nil, false
+				}
+				if strings.IndexByte(input[i+1:i+1+j], '\\') >= 0 {
+					// Escapes change the match text
+					return nil, false
+				}
+				i += j + 2
+				continue
+			}
+			if c == '{' {
+				depth++
+			} else if c == '}' {
+				depth--
+				if depth == 0 {
+					// Like the rune implementation, the end token is compared starting at the closing brace.
+					// If it does not fit or does not match, the template cannot be closed: the rune
+					// implementation reports it.
+					if !hasMoreRunesThan(input[i:], endLen) || input[i:i+endLen] != endToken {
+						return nil, false
+					}
+					bracePos = i
+					break
+				}
+			}
+			i++
+		}
+		if bracePos < 0 {
+			return nil, false
+		}
+		after := bracePos + endLen
+		_, size := utf8.DecodeRuneInString(input[after:])
+		endByte := after + size
+		match := input[contentStart:bracePos]
+		length := utf8.RuneCountInString(input[startByte:bracePos]) + endLen
+		var escaped string
+		if rawEnd := bracePos + 1 + endLen; rawEnd <= len(input) && input[bracePos+1:rawEnd] == endToken {
+			escaped = input[startByte:rawEnd]
+		} else {
+			escaped = startToken + "{" + match + "}" + endToken
+		}
+		matches = append(matches, TemplateMatch{
+			Match:        match,
+			EscapedMatch: escaped,
+			Start:        startRune,
+			Length:       length,
+			StartByte:    startByte,
+			EndByte:      endByte,
+		})
+		pos = endByte
+		runePos = startRune + length + 1
+	}
+	return matches, true
+}
+
+// findTemplateMatchesRunes is the rune-based implementation of FindTemplateMatches.
+func findTemplateMatchesRunes(input, startToken, endToken string, isStandard bool) ([]TemplateMatch, error) {
 	inputRunes := []rune(input)
 	runeByteOffsets := make([]int, 0, len(inputRunes)+1)
 	for byteOffset := range input {

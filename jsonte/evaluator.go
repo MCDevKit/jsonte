@@ -45,6 +45,81 @@ func QuickEval(text string, path string) (Result, error) {
 // ClearExpressionCache removes all cached parse trees. Mainly intended for tests.
 func ClearExpressionCache() {
 	expressionCache = sync.Map{}
+	fieldInfoCache = sync.Map{}
+}
+
+// startRule invokes a parser start rule and returns the resulting tree.
+type startRule func(p *parser.JsonTemplate) antlr.ParseTree
+
+func expressionRule(p *parser.JsonTemplate) antlr.ParseTree { return p.Expression() }
+func scriptRule(p *parser.JsonTemplate) antlr.ParseTree     { return p.Script() }
+func lambdaRule(p *parser.JsonTemplate) antlr.ParseTree     { return p.Lambda() }
+
+// newParser builds a lexer, token stream and parser for text with listener attached to both.
+func newParser(text string, listener antlr.ErrorListener) *parser.JsonTemplate {
+	is := antlr.NewInputStream(text)
+	lexer := NewTemplateAwareLexer(is)
+	lexer.JsonTemplateLexer.RemoveErrorListeners()
+	lexer.JsonTemplateLexer.AddErrorListener(listener)
+	stream := antlr.NewCommonTokenStream(lexer, 0)
+	p := parser.NewJsonTemplate(stream)
+	p.RemoveErrorListeners()
+	p.AddErrorListener(listener)
+	p.BuildParseTrees = true
+	return p
+}
+
+// parseSLL tries to parse text with the fast SLL prediction mode and a bail-out error strategy.
+// It returns nil if the parse failed for any reason (lexer error, syntax error or an ambiguity
+// that SLL cannot resolve), in which case the caller must re-parse in full LL mode.
+func parseSLL(text string, rule startRule) (tree antlr.ParseTree) {
+	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
+	p := newParser(text, &listener)
+	p.GetInterpreter().SetPredictionMode(antlr.PredictionModeSLL)
+	p.SetErrorHandler(antlr.NewBailErrorStrategy())
+	defer func() {
+		if r := recover(); r != nil {
+			if _, ok := r.(*antlr.ParseCancellationException); !ok {
+				panic(r)
+			}
+			tree = nil
+		}
+	}()
+	tree = rule(p)
+	if listener.Error != nil {
+		return nil
+	}
+	return tree
+}
+
+// parseTree parses text using rule. It first tries the fast SLL mode; if that fails, it
+// re-parses from scratch in the default LL mode with the default error strategy and reports
+// errors to listener, so error messages are identical to a plain LL parse.
+func parseTree(text string, rule startRule, listener antlr.ErrorListener) antlr.ParseTree {
+	if tree := parseSLL(text, rule); tree != nil {
+		return tree
+	}
+	return rule(newParser(text, listener))
+}
+
+// parseExpressionTree parses text as an expression.
+func parseExpressionTree(text string) (antlr.ParseTree, error) {
+	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
+	tree := parseTree(text, expressionRule, &listener)
+	return tree, listener.Error
+}
+
+// cachedExpressionTree returns the parse tree of the expression text, parsing and caching it if needed.
+func cachedExpressionTree(text string) (antlr.ParseTree, error) {
+	if cached, ok := expressionCache.Load(text); ok {
+		return cached.(antlr.ParseTree), nil
+	}
+	tree, err := parseExpressionTree(text)
+	if err != nil {
+		return nil, burrito.WrapErrorf(err, "Failed to parse expression \"%s\"", text)
+	}
+	expressionCache.Store(text, tree)
+	return tree, nil
 }
 
 // ExpressionCacheSize returns the number of cached parse trees.
@@ -69,25 +144,9 @@ func (l *CollectingErrorListener) SyntaxError(recognizer antlr.Recognizer, offen
 
 // Eval evaluates the given expression and returns the result
 func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Result, error) {
-	var tree antlr.ParseTree
-	if cached, ok := expressionCache.Load(text); ok {
-		tree = cached.(antlr.ParseTree)
-	} else {
-		listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
-		is := antlr.NewInputStream(text)
-		lexer := NewTemplateAwareLexer(is)
-		lexer.JsonTemplateLexer.RemoveErrorListeners()
-		lexer.JsonTemplateLexer.AddErrorListener(&listener)
-		stream := antlr.NewCommonTokenStream(lexer, 0)
-		p := parser.NewJsonTemplate(stream)
-		p.RemoveErrorListeners()
-		p.AddErrorListener(&listener)
-		p.BuildParseTrees = true
-		tree = p.Expression()
-		if listener.Error != nil {
-			return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
-		}
-		expressionCache.Store(text, tree)
+	tree, err := cachedExpressionTree(text)
+	if err != nil {
+		return Result{}, err
 	}
 	visitor := ExpressionVisitor{
 		scope:         scope,
@@ -109,16 +168,7 @@ func Eval(text string, scope deque.Deque[*types.JsonObject], path string) (Resul
 // EvalScript evaluates the given script and returns the result
 func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) (Result, error) {
 	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
-	is := antlr.NewInputStream(text)
-	lexer := NewTemplateAwareLexer(is)
-	lexer.JsonTemplateLexer.RemoveErrorListeners()
-	lexer.JsonTemplateLexer.AddErrorListener(&listener)
-	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplate(stream)
-	p.RemoveErrorListeners()
-	p.AddErrorListener(&listener)
-	p.BuildParseTrees = true
-	tree := p.Script()
+	tree := parseTree(text, scriptRule, &listener)
 	if listener.Error != nil {
 		return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse script \"%s\"", text)
 	}
@@ -140,25 +190,9 @@ func EvalScript(text string, scope deque.Deque[*types.JsonObject], path string) 
 // evalWithExtraScope evaluates text using scope as the primary scope and extraScope as secondary,
 // avoiding the allocation of a merged deque copy.
 func evalWithExtraScope(text string, scope *deque.Deque[*types.JsonObject], extraScope *deque.Deque[*types.JsonObject]) (Result, error) {
-	var tree antlr.ParseTree
-	if cached, ok := expressionCache.Load(text); ok {
-		tree = cached.(antlr.ParseTree)
-	} else {
-		listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
-		is := antlr.NewInputStream(text)
-		lexer := NewTemplateAwareLexer(is)
-		lexer.JsonTemplateLexer.RemoveErrorListeners()
-		lexer.JsonTemplateLexer.AddErrorListener(&listener)
-		stream := antlr.NewCommonTokenStream(lexer, 0)
-		p := parser.NewJsonTemplate(stream)
-		p.RemoveErrorListeners()
-		p.AddErrorListener(&listener)
-		p.BuildParseTrees = true
-		tree = p.Expression()
-		if listener.Error != nil {
-			return Result{}, burrito.WrapErrorf(listener.Error, "Failed to parse expression \"%s\"", text)
-		}
-		expressionCache.Store(text, tree)
+	tree, err := cachedExpressionTree(text)
+	if err != nil {
+		return Result{}, err
 	}
 	v := exprVisitorPool.Get().(*ExpressionVisitor)
 	v.scope = *scope
@@ -207,16 +241,7 @@ func EvalWithTempScope(text string, scope deque.Deque[*types.JsonObject], path s
 // Script-local variables (loop counters, temporaries) go to variableScope and are discarded.
 func EvalJsonteFile(text string, scope *types.JsonObject, path string) error {
 	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
-	is := antlr.NewInputStream(text)
-	lexer := NewTemplateAwareLexer(is)
-	lexer.JsonTemplateLexer.RemoveErrorListeners()
-	lexer.JsonTemplateLexer.AddErrorListener(&listener)
-	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplate(stream)
-	p.RemoveErrorListeners()
-	p.AddErrorListener(&listener)
-	p.BuildParseTrees = true
-	tree := p.Script()
+	tree := parseTree(text, scriptRule, &listener)
 	if listener.Error != nil {
 		return burrito.WrapErrorf(listener.Error, "Failed to parse .jsonte file \"%s\"", path)
 	}
@@ -239,16 +264,7 @@ func EvalJsonteFile(text string, scope *types.JsonObject, path string) error {
 
 func ParseLambda(text string) ([]string, []string, error) {
 	listener := CollectingErrorListener{DefaultErrorListener: antlr.NewDefaultErrorListener()}
-	is := antlr.NewInputStream(text)
-	lexer := NewTemplateAwareLexer(is)
-	lexer.JsonTemplateLexer.RemoveErrorListeners()
-	lexer.JsonTemplateLexer.AddErrorListener(&listener)
-	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplate(stream)
-	p.RemoveErrorListeners()
-	p.AddErrorListener(&listener)
-	p.BuildParseTrees = true
-	tree := p.Lambda()
+	tree := parseTree(text, lambdaRule, &listener)
 	if listener.Error != nil {
 		return nil, nil, burrito.WrapErrorf(listener.Error, "Failed to parse lambda \"%s\"", text)
 	}

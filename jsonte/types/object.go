@@ -161,7 +161,7 @@ func (t *JsonObject) UpdateParent(parent JsonType, parentIndex JsonType) {
 }
 
 func (t *JsonObject) StringValue() string {
-	return ToString(t.Unbox())
+	return ToString(t)
 }
 
 func (t *JsonObject) BoolValue() bool {
@@ -173,6 +173,14 @@ func (t *JsonObject) LessThan(value JsonType) (bool, error) {
 }
 
 func (t *JsonObject) Unbox() interface{} {
+	if t.StackValue == nil {
+		result := utils.NewNavigableMapWithCapacity[string, interface{}](t.Value.Size())
+		t.Value.Range(func(k string, v JsonType) bool {
+			result.Put(k, v.Unbox())
+			return false
+		})
+		return result
+	}
 	result := utils.NewNavigableMap[string, interface{}]()
 	for _, k := range t.Keys() {
 		result.Put(k, t.Get(k).Unbox())
@@ -205,10 +213,11 @@ func (t *JsonObject) Index(i JsonType) (JsonType, error) {
 		if t.StackValue != nil {
 			return Null, burrito.WrappedErrorf("Cannot index a stack based object with a number")
 		}
-		if b.IntValue() < 0 || b.IntValue() >= int32(len(t.Value.Keys())) {
+		if b.IntValue() < 0 || b.IntValue() >= int32(t.Value.Size()) {
 			return Null, burrito.WrappedErrorf("Index out of bounds: %d", b.IntValue())
 		}
-		return t.Value.Get(t.Value.Keys()[int(b.IntValue())]), nil
+		_, value, _ := t.Value.At(int(b.IntValue()))
+		return value, nil
 	}
 	if b, ok := i.(*JsonPath); ok {
 		return b.Get(t)
@@ -275,10 +284,11 @@ func AsObject(obj interface{}) *JsonObject {
 		return &JsonObject{Value: b}
 	}
 	if b, ok := obj.(utils.NavigableMap[string, interface{}]); ok {
-		result := NewJsonObject()
-		for _, key := range b.Keys() {
-			result.Put(key, Box(b.Get(key)))
-		}
+		result := NewJsonObjectWithCapacity(b.Size())
+		b.Range(func(key string, value interface{}) bool {
+			result.Put(key, Box(value))
+			return false
+		})
 		return result
 	}
 	rt := reflect.TypeOf(obj)
@@ -492,19 +502,29 @@ func DeepCopyObject(object *JsonObject) *JsonObject {
 	if object == nil {
 		return NewJsonObject()
 	}
+	if object.StackValue == nil {
+		result := &JsonObject{}
+		object.Value.CloneInto(&result.Value, deepCopyChild)
+		return result
+	}
 	result := NewJsonObjectWithCapacity(object.Size())
 	object.RangeEntries(func(k string, v JsonType) bool {
-		switch typed := v.(type) {
-		case *JsonObject:
-			result.Put(k, DeepCopyObject(typed))
-		case *JsonArray:
-			result.Put(k, DeepCopyArray(typed))
-		default:
-			result.Put(k, v)
-		}
+		result.Put(k, deepCopyChild(v))
 		return false
 	})
 	return result
+}
+
+// deepCopyChild deep-copies nested objects and arrays and returns other values as-is.
+func deepCopyChild(v JsonType) JsonType {
+	switch typed := v.(type) {
+	case *JsonObject:
+		return DeepCopyObject(typed)
+	case *JsonArray:
+		return DeepCopyArray(typed)
+	default:
+		return v
+	}
 }
 
 func NewJsonObject() *JsonObject {

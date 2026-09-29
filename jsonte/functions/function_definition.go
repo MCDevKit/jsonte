@@ -22,12 +22,92 @@ type JsonFunction struct {
 	IsVarArgs  bool
 	Deprecated bool
 	Docs       Docs
+
+	// argMatchers are precomputed per-parameter type checks used by checkParams.
+	argMatchers []argMatcher
+	// invoke is a typed, reflection-free invoker for common signatures. It is nil when the
+	// signature is not covered, in which case Value.Call is used.
+	invoke invoker
+}
+
+type invoker = func(args []types.JsonType) (types.JsonType, error)
+
+// argMatcher checks whether a (non-nil) argument can be passed to a parameter.
+type argMatcher struct {
+	typ reflect.Type
+	// any is set when the parameter is types.JsonType, which every argument implements.
+	any bool
+	// exactOnly is set when only the identical type is assignable (unnamed pointer types).
+	exactOnly bool
+}
+
+func (m *argMatcher) matches(arg types.JsonType) bool {
+	if m.any {
+		return true
+	}
+	t := reflect.TypeOf(arg)
+	if t == m.typ {
+		return true
+	}
+	if m.exactOnly {
+		return false
+	}
+	return t.AssignableTo(m.typ)
+}
+
+// functionTable holds overloads keyed by lower-cased name, plus an index by every exact
+// spelling that was registered, so that lookups can usually skip strings.ToLower.
+type functionTable struct {
+	lower    map[string][]JsonFunction
+	exact    map[string][]JsonFunction
+	variants map[string][]string
+}
+
+func newFunctionTable(lower map[string][]JsonFunction) *functionTable {
+	return &functionTable{
+		lower:    lower,
+		exact:    make(map[string][]JsonFunction),
+		variants: make(map[string][]string),
+	}
+}
+
+func (t *functionTable) add(fn JsonFunction) {
+	lower := strings.ToLower(fn.Name)
+	t.lower[lower] = append(t.lower[lower], fn)
+	names := t.variants[lower]
+	found := false
+	for _, n := range names {
+		if n == fn.Name {
+			found = true
+			break
+		}
+	}
+	if !found {
+		names = append(names, fn.Name)
+		t.variants[lower] = names
+	}
+	// Keep every exact spelling pointing at the complete overload list.
+	for _, n := range names {
+		t.exact[n] = t.lower[lower]
+	}
+}
+
+func (t *functionTable) lookup(name string) ([]JsonFunction, bool) {
+	if fns, ok := t.exact[name]; ok {
+		return fns, true
+	}
+	fns, ok := t.lower[strings.ToLower(name)]
+	return fns, ok
 }
 
 var groups = map[string]Group{}
 var functions = make(map[string][]JsonFunction)
+var functionsTable = newFunctionTable(functions)
 var functionNames = make([]string, 0)
-var instanceFunctions = make(map[string]map[string][]JsonFunction)
+var instanceFunctions = make(map[reflect.Type]*functionTable)
+
+var jsonTypeType = reflect.TypeOf((*types.JsonType)(nil)).Elem()
+var jsonTypeSliceType = reflect.TypeOf((*[]types.JsonType)(nil)).Elem()
 
 var initialized = false
 
@@ -78,7 +158,7 @@ func RegisterFunction(fn JsonFunction) {
 	for i := 0; i < of.Type().NumIn(); i++ {
 		typeSanityCheck(of.Type().In(i))
 		fn.Args = append(fn.Args, of.Type().In(i))
-		if of.Type().In(i).AssignableTo(reflect.TypeOf((*[]types.JsonType)(nil)).Elem()) {
+		if of.Type().In(i).AssignableTo(jsonTypeSliceType) {
 			fn.IsVarArgs = true
 		}
 	}
@@ -91,25 +171,35 @@ func RegisterFunction(fn JsonFunction) {
 	if (of.Type().NumOut() == 2) || (of.Type().NumOut() == 1 && of.Type().Out(0).String() == "error") {
 		fn.WithError = true
 	}
-	functions[strings.ToLower(fn.Name)] = append(functions[strings.ToLower(fn.Name)], fn)
+	fn.argMatchers = make([]argMatcher, len(fn.Args))
+	for i, t := range fn.Args {
+		fn.argMatchers[i] = argMatcher{
+			typ:       t,
+			any:       t == jsonTypeType,
+			exactOnly: t.Kind() == reflect.Pointer && t.Name() == "",
+		}
+	}
+	fn.invoke = makeInvoker(fn.Body)
+	functionsTable.add(fn)
 	functionNames = append(functionNames, fn.Name)
 	if fn.IsInstance {
-		if _, ok := instanceFunctions[fn.Args[0].String()]; !ok {
-			instanceFunctions[fn.Args[0].String()] = make(map[string][]JsonFunction)
+		table, ok := instanceFunctions[fn.Args[0]]
+		if !ok {
+			table = newFunctionTable(make(map[string][]JsonFunction))
+			instanceFunctions[fn.Args[0]] = table
 		}
-		instanceFunctions[fn.Args[0].String()][strings.ToLower(fn.Name)] = append(instanceFunctions[fn.Args[0].String()][strings.ToLower(fn.Name)], fn)
+		table.add(fn)
 	}
 }
 
 func typeSanityCheck(in reflect.Type) {
-	test := reflect.TypeOf((*types.JsonType)(nil))
-	if in.AssignableTo(test.Elem()) {
+	if in.AssignableTo(jsonTypeType) {
 		return
 	}
 	if in.AssignableTo(reflect.TypeOf((*types.JsonLambda)(nil)).Elem()) {
 		return
 	}
-	if in.AssignableTo(reflect.TypeOf((*[]types.JsonType)(nil)).Elem()) {
+	if in.AssignableTo(jsonTypeSliceType) {
 		return
 	}
 	if in.AssignableTo(reflect.TypeOf((*error)(nil)).Elem()) {
@@ -119,20 +209,17 @@ func typeSanityCheck(in reflect.Type) {
 }
 
 func HasInstanceFunction(t reflect.Type, name string) bool {
-	if _, ok := instanceFunctions[t.String()]; !ok {
+	table, ok := instanceFunctions[t]
+	if !ok {
 		return false
 	}
-	if _, ok := instanceFunctions[t.String()][strings.ToLower(name)]; !ok {
-		return false
-	}
-	return true
+	_, ok = table.lookup(name)
+	return ok
 }
 
 func HasFunction(name string) bool {
-	if _, ok := functions[strings.ToLower(name)]; !ok {
-		return false
-	}
-	return true
+	_, ok := functionsTable.lookup(name)
+	return ok
 }
 
 func FindMisspelling(name string) *string {
@@ -152,7 +239,11 @@ func FindMisspelling(name string) *string {
 }
 
 func CallInstanceFunction(name string, instance types.JsonType, args []types.JsonType, resolveFunc func(string) types.JsonType) (types.JsonType, error) {
-	fns, ok := instanceFunctions[reflect.TypeOf(instance).String()][strings.ToLower(name)]
+	var fns []JsonFunction
+	ok := false
+	if table, found := instanceFunctions[reflect.TypeOf(instance)]; found {
+		fns, ok = table.lookup(name)
+	}
 	if !ok {
 		find := FindMisspelling(name)
 		if find != nil {
@@ -160,14 +251,14 @@ func CallInstanceFunction(name string, instance types.JsonType, args []types.Jso
 		}
 		return nil, burrito.WrappedErrorf("Instance function '%s' not found", name)
 	}
-	a := make([]types.JsonType, 0)
-	a = append(a, instance)
-	a = append(a, args...)
+	a := make([]types.JsonType, 1+len(args))
+	a[0] = instance
+	copy(a[1:], args)
 	return callFunctionImpl(name, fns, a, resolveFunc)
 }
 
 func CallFunction(name string, args []types.JsonType, resolveFunc func(string) types.JsonType) (types.JsonType, error) {
-	fns, ok := functions[strings.ToLower(name)]
+	fns, ok := functionsTable.lookup(name)
 	if !ok {
 		find := FindMisspelling(name)
 		if find != nil {
@@ -178,96 +269,124 @@ func CallFunction(name string, args []types.JsonType, resolveFunc func(string) t
 	return callFunctionImpl(name, fns, args, resolveFunc)
 }
 
+func sizeMatches(fn *JsonFunction, args []types.JsonType) bool {
+	return len(fn.Args) == len(args) || (fn.IsVarArgs && len(fn.Args)-1 <= len(args))
+}
+
 func callFunctionImpl(name string, fns []JsonFunction, args []types.JsonType, resolveFunc func(string) types.JsonType) (types.JsonType, error) {
-	sizeMatching := make([]JsonFunction, 0)
-	for _, fn := range fns {
-		if len(fn.Args) == len(args) || (fn.IsVarArgs && len(fn.Args)-1 <= len(args)) {
-			sizeMatching = append(sizeMatching, fn)
-		}
-	}
-	if len(sizeMatching) == 0 {
-		return nil, burrito.WrappedErrorf("Incorrect number of arguments for function \"%s\"", name)
-	}
-	matching := make([]JsonFunction, 0)
-	for _, fn := range sizeMatching {
-		if !checkParams(fn, args) {
+	var match *JsonFunction
+	sizeCount, matchCount := 0, 0
+	for i := range fns {
+		fn := &fns[i]
+		if !sizeMatches(fn, args) {
 			continue
 		}
-		matching = append(matching, fn)
+		sizeCount++
+		if checkParams(fn, args) {
+			matchCount++
+			if match == nil {
+				match = fn
+			}
+		}
 	}
-	if len(matching) == 0 {
-		expected := make([]string, 0)
-		for _, fn := range sizeMatching {
-			expected = append(expected, paramsToString(nil, fn.Args))
+	if sizeCount == 0 {
+		return nil, burrito.WrappedErrorf("Incorrect number of arguments for function \"%s\"", name)
+	}
+	if matchCount != 1 {
+		sizeMatching := make([]*JsonFunction, 0, sizeCount)
+		matching := make([]*JsonFunction, 0, matchCount)
+		for i := range fns {
+			fn := &fns[i]
+			if !sizeMatches(fn, args) {
+				continue
+			}
+			sizeMatching = append(sizeMatching, fn)
+			if checkParams(fn, args) {
+				matching = append(matching, fn)
+			}
 		}
-		argTypes := make([]reflect.Type, 0)
-		for _, arg := range args {
-			argTypes = append(argTypes, reflect.TypeOf(arg))
+		if len(matching) == 0 {
+			expected := make([]string, 0)
+			for _, fn := range sizeMatching {
+				expected = append(expected, paramsToString(nil, fn.Args))
+			}
+			argTypes := make([]reflect.Type, 0)
+			for _, arg := range args {
+				argTypes = append(argTypes, reflect.TypeOf(arg))
+			}
+			return nil, burrito.WrappedErrorf("Incorrect argument types for function \"%s\". Expected: %s, got: %s", name, strings.Join(expected, ", "), paramsToString(args, argTypes))
 		}
-		return nil, burrito.WrappedErrorf("Incorrect argument types for function \"%s\". Expected: %s, got: %s", name, strings.Join(expected, ", "), paramsToString(args, argTypes))
-	} else if len(matching) > 1 {
 		matched := make([]string, 0)
 		for _, fn := range matching {
 			matched = append(matched, paramsToString(args, fn.Args))
 		}
 		return nil, burrito.WrapErrorf(nil, "Ambiguous function call for \"%s\". Matched: %s", name, strings.Join(matched, ", "))
-	} else {
-		fn := matching[0]
-		if SafeMode && fn.IsUnsafe {
-			return nil, burrito.WrappedErrorf("Function \"%s\" is marked as unsafe and is disabled in safe mode", name)
-		}
-		key := ""
-		if cacheAll {
-			keyObject := types.AsObject(utils.ToNavigableMap(
-				"f", fn.Name,
-				"args", &types.JsonArray{Value: args},
-			))
-			// Need to take care of lambdas, that use outside variables
-			scope := types.NewJsonObject()
-			for _, arg := range args {
-				if lambda, ok := arg.(*types.JsonLambda); ok && len(lambda.UsedVariables) > 0 {
-				outer:
-					for _, variable := range lambda.UsedVariables {
-						if lambda.Arguments != nil {
-							for _, argument := range lambda.Arguments {
-								if argument == variable {
-									continue outer
-								}
+	}
+	fn := match
+	if SafeMode && fn.IsUnsafe {
+		return nil, burrito.WrappedErrorf("Function \"%s\" is marked as unsafe and is disabled in safe mode", name)
+	}
+	key := ""
+	if cacheAll {
+		keyObject := types.AsObject(utils.ToNavigableMap(
+			"f", fn.Name,
+			"args", &types.JsonArray{Value: args},
+		))
+		// Need to take care of lambdas, that use outside variables
+		scope := types.NewJsonObject()
+		for _, arg := range args {
+			if lambda, ok := arg.(*types.JsonLambda); ok && len(lambda.UsedVariables) > 0 {
+			outer:
+				for _, variable := range lambda.UsedVariables {
+					if lambda.Arguments != nil {
+						for _, argument := range lambda.Arguments {
+							if argument == variable {
+								continue outer
 							}
 						}
-						scope.Put(variable, resolveFunc(variable))
 					}
+					scope.Put(variable, resolveFunc(variable))
 				}
 			}
-			keyObject.Put("scope", scope)
-			key = keyObject.StringValue()
-			cached := utils.GetCache(cacheAllBucket, key)
-			if cached != nil {
-				//utils.Logger.Debugf("Using cached function call: %s", key)
-				return (*cached).(types.JsonType), nil
-			}
 		}
-		vArgs := make([]reflect.Value, len(args))
-		for i, arg := range args {
-			vArgs[i] = reflect.ValueOf(arg)
+		keyObject.Put("scope", scope)
+		key = keyObject.StringValue()
+		cached := utils.GetCache(cacheAllBucket, key)
+		if cached != nil {
+			//utils.Logger.Debugf("Using cached function call: %s", key)
+			return (*cached).(types.JsonType), nil
 		}
-		call := fn.Value.Call(vArgs)
-		if fn.WithError && call[len(call)-1].Interface() != nil {
-			return nil, call[len(call)-1].Interface().(error)
-		}
-		if fn.WithError && len(call) == 1 {
-			return nil, nil
+	}
+	if fn.invoke != nil {
+		result, err := fn.invoke(args)
+		if err != nil {
+			return nil, err
 		}
 		if cacheAll {
-			//utils.Logger.Debugf("Caching function call: %s", key)
-			//utils.Logger.Debugf("Caching function call result: %s", call[0].Interface().(types.JsonType).StringValue())
-			utils.PutCache(cacheAllBucket, key, call[0].Interface())
+			utils.PutCache(cacheAllBucket, key, result)
 		}
-		return call[0].Interface().(types.JsonType), nil
+		return result, nil
 	}
+	vArgs := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		vArgs[i] = reflect.ValueOf(arg)
+	}
+	call := fn.Value.Call(vArgs)
+	if fn.WithError && call[len(call)-1].Interface() != nil {
+		return nil, call[len(call)-1].Interface().(error)
+	}
+	if fn.WithError && len(call) == 1 {
+		return nil, nil
+	}
+	if cacheAll {
+		//utils.Logger.Debugf("Caching function call: %s", key)
+		//utils.Logger.Debugf("Caching function call result: %s", call[0].Interface().(types.JsonType).StringValue())
+		utils.PutCache(cacheAllBucket, key, call[0].Interface())
+	}
+	return call[0].Interface().(types.JsonType), nil
 }
 
-func checkParams(fn JsonFunction, args []types.JsonType) bool {
+func checkParams(fn *JsonFunction, args []types.JsonType) bool {
 	for i, arg := range args {
 		if arg == nil {
 			return false
@@ -275,7 +394,7 @@ func checkParams(fn JsonFunction, args []types.JsonType) bool {
 		if fn.IsVarArgs && i >= len(fn.Args)-1 {
 			return true
 		}
-		if !reflect.TypeOf(arg).AssignableTo(fn.Args[i]) {
+		if !fn.argMatchers[i].matches(arg) {
 			return false
 		}
 	}

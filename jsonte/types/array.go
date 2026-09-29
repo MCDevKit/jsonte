@@ -94,7 +94,7 @@ func (t *JsonArray) UpdateParent(parent JsonType, parentIndex JsonType) {
 }
 
 func (t *JsonArray) StringValue() string {
-	return ToString(t.Unbox())
+	return ToString(t)
 }
 
 func (t *JsonArray) BoolValue() bool {
@@ -216,6 +216,13 @@ func AsArray(obj interface{}) *JsonArray {
 	}
 	if b, ok := obj.(*JsonArray); ok {
 		return b
+	}
+	if b, ok := obj.([]interface{}); ok {
+		result := make([]JsonType, len(b))
+		for i, v := range b {
+			result[i] = Box(v)
+		}
+		return &JsonArray{Value: result}
 	}
 	rt := reflect.TypeOf(obj)
 	switch rt.Kind() {

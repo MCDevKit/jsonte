@@ -1,6 +1,7 @@
 package types
 
 import (
+	json2 "encoding/json"
 	"fmt"
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/json"
@@ -156,6 +157,34 @@ func TypeName(obj interface{}) string {
 }
 
 func Box(obj interface{}) JsonType {
+	// Fast paths for the most common types. Each case returns exactly what the
+	// first matching descriptor in TypeDescriptors would return.
+	switch b := obj.(type) {
+	case nil:
+		return Null
+	case bool:
+		return NewBool(b)
+	case string:
+		return NewString(b)
+	case float64, int, int32, json2.Number:
+		return AsNumber(b)
+	case utils.NavigableMap[string, interface{}]:
+		return AsObject(b)
+	case []interface{}:
+		return AsArray(b)
+	case *JsonNull:
+		return Null
+	case *JsonBool:
+		return NewBool(b.Value)
+	case *JsonString:
+		return b
+	case *JsonNumber:
+		return b
+	case *JsonArray:
+		return b
+	case *JsonObject:
+		return b
+	}
 	for _, descriptor := range TypeDescriptors {
 		if descriptor.IsType(obj) {
 			return descriptor.AsType(obj)
@@ -232,6 +261,12 @@ func ToString(obj interface{}) string {
 		return b.Value
 	case *JsonBool:
 		return b.StringValue()
+	case *JsonObject, *JsonArray:
+		jt := b.(JsonType)
+		if buf, ok := appendJSON(make([]byte, 0, 256), jt, false, 0); ok {
+			return string(buf)
+		}
+		obj = jt.Unbox()
 	case JsonType:
 		obj = b.Unbox()
 	}
@@ -271,7 +306,14 @@ func ToString(obj interface{}) string {
 
 // ToPrettyString converts an interface to a string. In case of an object or array, it will be pretty printed.
 func ToPrettyString(obj interface{}) string {
-	if b, ok := obj.(JsonType); ok {
+	switch b := obj.(type) {
+	case *JsonObject, *JsonArray:
+		jt := b.(JsonType)
+		if buf, ok := appendJSON(make([]byte, 0, 256), jt, true, 0); ok {
+			return string(buf)
+		}
+		obj = jt.Unbox()
+	case JsonType:
 		obj = b.Unbox()
 	}
 	if obj == nil {
@@ -377,48 +419,87 @@ func DeleteNullsFromArray(array *JsonArray) *JsonArray {
 	return array
 }
 
+// jsonTypeBuilder makes the JSONC parser produce JsonType values directly,
+// matching the values Box would create from the generic parser output.
+type jsonTypeBuilder struct{}
+
+func (jsonTypeBuilder) String(s string) interface{} { return NewString(s) }
+
+func (jsonTypeBuilder) Number(n json2.Number) interface{} { return AsNumber(n) }
+
+func (jsonTypeBuilder) Bool(b bool) interface{} { return NewBool(b) }
+
+func (jsonTypeBuilder) Null() interface{} { return Null }
+
+func (jsonTypeBuilder) Array(values []interface{}) interface{} {
+	n := len(values)
+	var result *JsonArray
+	if n <= JsonArrayInlineSize {
+		result = &JsonArray{}
+		result.Value = result.inline[:n:n]
+	} else {
+		result = &JsonArray{Value: make([]JsonType, n)}
+	}
+	for i, v := range values {
+		result.Value[i] = v.(JsonType)
+	}
+	return result
+}
+
+func (jsonTypeBuilder) Object(keys []string, values []interface{}) interface{} {
+	result := NewJsonObjectWithCapacity(len(keys))
+	for i, key := range keys {
+		result.Put(key, values[i].(JsonType))
+	}
+	return result
+}
+
+func parseJsonType(str []byte) (JsonType, error) {
+	dat, err := json.UnmarshallJSONCWithBuilder(str, jsonTypeBuilder{})
+	if err != nil {
+		return nil, err
+	}
+	return dat.(JsonType), nil
+}
+
 // ParseJsonValue parses a JSON string into a JSON object. It includes support for comments and detects common syntax errors.
 func ParseJsonValue(str []byte) (JsonType, error) {
-	dat, err := json.UnmarshallJSONC(str)
+	dat, err := parseJsonType(str)
 	if err != nil {
 		return NewJsonObject(), err
 	}
-	if IsObject(dat) {
-		return AsObject(dat), nil
-	} else if IsArray(dat) {
-		return AsArray(dat), nil
-	} else if IsString(dat) {
-		return AsString(dat), nil
-	} else if IsNumber(dat) {
+	switch dat.(type) {
+	case *JsonObject, *JsonArray, *JsonString, *JsonNumber:
+		return dat, nil
+	case *JsonBool:
+		// Historically a top-level boolean was matched by IsNumber first and converted to a number.
 		return AsNumber(dat), nil
-	} else if IsBool(dat) {
-		return AsBool(dat), nil
 	}
 	return Null, burrito.WrappedErrorf("JSON must be an object, array, string, number or boolean")
 }
 
 // ParseJsonObject parses a JSON string into a JSON object. It includes support for comments and detects common syntax errors.
 func ParseJsonObject(str []byte) (*JsonObject, error) {
-	dat, err := json.UnmarshallJSONC(str)
+	dat, err := parseJsonType(str)
 	if err != nil {
 		return NewJsonObject(), err
 	}
-	if !IsObject(dat) {
-		return NewJsonObject(), burrito.WrappedErrorf("JSON must be an object")
+	if obj, ok := dat.(*JsonObject); ok {
+		return obj, nil
 	}
-	return AsObject(dat), nil
+	return NewJsonObject(), burrito.WrappedErrorf("JSON must be an object")
 }
 
 // ParseJsonArray parses a JSON string into a JSON array. It includes support for comments and detects common syntax errors.
 func ParseJsonArray(str []byte) (*JsonArray, error) {
-	dat, err := json.UnmarshallJSONC(str)
+	dat, err := parseJsonType(str)
 	if err != nil {
 		return NewJsonArray(), err
 	}
-	if !IsArray(dat) {
-		return NewJsonArray(), burrito.WrappedErrorf("JSON must be an array")
+	if arr, ok := dat.(*JsonArray); ok {
+		return arr, nil
 	}
-	return AsArray(dat), nil
+	return NewJsonArray(), burrito.WrappedErrorf("JSON must be an array")
 }
 
 // MergeValues merges two JSON values into a new JSON value.

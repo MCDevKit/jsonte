@@ -114,6 +114,12 @@ func toCamelCase(s ...string) string {
 }
 
 func UnescapeString(text string) string {
+	// Fast path: without a backslash (escape) or NUL byte (the default end
+	// rune) the result is the input itself, provided it is valid UTF-8 (the
+	// rune conversion below would otherwise replace invalid bytes).
+	if strings.IndexByte(text, '\\') < 0 && strings.IndexByte(text, 0) < 0 && utf8.ValidString(text) {
+		return text
+	}
 	runes := []rune(text)
 	var sb strings.Builder
 	i := 0
