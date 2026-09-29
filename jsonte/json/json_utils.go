@@ -13,6 +13,18 @@ import (
 // CacheDir is a directory used for cache
 var CacheDir string
 
+// ConvertStringToUTF8 is ConvertToUTF8 for strings. It returns s unchanged, without copying, when it is valid UTF-8.
+func ConvertStringToUTF8(s string) (string, error) {
+	if utf8.ValidString(s) {
+		return s, nil
+	}
+	b, err := ConvertToUTF8([]byte(s))
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 func ConvertToUTF8(str []byte) ([]byte, error) {
 	if !utf8.Valid(str) {
 		utils.Logger.Warnf("Input is not a valid UTF-8 string, attempting to detect and convert to UTF-8")

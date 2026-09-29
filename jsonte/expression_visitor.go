@@ -33,6 +33,9 @@ type lambdaCtxInfo struct {
 	vars   []string
 	args   []string // lv.arguments — all args including nested lambdas; used for JsonLambda.Arguments
 	params []string // direct outer params only (ctx.AllName()); used for scope push/pop and arity check
+	// body is ctx.Statements() when hasBlock, otherwise ctx.Field().
+	body     antlr.ParseTree
+	hasBlock bool
 }
 
 // lambdaInfoCache caches metadata for LambdaContext pointers from the expression cache.
@@ -49,10 +52,10 @@ var nodeTextCache sync.Map
 // expressions that appear repeatedly inside loops.
 var spreadFieldCache sync.Map
 
-// nodeNumberCache caches *types.JsonNumber per NUMBER terminal node pointer.
-// NUMBER literals in expressions are never indexed (no UpdateParent call), so
-// sharing the same *JsonNumber across evaluations is safe.
-var nodeNumberCache sync.Map
+// fieldInfoCache shares immutable *fieldCtxInfo values across visitors (most
+// evaluations use a fresh visitor) for cached parse trees. It is keyed by
+// *parser.FieldContext and cleared together with the expression cache.
+var fieldInfoCache sync.Map
 
 // fieldCtxInfo holds precomputed child/token lookups for a FieldContext.
 // ANTLR's generated accessors (GetToken, AllField, Name, ...) scan and
@@ -90,6 +93,10 @@ type fieldCtxInfo struct {
 	nameText  string
 	nameStr   *types.JsonString
 	numberVal *types.JsonNumber
+	// escapedVal is the unescaped ESCAPED_STRING literal; indexInfo is the
+	// precomputed child of index.
+	escapedVal string
+	indexInfo  indexCtxInfo
 }
 
 // exprCtxInfo holds precomputed lookups for an ExpressionContext.
@@ -128,55 +135,173 @@ func computeExprCtxInfo(ctx *parser.ExpressionContext) *exprCtxInfo {
 }
 
 func computeFieldCtxInfo(ctx *parser.FieldContext) *fieldCtxInfo {
-	info := &fieldCtxInfo{
-		fields:            ctx.AllField(),
-		params:            ctx.AllFunction_param(),
-		name:              ctx.Name(),
-		index:             ctx.Index(),
-		number:            ctx.NUMBER(),
-		escapedString:     ctx.ESCAPED_STRING(),
-		templateString:    ctx.Template_string(),
-		array:             ctx.Array(),
-		object:            ctx.Object(),
-		lambda:            ctx.Lambda(),
-		hasNull:           ctx.Null() != nil,
-		hasTrue:           ctx.True() != nil,
-		hasFalse:          ctx.False() != nil,
-		hasNot:            ctx.Not() != nil,
-		hasAddAssign:      ctx.AddAssign() != nil,
-		hasLiteral:        ctx.Literal() != nil,
-		hasAnd:            ctx.And() != nil,
-		hasOr:             ctx.Or() != nil,
-		hasNullCoalescing: ctx.NullCoalescing() != nil,
-		hasAdd:            ctx.Add() != nil,
-		hasEqual:          ctx.Equal() != nil,
-		hasNotEqual:       ctx.NotEqual() != nil,
-		hasLess:           ctx.Less() != nil,
-		hasGreater:        ctx.Greater() != nil,
-		hasLessOrEqual:    ctx.LessOrEqual() != nil,
-		hasGreaterOrEqual: ctx.GreaterOrEqual() != nil,
-		hasRange:          ctx.Range() != nil,
-		hasSubtract:       ctx.Subtract() != nil,
-		hasDivide:         ctx.Divide() != nil,
-		hasMultiply:       ctx.Multiply() != nil,
-		hasQuestion:       ctx.Question() != nil,
-		hasLeftParen:      ctx.LeftParen() != nil,
-		hasIn:             ctx.In() != nil,
-		hasIncrement:      ctx.Increment() != nil,
-		hasDecrement:      ctx.Decrement() != nil,
-		hasSubtractAssign: ctx.SubtractAssign() != nil,
-		hasMultiplyAssign: ctx.MultiplyAssign() != nil,
-		hasDivideAssign:   ctx.DivideAssign() != nil,
-		hasModuloAssign:   ctx.ModuloAssign() != nil,
+	// Single pass over the children, mirroring the generated accessors: the
+	// singular accessors return the first match, All* return every match in order.
+	children := ctx.GetChildren()
+	info := &fieldCtxInfo{}
+	for _, child := range children {
+		switch c := child.(type) {
+		case *parser.FieldContext:
+			if info.fields == nil {
+				info.fields = make([]parser.IFieldContext, 0, len(children))
+			}
+			info.fields = append(info.fields, c)
+		case *parser.Function_paramContext:
+			if info.params == nil {
+				info.params = make([]parser.IFunction_paramContext, 0, len(children))
+			}
+			info.params = append(info.params, c)
+		case *parser.NameContext:
+			if info.name == nil {
+				info.name = c
+			}
+		case *parser.IndexContext:
+			if info.index == nil {
+				info.index = c
+			}
+		case *parser.Template_stringContext:
+			if info.templateString == nil {
+				info.templateString = c
+			}
+		case *parser.ArrayContext:
+			if info.array == nil {
+				info.array = c
+			}
+		case *parser.ObjectContext:
+			if info.object == nil {
+				info.object = c
+			}
+		case *parser.LambdaContext:
+			if info.lambda == nil {
+				info.lambda = c
+			}
+		case antlr.TerminalNode:
+			switch c.GetSymbol().GetTokenType() {
+			case parser.JsonTemplateNUMBER:
+				if info.number == nil {
+					info.number = c
+				}
+			case parser.JsonTemplateESCAPED_STRING:
+				if info.escapedString == nil {
+					info.escapedString = c
+				}
+			case parser.JsonTemplateNull:
+				info.hasNull = true
+			case parser.JsonTemplateTrue:
+				info.hasTrue = true
+			case parser.JsonTemplateFalse:
+				info.hasFalse = true
+			case parser.JsonTemplateNot:
+				info.hasNot = true
+			case parser.JsonTemplateAddAssign:
+				info.hasAddAssign = true
+			case parser.JsonTemplateLiteral:
+				info.hasLiteral = true
+			case parser.JsonTemplateAnd:
+				info.hasAnd = true
+			case parser.JsonTemplateOr:
+				info.hasOr = true
+			case parser.JsonTemplateNullCoalescing:
+				info.hasNullCoalescing = true
+			case parser.JsonTemplateAdd:
+				info.hasAdd = true
+			case parser.JsonTemplateEqual:
+				info.hasEqual = true
+			case parser.JsonTemplateNotEqual:
+				info.hasNotEqual = true
+			case parser.JsonTemplateLess:
+				info.hasLess = true
+			case parser.JsonTemplateGreater:
+				info.hasGreater = true
+			case parser.JsonTemplateLessOrEqual:
+				info.hasLessOrEqual = true
+			case parser.JsonTemplateGreaterOrEqual:
+				info.hasGreaterOrEqual = true
+			case parser.JsonTemplateRange:
+				info.hasRange = true
+			case parser.JsonTemplateSubtract:
+				info.hasSubtract = true
+			case parser.JsonTemplateDivide:
+				info.hasDivide = true
+			case parser.JsonTemplateMultiply:
+				info.hasMultiply = true
+			case parser.JsonTemplateQuestion:
+				info.hasQuestion = true
+			case parser.JsonTemplateLeftParen:
+				info.hasLeftParen = true
+			case parser.JsonTemplateIn:
+				info.hasIn = true
+			case parser.JsonTemplateIncrement:
+				info.hasIncrement = true
+			case parser.JsonTemplateDecrement:
+				info.hasDecrement = true
+			case parser.JsonTemplateSubtractAssign:
+				info.hasSubtractAssign = true
+			case parser.JsonTemplateMultiplyAssign:
+				info.hasMultiplyAssign = true
+			case parser.JsonTemplateDivideAssign:
+				info.hasDivideAssign = true
+			case parser.JsonTemplateModuloAssign:
+				info.hasModuloAssign = true
+			}
+		}
+	}
+	if info.fields == nil {
+		info.fields = []parser.IFieldContext{}
+	}
+	if info.params == nil {
+		info.params = []parser.IFunction_paramContext{}
 	}
 	if info.name != nil {
-		info.nameText = cachedGetText(info.name)
+		info.nameText = info.name.GetText()
 		info.nameStr = internedJsonString(info.nameText)
 	}
 	if info.number != nil {
-		info.numberVal = cachedNodeNumber(info.number)
+		info.numberVal = types.AsNumber(info.number.GetText())
+	}
+	if info.escapedString != nil {
+		info.escapedVal = unescapeString(info.escapedString.GetText())
+	}
+	if info.index != nil {
+		info.indexInfo = computeIndexCtxInfo(info.index.(*parser.IndexContext))
 	}
 	return info
+}
+
+// indexCtxInfo holds the precomputed child of an IndexContext. Exactly one of
+// number, hasString or field is used, in the same priority as VisitIndex.
+type indexCtxInfo struct {
+	number    *types.JsonNumber
+	str       string
+	hasString bool
+	field     parser.IFieldContext
+}
+
+func computeIndexCtxInfo(ctx *parser.IndexContext) indexCtxInfo {
+	var info indexCtxInfo
+	if n := ctx.NUMBER(); n != nil {
+		info.number = types.AsNumber(n.GetText())
+	} else if s := ctx.ESCAPED_STRING(); s != nil {
+		info.str = unescapeString(s.GetText())
+		info.hasString = true
+	} else {
+		info.field = ctx.Field()
+	}
+	return info
+}
+
+// visitIndexInfo evaluates a precomputed index; equivalent to VisitIndex.
+func (v *ExpressionVisitor) visitIndexInfo(ctx parser.IIndexContext, info *indexCtxInfo) (types.JsonType, error) {
+	if info.number != nil {
+		return info.number, nil
+	}
+	if info.hasString {
+		return types.NewString(info.str), nil
+	}
+	if info.field != nil {
+		return v.Visit(info.field)
+	}
+	return types.Null, burrito.WrappedErrorf("Invalid index: %s", ctx.GetText())
 }
 
 // cachedGetText returns GetText() for any stable parse-tree node, caching the result.
@@ -187,16 +312,6 @@ func cachedGetText(node antlr.ParseTree) string {
 	text := node.GetText()
 	nodeTextCache.Store(node, text)
 	return text
-}
-
-// cachedNodeNumber returns a *types.JsonNumber for a NUMBER terminal node, caching by node pointer.
-func cachedNodeNumber(node antlr.TerminalNode) *types.JsonNumber {
-	if v, ok := nodeNumberCache.Load(node); ok {
-		return v.(*types.JsonNumber)
-	}
-	n := types.AsNumber(node.GetText())
-	nodeNumberCache.Store(node, n)
-	return n
 }
 
 func internedJsonString(s string) *types.JsonString {
@@ -263,6 +378,8 @@ type ExpressionVisitor struct {
 	fieldInfos map[*parser.FieldContext]*fieldCtxInfo
 	exprInfos  map[*parser.ExpressionContext]*exprCtxInfo
 	nameTexts  map[*parser.NameContext]string
+	// resolveFn caches the v.ResolveScope method value (see resolveScopeFn).
+	resolveFn func(string) types.JsonType
 }
 
 func (v *ExpressionVisitor) nameText(ctx *parser.NameContext) string {
@@ -281,7 +398,15 @@ func (v *ExpressionVisitor) fieldInfo(ctx *parser.FieldContext) *fieldCtxInfo {
 	if info, ok := v.fieldInfos[ctx]; ok {
 		return info
 	}
-	info := computeFieldCtxInfo(ctx)
+	var info *fieldCtxInfo
+	if cached, ok := fieldInfoCache.Load(ctx); ok {
+		info = cached.(*fieldCtxInfo)
+	} else {
+		info = computeFieldCtxInfo(ctx)
+		if actual, loaded := fieldInfoCache.LoadOrStore(ctx, info); loaded {
+			info = actual.(*fieldCtxInfo)
+		}
+	}
 	if v.fieldInfos == nil {
 		v.fieldInfos = make(map[*parser.FieldContext]*fieldCtxInfo, 64)
 	}
@@ -391,16 +516,7 @@ func (v *ExpressionVisitor) resolveLambdaTree(src string) parser.ILambdaContext 
 	if cached, ok := lambdaStringCache.Load(src); ok {
 		return cached.(parser.ILambdaContext)
 	}
-	is := antlr.NewInputStream(src)
-	lexer := NewTemplateAwareLexer(is)
-	lexer.JsonTemplateLexer.RemoveErrorListeners()
-	lexer.JsonTemplateLexer.AddErrorListener(antlr.NewConsoleErrorListener())
-	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplate(stream)
-	p.RemoveErrorListeners()
-	p.AddErrorListener(antlr.NewConsoleErrorListener())
-	p.BuildParseTrees = true
-	ctx := p.Lambda()
+	ctx := parseTree(src, lambdaRule, antlr.NewConsoleErrorListener()).(parser.ILambdaContext)
 	lambdaStringCache.Store(src, ctx)
 	return ctx
 }
@@ -458,6 +574,28 @@ func (v *ExpressionVisitor) assignmentTarget() *types.JsonObject {
 
 // ResolveScope resolves a value from the scope by name
 func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
+	return v.resolveScopeStr(name, nil)
+}
+
+// resolveScopeFn returns ResolveScope as a func value, bound once per visitor
+// so passing it to function calls does not allocate a method value each time.
+func (v *ExpressionVisitor) resolveScopeFn() func(string) types.JsonType {
+	if v.resolveFn == nil {
+		v.resolveFn = v.ResolveScope
+	}
+	return v.resolveFn
+}
+
+// isSpecialScopeName reports whether name is handled specially by resolveScopeStr
+// ($scope and this) instead of being looked up in the scope layers.
+func (v *ExpressionVisitor) isSpecialScopeName(name string) bool {
+	return name == "this" || (name == "$scope" && v.globalScope != nil)
+}
+
+// resolveScopeStr resolves a value from the scope by name. nameStr, when
+// non-nil, must be the interned JsonString for name; it is looked up lazily
+// otherwise.
+func (v *ExpressionVisitor) resolveScopeStr(name string, nameStr *types.JsonString) types.JsonType {
 	// $scope is a write-through proxy to the global scope, available only in .jsonte scripts.
 	if name == "$scope" && v.globalScope != nil {
 		return &types.JsonObject{
@@ -471,36 +609,49 @@ func (v *ExpressionVisitor) ResolveScope(name string) types.JsonType {
 			StackTarget: v.initVarScope(),
 		}
 	}
-	nameStr := internedJsonString(name)
-	if v.localVarTarget != nil && v.localVarTarget.ContainsKey(name) {
-		get := v.localVarTarget.Get(name)
-		get.UpdateParent(v.localVarTarget, nameStr)
+	if nameStr == nil {
+		nameStr = internedJsonString(name)
+	}
+	if get, ok := v.lookupScope(name, nameStr); ok {
 		return get
+	}
+	return types.NullWithParent(v.assignmentTarget(), nameStr)
+}
+
+// lookupScope searches the scope layers (lambda locals, scope stack, variable
+// scope, extra scope) for name in ResolveScope order. On a hit the value's
+// parent is updated exactly as ResolveScope does; on a miss nothing is
+// allocated and (nil, false) is returned. It does not handle $scope or this.
+func (v *ExpressionVisitor) lookupScope(name string, nameStr *types.JsonString) (types.JsonType, bool) {
+	if v.localVarTarget != nil {
+		if get, ok := v.localVarTarget.TryGet(name); ok {
+			get.UpdateParent(v.localVarTarget, nameStr)
+			return get, true
+		}
 	}
 	for i := v.scope.Len() - 1; i >= 0; i-- {
 		m := v.scope.At(i)
-		if m.ContainsKey(name) {
-			get := m.Get(name)
+		if get, ok := m.TryGet(name); ok {
 			get.UpdateParent(m, nameStr)
-			return get
+			return get, true
 		}
 	}
-	if v.variableScope != nil && v.variableScope.ContainsKey(name) {
-		get := v.variableScope.Get(name)
-		get.UpdateParent(v.variableScope, nameStr)
-		return get
+	if v.variableScope != nil {
+		if get, ok := v.variableScope.TryGet(name); ok {
+			get.UpdateParent(v.variableScope, nameStr)
+			return get, true
+		}
 	}
 	if v.extraScope != nil {
 		for i := v.extraScope.Len() - 1; i >= 0; i-- {
 			m := v.extraScope.At(i)
-			if m.ContainsKey(name) {
-				get := m.Get(name)
+			if get, ok := m.TryGet(name); ok {
 				get.UpdateParent(m, nameStr)
-				return get
+				return get, true
 			}
 		}
 	}
-	return types.NullWithParent(v.assignmentTarget(), nameStr)
+	return nil, false
 }
 
 func (v *ExpressionVisitor) VisitScript(ctx *parser.ScriptContext) (types.JsonType, error) {
@@ -780,6 +931,144 @@ func numericCompound(left, right types.JsonType, info *fieldCtxInfo) types.JsonT
 	}
 }
 
+// memberAccess evaluates `object.name` for a member-access field (info.name != nil
+// and a single sub-field that evaluated to object). Instance functions are
+// returned as a bound lambda; anything else is indexed by the property name.
+func (v *ExpressionVisitor) memberAccess(context *parser.FieldContext, info *fieldCtxInfo, object types.JsonType) (types.JsonType, error) {
+	text := info.nameText
+	if functions.HasInstanceFunction(reflect.TypeOf(object), text) {
+		return types.NewLambda(
+			func(this *types.JsonLambda, o []types.JsonType) (types.JsonType, error) {
+				function, err := functions.CallInstanceFunction(text, object.(types.JsonType), o, v.resolveScopeFn())
+				if err != nil {
+					return types.Null, burrito.WrapErrorf(err, "Error calling function '%s' on %s", text, object.StringValue())
+				}
+				return function, nil
+			},
+			text,
+			[]string{},
+			[]string{},
+		), nil
+	}
+	textStr := info.nameStr
+	index, err := object.Index(textStr)
+	if err != nil {
+		if info.hasQuestion || v.action == types.Predicate || v.isInLeftSideOfAssignment(context) {
+			return types.NullWithParent(object, textStr), nil
+		} else {
+			return types.Null, burrito.WrapErrorf(err, "Cannot access %s", context.GetText())
+		}
+	}
+	index.UpdateParent(object, textStr)
+	return index, nil
+}
+
+// visitCall evaluates a function call field `callee(params...)`.
+//
+// Common callee shapes are resolved without allocating intermediates:
+//   - a bare name missing from every scope goes straight to the global function
+//     lookup (instead of materializing a Null placeholder first);
+//   - `object.method(...)` where method is an instance function is called
+//     directly instead of through a freshly allocated bound lambda.
+//
+// Evaluation order (callee/object first, then params) and error messages are
+// unchanged.
+func (v *ExpressionVisitor) visitCall(info *fieldCtxInfo) (types.JsonType, error) {
+	calleeCtx := info.fields[0].(*parser.FieldContext)
+	fi := v.fieldInfo(calleeCtx)
+
+	// callee is the evaluated callee value; nil means an unresolved bare name.
+	var callee types.JsonType
+	// instance is non-nil when calling instance function fi.nameText on it directly.
+	var instance types.JsonType
+	if fi.name != nil && len(fi.fields) == 0 && !v.isSpecialScopeName(fi.nameText) {
+		if val, ok := v.lookupScope(fi.nameText, fi.nameStr); ok {
+			callee = val
+		}
+	} else if fi.name != nil && len(fi.fields) == 1 {
+		object, err := v.Visit(fi.fields[0])
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		if functions.HasInstanceFunction(reflect.TypeOf(object), fi.nameText) {
+			instance = object
+		} else {
+			callee, err = v.memberAccess(calleeCtx, fi, object)
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+		}
+	} else {
+		var err error
+		callee, err = v.Visit(calleeCtx)
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+	}
+
+	params := make([]types.JsonType, 0, len(info.params))
+	for _, param := range info.params {
+		p, err := v.Visit(param)
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		if param.(*parser.Function_paramContext).Spread() != nil {
+			if a, ok := p.(*types.JsonArray); ok {
+				params = append(params, a.Value...)
+			} else {
+				return types.Null, burrito.WrappedErrorf("Cannot spread %s", p.StringValue())
+			}
+		} else {
+			params = append(params, p)
+		}
+	}
+
+	if instance != nil {
+		function, err := functions.CallInstanceFunction(fi.nameText, instance, params, v.resolveScopeFn())
+		if err != nil {
+			return types.Null, burrito.PassError(burrito.WrapErrorf(err, "Error calling function '%s' on %s", fi.nameText, instance.StringValue()))
+		}
+		return function, nil
+	}
+	if _, ok := callee.(*types.JsonString); ok {
+		lambdaContext := v.resolveLambdaTree(callee.StringValue())
+		fun, err := v.Visit(lambdaContext)
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		if f, ok := fun.(*types.JsonLambda); ok {
+			i, err := f.Value(f, params)
+			if err != nil {
+				return types.Null, burrito.PassError(err)
+			}
+			return i, nil
+		} else {
+			return types.Null, burrito.WrappedErrorf("%s is not a function", callee.StringValue())
+		}
+	} else if l, ok := callee.(*types.JsonLambda); ok {
+		i, err := l.Value(l, params)
+		if err != nil {
+			return types.Null, burrito.PassError(err)
+		}
+		return i, nil
+	}
+	// Not a lambda: treat the callee's name (if any) as a global function.
+	if fi.name == nil || !functions.HasFunction(fi.nameText) {
+		if fi.name != nil {
+			find := functions.FindMisspelling(fi.nameText)
+			if find != nil {
+				return types.Null, burrito.WrappedErrorf("Function '%s' not found, did you mean '%s'?", fi.nameText, *find)
+			}
+		}
+		return types.Null, burrito.WrappedErrorf("Function '%s' not found!", calleeCtx.GetText())
+	}
+	function, err := functions.CallFunction(fi.nameText, params, v.resolveScopeFn())
+	if err != nil {
+		return types.Null, burrito.WrapErrorf(err, "Error calling function '%s'", fi.nameText)
+	}
+	return function, nil
+}
+
 func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.JsonType, error) {
 	info := v.fieldInfo(context)
 	if info.hasNull {
@@ -1057,112 +1346,22 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 	if info.hasLeftParen && len(info.fields) == 1 && context.GetChild(0) != info.fields[0] {
 		return v.Visit(info.fields[0])
 	} else if info.hasLeftParen && len(info.fields) == 1 && context.GetChild(0) == info.fields[0] {
-		lambda, err := v.Visit(info.fields[0])
-		if err != nil {
-			return types.Null, burrito.PassError(err)
-		}
-		params := make([]types.JsonType, 0)
-		for _, param := range info.params {
-			p, err := v.Visit(param)
-			if err != nil {
-				return types.Null, burrito.PassError(err)
-			}
-			if param.(*parser.Function_paramContext).Spread() != nil {
-				if a, ok := p.(*types.JsonArray); ok {
-					params = append(params, a.Value...)
-				} else {
-					return types.Null, burrito.WrappedErrorf("Cannot spread %s", p.StringValue())
-				}
-			} else {
-				params = append(params, p)
-			}
-		}
-		if _, ok := lambda.(*types.JsonString); ok {
-			lambdaContext := v.resolveLambdaTree(lambda.StringValue())
-			fun, err := v.Visit(lambdaContext)
-			if err != nil {
-				return types.Null, burrito.PassError(err)
-			}
-			if f, ok := fun.(*types.JsonLambda); ok {
-				i, err := f.Value(f, params)
-				if err != nil {
-					return types.Null, burrito.PassError(err)
-				}
-				return i, nil
-			} else {
-				return types.Null, burrito.WrappedErrorf("%s is not a function", lambda.StringValue())
-			}
-		} else if l, ok := lambda.(*types.JsonLambda); ok {
-			i, err := l.Value(l, params)
-			if err != nil {
-				return types.Null, burrito.PassError(err)
-			}
-			return i, nil
-		} else {
-			var methodName *string = nil
-			for _, child := range info.fields[0].GetChildren() {
-				if b, ok := child.(parser.INameContext); ok {
-					text := cachedGetText(b.(antlr.ParseTree))
-					methodName = &text
-					break
-				}
-			}
-			if methodName == nil || !functions.HasFunction(*methodName) {
-				if methodName != nil {
-					find := functions.FindMisspelling(*methodName)
-					if find != nil {
-						return types.Null, burrito.WrappedErrorf("Function '%s' not found, did you mean '%s'?", *methodName, *find)
-					}
-				}
-				return types.Null, burrito.WrappedErrorf("Function '%s' not found!", info.fields[0].GetText())
-			}
-			function, err := functions.CallFunction(*methodName, params, v.ResolveScope)
-			if err != nil {
-				return types.Null, burrito.WrapErrorf(err, "Error calling function '%s'", *methodName)
-			}
-			return function, nil
-		}
+		return v.visitCall(info)
 	}
 	// handle accessing a property of an object or calling an instance function
 	if info.name != nil && len(info.fields) == 1 {
-		text := info.nameText
 		object, err := v.Visit(info.fields[0])
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
-		if functions.HasInstanceFunction(reflect.TypeOf(object), text) {
-			return types.NewLambda(
-				func(this *types.JsonLambda, o []types.JsonType) (types.JsonType, error) {
-					function, err := functions.CallInstanceFunction(text, object.(types.JsonType), o, v.ResolveScope)
-					if err != nil {
-						return types.Null, burrito.WrapErrorf(err, "Error calling function '%s' on %s", text, object.StringValue())
-					}
-					return function, nil
-				},
-				text,
-				[]string{},
-				[]string{},
-			), nil
-		} else {
-			textStr := info.nameStr
-			index, err := object.Index(textStr)
-			if err != nil {
-				if info.hasQuestion || v.action == types.Predicate || v.isInLeftSideOfAssignment(context) {
-					return types.NullWithParent(object, textStr), nil
-				} else {
-					return types.Null, burrito.WrapErrorf(err, "Cannot access %s", context.GetText())
-				}
-			}
-			index.UpdateParent(object, textStr)
-			return index, nil
-		}
+		return v.memberAccess(context, info, object)
 	}
 	if info.name != nil {
-		return v.Visit(info.name)
+		return v.resolveScopeStr(info.nameText, info.nameStr), nil
 	}
 	// handle indexed access
 	if info.index != nil && len(info.fields) == 1 {
-		i, err := v.Visit(info.index)
+		i, err := v.visitIndexInfo(info.index, &info.indexInfo)
 		if err != nil {
 			return types.Null, burrito.PassError(err)
 		}
@@ -1191,7 +1390,7 @@ func (v *ExpressionVisitor) VisitField(context *parser.FieldContext) (types.Json
 		return info.numberVal, nil
 	}
 	if info.escapedString != nil {
-		return types.NewString(unescapeString(types.ToString(cachedGetText(info.escapedString)))), nil
+		return types.NewString(info.escapedVal), nil
 	}
 	// template string literal
 	if info.templateString != nil {
@@ -1250,16 +1449,8 @@ func (v *ExpressionVisitor) VisitName(context *parser.NameContext) (types.JsonTy
 }
 
 func (v *ExpressionVisitor) VisitIndex(context *parser.IndexContext) (types.JsonType, error) {
-	if context.NUMBER() != nil {
-		return cachedNodeNumber(context.NUMBER()), nil
-	}
-	if context.ESCAPED_STRING() != nil {
-		return types.NewString(unescapeString(types.ToString(cachedGetText(context.ESCAPED_STRING())))), nil
-	}
-	if context.Field() != nil {
-		return v.Visit(context.Field())
-	}
-	return types.Null, burrito.WrappedErrorf("Invalid index: %s", context.GetText())
+	info := computeIndexCtxInfo(context)
+	return v.visitIndexInfo(context, &info)
 }
 
 func (v *ExpressionVisitor) VisitArray(context *parser.ArrayContext) (types.JsonType, error) {
@@ -1388,9 +1579,16 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			args:   lv.arguments,
 			params: params,
 		}
+		if stmts := ctx.Statements(); stmts != nil {
+			info.body = stmts
+			info.hasBlock = true
+		} else if f := ctx.Field(); f != nil {
+			info.body = f
+		}
 		lambdaInfoCache.Store(ctx, info)
 	}
-	hasBlock := ctx.Statements() != nil
+	hasBlock := info.hasBlock
+	body := info.body
 	params := info.params
 	return types.NewLambda(
 		func(this *types.JsonLambda, o []types.JsonType) (types.JsonType, error) {
@@ -1405,7 +1603,7 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 			var result types.JsonType
 			var err error
 			if hasBlock {
-				result, err = v.Visit(ctx.Statements())
+				result, err = v.Visit(body)
 				if err == nil {
 					if signal, ok := result.(*types.JsonSignal); ok {
 						result = signal.Value
@@ -1414,7 +1612,7 @@ func (v *ExpressionVisitor) VisitLambda(ctx *parser.LambdaContext) (types.JsonTy
 					}
 				}
 			} else {
-				result, err = v.Visit(ctx.Field())
+				result, err = v.Visit(body)
 			}
 			putLocalVarObject(v.localVarTarget)
 			v.localVarTarget = outerLocalVarTarget
@@ -1476,10 +1674,9 @@ func unescapeTemplateText(text string) string {
 
 // unescapeString removes quotes and unescapes a string.
 func unescapeString(str string) string {
-	runes := []rune(str)
-	if len(runes) < 3 {
+	// ESCAPED_STRING tokens are delimited by single-byte quote characters.
+	if len(str) < 3 {
 		return ""
 	}
-	str = string(runes[1 : len(runes)-1])
-	return UnescapeString(str)
+	return UnescapeString(str[1 : len(str)-1])
 }

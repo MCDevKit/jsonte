@@ -6,6 +6,7 @@ import (
 	"github.com/Bedrock-OSS/go-burrito/burrito"
 	"github.com/MCDevKit/jsonte/jsonte/utils"
 	"strconv"
+	"unicode/utf8"
 )
 
 const UnexpectedTokenExpectedError = "Unexpected token '%c' (%[1]U), expected '%c' (%[2]U) at line %d, column %d"
@@ -34,16 +35,23 @@ const (
 	TokenEof            = 4
 )
 
+// StringReader reads runes from a UTF-8 encoded byte slice. The marker is a
+// byte offset, while the column is counted in runes.
 type StringReader struct {
-	str    []rune
+	str    []byte
 	marker int
 	column int
 	line   int
 }
 
 func NewStringReader(str []byte) *StringReader {
+	if !utf8.Valid(str) {
+		// Replace every invalid byte with U+FFFD, exactly like a []rune
+		// conversion does, so that the reader only ever sees valid UTF-8.
+		str = []byte(string([]rune(string(str))))
+	}
 	return &StringReader{
-		str:    []rune(string(str)),
+		str:    str,
 		marker: 0,
 		column: 0,
 		line:   1,
@@ -54,55 +62,119 @@ func (sr *StringReader) Peek() rune {
 	if sr.marker >= len(sr.str) {
 		return TokenEof
 	}
-	return sr.str[sr.marker]
+	if c := sr.str[sr.marker]; c < utf8.RuneSelf {
+		return rune(c)
+	}
+	r, _ := utf8.DecodeRune(sr.str[sr.marker:])
+	return r
 }
 
 func (sr *StringReader) Read() rune {
-	c := sr.Peek()
+	var c rune
+	size := 1
+	if sr.marker >= len(sr.str) {
+		c = TokenEof
+	} else if b := sr.str[sr.marker]; b < utf8.RuneSelf {
+		c = rune(b)
+	} else {
+		c, size = utf8.DecodeRune(sr.str[sr.marker:])
+	}
 	if c == TokenNewline {
 		sr.line++
 		sr.column = 0
 	} else {
 		sr.column++
 	}
-	sr.marker++
+	sr.marker += size
 	return c
 }
 
+// ValueBuilder creates the values produced by the JSONC parser.
+// The slices passed to Array and Object are scratch buffers owned by the
+// parser and are reused after the call returns, so implementations must copy
+// their contents.
+type ValueBuilder interface {
+	String(s string) interface{}
+	Number(n json.Number) interface{}
+	Bool(b bool) interface{}
+	Null() interface{}
+	Array(values []interface{}) interface{}
+	Object(keys []string, values []interface{}) interface{}
+}
+
+// defaultBuilder produces NavigableMap[string, interface{}], []interface{},
+// string, json.Number, bool and nil values.
+type defaultBuilder struct{}
+
+func (defaultBuilder) String(s string) interface{}      { return s }
+func (defaultBuilder) Number(n json.Number) interface{} { return n }
+func (defaultBuilder) Bool(b bool) interface{}          { return b }
+func (defaultBuilder) Null() interface{}                { return nil }
+
+func (defaultBuilder) Array(values []interface{}) interface{} {
+	result := make([]interface{}, len(values))
+	copy(result, values)
+	return result
+}
+
+func (defaultBuilder) Object(keys []string, values []interface{}) interface{} {
+	result := utils.NewNavigableMapWithCapacity[string, interface{}](len(keys))
+	for i, key := range keys {
+		result.Put(key, values[i])
+	}
+	return result
+}
+
+// pathSegment is one step of the JSON path of the value being parsed. The
+// textual path is only built when an error is reported.
+type pathSegment struct {
+	key     string
+	index   int
+	isIndex bool
+}
+
+type parser struct {
+	StringReader
+	builder ValueBuilder
+	keys    []string
+	values  []interface{}
+	path    []pathSegment
+}
+
+// pathString returns the JSON path of the value currently being parsed.
+func (str *parser) pathString() string {
+	result := "#"
+	for _, segment := range str.path {
+		if segment.isIndex {
+			result = fmt.Sprintf("%s[%d]", result, segment.index)
+		} else {
+			result = result + "/" + segment.key
+		}
+	}
+	return result
+}
+
 func UnmarshallJSONC(str []byte) (interface{}, error) {
+	return UnmarshallJSONCWithBuilder(str, defaultBuilder{})
+}
+
+// UnmarshallJSONCWithBuilder parses a JSONC document and constructs the values
+// with the given builder.
+func UnmarshallJSONCWithBuilder(str []byte, builder ValueBuilder) (interface{}, error) {
 	str, err := ConvertToUTF8(str)
 	if err != nil {
 		return nil, burrito.PassError(err)
 	}
-	reader := NewStringReader(str)
-	err = skipWhitespace(reader)
+	reader := &parser{StringReader: *NewStringReader(str), builder: builder}
+	err = skipWhitespace(&reader.StringReader)
 	if err != nil {
 		return nil, err
 	}
-	token := reader.Peek()
-	var object interface{}
-	if token == TokenOpenObject {
-		object, err = parseObject(reader, "#")
-		if err != nil {
-			return nil, err
-		}
-	} else if token == TokenOpenArray {
-		object, err = parseArray(reader, "#")
-		if err != nil {
-			return nil, err
-		}
-	} else if token == TokenDoubleQuote {
-		object, err = parseString(reader, "#")
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		object, err = parsePrimitive(reader, "#")
-		if err != nil {
-			return nil, err
-		}
+	object, err := reader.parseValue()
+	if err != nil {
+		return nil, err
 	}
-	err = skipWhitespace(reader)
+	err = skipWhitespace(&reader.StringReader)
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +182,24 @@ func UnmarshallJSONC(str []byte) (interface{}, error) {
 		return object, utils.WrappedJsonErrorf("#", ExpectedEofError, reader.line, reader.column)
 	}
 	return object, nil
+}
+
+// parseValue parses the value starting at the current token.
+func (str *parser) parseValue() (interface{}, error) {
+	switch str.Peek() {
+	case TokenOpenObject:
+		return str.parseObject()
+	case TokenOpenArray:
+		return str.parseArray()
+	case TokenDoubleQuote:
+		value, err := str.parseString()
+		if err != nil {
+			return nil, err
+		}
+		return str.builder.String(value), nil
+	default:
+		return str.parsePrimitive()
+	}
 }
 
 func MarshalJSONC(object interface{}, pretty bool) ([]rune, error) {
@@ -152,7 +242,8 @@ func writeObject(object utils.NavigableMap[string, interface{}], pretty bool, in
 		result = append(result, TokenNewline)
 	}
 	indent++
-	for i, key := range object.Keys() {
+	keys := object.Keys()
+	for i, key := range keys {
 		if pretty {
 			result = append(result, indentBytes(indent)...)
 		}
@@ -199,7 +290,7 @@ func writeObject(object utils.NavigableMap[string, interface{}], pretty bool, in
 		default:
 			return result, burrito.WrappedErrorf("Unsupported type %T", value)
 		}
-		if i < len(object.Keys())-1 {
+		if i < len(keys)-1 {
 			result = append(result, TokenComma)
 		}
 		if pretty {
@@ -342,12 +433,17 @@ func skipWhitespace(str *StringReader) error {
 	return nil
 }
 
-func parseObject(str *StringReader, p string) (utils.NavigableMap[string, interface{}], error) {
-	result := utils.NewNavigableMap[string, interface{}]()
-
+func (str *parser) parseObject() (interface{}, error) {
 	if str.Read() != TokenOpenObject {
-		return result, utils.WrappedJsonErrorf(p, ExpectedTokenError, TokenOpenObject, str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(str.pathString(), ExpectedTokenError, TokenOpenObject, str.line, str.column)
 	}
+
+	keyBase := len(str.keys)
+	valueBase := len(str.values)
+	defer func() {
+		str.keys = str.keys[:keyBase]
+		str.values = str.values[:valueBase]
+	}()
 
 	canStartComment := false
 	comma := false
@@ -356,67 +452,49 @@ func parseObject(str *StringReader, p string) (utils.NavigableMap[string, interf
 	for {
 		token := str.Peek()
 		if token == TokenEof {
-			return result, utils.WrappedJsonErrorf(p, UnexpectedEofError, str.line, str.column)
+			return nil, utils.WrappedJsonErrorf(str.pathString(), UnexpectedEofError, str.line, str.column)
 		} else if isWhitespace(token) {
 			str.Read()
 		} else if token == TokenSlash {
-			canStartComment = parseComment(str, canStartComment)
+			canStartComment = parseComment(&str.StringReader, canStartComment)
 		} else if token == TokenAsterisk {
-			canStartComment = parseComment(str, canStartComment)
+			canStartComment = parseComment(&str.StringReader, canStartComment)
 		} else if canStartComment && token != TokenSlash && token != TokenAsterisk {
-			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenExpectedError, token, TokenSlash, str.line, str.column)
+			return nil, utils.WrappedJsonErrorf(str.pathString(), UnexpectedTokenExpectedError, token, TokenSlash, str.line, str.column)
 		} else if token == TokenDoubleQuote && (comma || open) {
 			comma = false
 			open = false
-			key, err := parseString(str, p)
+			key, err := str.parseString()
 			if err != nil {
-				return result, err
+				return nil, err
 			}
-			err = skipWhitespace(str)
+			err = skipWhitespace(&str.StringReader)
 			if err != nil {
-				return result, err
+				return nil, err
 			}
 			if str.Read() != TokenColon {
-				return result, utils.WrappedJsonErrorf(p, ExpectedTokenError, TokenColon, str.line, str.column)
+				return nil, utils.WrappedJsonErrorf(str.pathString(), ExpectedTokenError, TokenColon, str.line, str.column)
 			}
-			err = skipWhitespace(str)
+			err = skipWhitespace(&str.StringReader)
 			if err != nil {
-				return result, err
+				return nil, err
 			}
-			peekToken := str.Peek()
-			if peekToken == TokenOpenObject {
-				value, err := parseObject(str, p+"/"+key)
-				if err != nil {
-					return result, err
-				}
-				result.Put(key, value)
-			} else if peekToken == TokenOpenArray {
-				value, err := parseArray(str, p+"/"+key)
-				if err != nil {
-					return result, err
-				}
-				result.Put(key, value)
-			} else if peekToken == TokenDoubleQuote {
-				value, err := parseString(str, p+"/"+key)
-				if err != nil {
-					return result, err
-				}
-				result.Put(key, value)
-			} else {
-				value, err := parsePrimitive(str, p+"/"+key)
-				if err != nil {
-					return result, err
-				}
-				result.Put(key, value)
+			str.path = append(str.path, pathSegment{key: key})
+			value, err := str.parseValue()
+			if err != nil {
+				return nil, err
 			}
+			str.path = str.path[:len(str.path)-1]
+			str.keys = append(str.keys, key)
+			str.values = append(str.values, value)
 		} else if token == TokenComma && !comma && !open {
 			comma = true
 			str.Read()
 		} else if token == TokenCloseObject && !comma {
 			str.Read()
-			return result, nil
+			return str.builder.Object(str.keys[keyBase:], str.values[valueBase:]), nil
 		} else {
-			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenError, token, str.line, str.column)
+			return nil, utils.WrappedJsonErrorf(str.pathString(), UnexpectedTokenError, token, str.line, str.column)
 		}
 	}
 }
@@ -457,42 +535,42 @@ func parseComment(str *StringReader, canStartComment bool) bool {
 	}
 }
 
-func parsePrimitive(str *StringReader, p string) (interface{}, error) {
+func (str *parser) parsePrimitive() (interface{}, error) {
 	token := str.Peek()
 	if token >= '0' && token <= '9' || token == '-' || token == '+' || token == '.' {
-		return parseNumber(str)
+		number, err := parseNumber(&str.StringReader)
+		if err != nil {
+			return nil, err
+		}
+		return str.builder.Number(number), nil
 	} else if token == 't' {
-		return parseTrue(str, p)
+		if err := str.parseConstant("true"); err != nil {
+			return nil, err
+		}
+		return str.builder.Bool(true), nil
 	} else if token == 'f' {
-		return parseFalse(str, p)
+		if err := str.parseConstant("false"); err != nil {
+			return nil, err
+		}
+		return str.builder.Bool(false), nil
 	} else if token == 'n' {
-		return parseNull(str, p)
+		if err := str.parseConstant("null"); err != nil {
+			return nil, err
+		}
+		return str.builder.Null(), nil
 	} else {
-		return nil, utils.WrappedJsonErrorf(p, UnexpectedTokenError, token, str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(str.pathString(), UnexpectedTokenError, token, str.line, str.column)
 	}
 }
 
-func parseConstant(str *StringReader, p string, constant string) error {
-	runes := []rune(constant)
-	for i := 0; i < len(runes); i++ {
+func (str *parser) parseConstant(constant string) error {
+	for i := 0; i < len(constant); i++ {
 		token := str.Read()
-		if token != runes[i] {
-			return utils.WrappedJsonErrorf(p, UnexpectedTokenExpectedError, token, constant[i], str.line, str.column)
+		if token != rune(constant[i]) {
+			return utils.WrappedJsonErrorf(str.pathString(), UnexpectedTokenExpectedError, token, constant[i], str.line, str.column)
 		}
 	}
 	return nil
-}
-
-func parseTrue(str *StringReader, p string) (interface{}, error) {
-	return true, parseConstant(str, p, "true")
-}
-
-func parseFalse(str *StringReader, p string) (interface{}, error) {
-	return false, parseConstant(str, p, "false")
-}
-
-func parseNull(str *StringReader, p string) (interface{}, error) {
-	return nil, parseConstant(str, p, "null")
 }
 
 func parseNumber(str *StringReader) (json.Number, error) {
@@ -573,34 +651,21 @@ func parseNumber(str *StringReader) (json.Number, error) {
 				state = 4
 			}
 		case 4: // End state
+			// All characters of a number are ASCII, so the byte slice matches the runes read.
 			return json.Number(str.str[start:str.marker]), nil
 		}
 	}
-	//hadDecimalPoint := false
-	//hadSign := false
-	//for {
-	//	token := str.Peek()
-	//	if token >= '0' && token <= '9' || token == '.' || token == 'e' || token == 'E' || token == '-' || token == '+' {
-	//		if token == '.' {
-	//			if hadDecimalPoint {
-	//				return "", utils.WrappedJsonErrorf("", UnexpectedTokenError, token, str.line, str.column)
-	//			}
-	//			hadDecimalPoint = true
-	//		}
-	//		str.Read()
-	//	} else {
-	//		break
-	//	}
-	//}
-	//return json.Number(str.str[start:str.marker]), nil
 }
 
-func parseArray(str *StringReader, p string) ([]interface{}, error) {
-	result := make([]interface{}, 0)
-
+func (str *parser) parseArray() (interface{}, error) {
 	if str.Read() != TokenOpenArray {
-		return result, utils.WrappedJsonErrorf(p, ExpectedTokenError, TokenOpenArray, str.line, str.column)
+		return nil, utils.WrappedJsonErrorf(str.pathString(), ExpectedTokenError, TokenOpenArray, str.line, str.column)
 	}
+
+	base := len(str.values)
+	defer func() {
+		str.values = str.values[:base]
+	}()
 
 	comma := false
 	open := true
@@ -609,37 +674,23 @@ func parseArray(str *StringReader, p string) ([]interface{}, error) {
 	for {
 		token := str.Peek()
 		if token == TokenEof {
-			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenExpectedError, token, TokenEof, str.line, str.column)
+			return nil, utils.WrappedJsonErrorf(str.pathString(), UnexpectedTokenExpectedError, token, TokenEof, str.line, str.column)
 		} else if isWhitespace(token) {
 			str.Read()
 		} else if token == TokenSlash {
-			canStartComment = parseComment(str, canStartComment)
+			canStartComment = parseComment(&str.StringReader, canStartComment)
 		} else if token == TokenAsterisk {
-			canStartComment = parseComment(str, canStartComment)
+			canStartComment = parseComment(&str.StringReader, canStartComment)
 		} else if canStartComment && token != TokenSlash && token != TokenAsterisk {
-			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenExpectedError, token, TokenSlash, str.line, str.column)
-		} else if token == TokenOpenArray && (comma || open) {
-			value, err := parseArray(str, fmt.Sprintf("%s[%d]", p, len(result)))
+			return nil, utils.WrappedJsonErrorf(str.pathString(), UnexpectedTokenExpectedError, token, TokenSlash, str.line, str.column)
+		} else if (token == TokenOpenArray || token == TokenOpenObject || token == TokenDoubleQuote) && (comma || open) {
+			str.path = append(str.path, pathSegment{index: len(str.values) - base, isIndex: true})
+			value, err := str.parseValue()
 			if err != nil {
-				return result, err
+				return nil, err
 			}
-			result = append(result, value)
-			comma = false
-			open = false
-		} else if token == TokenOpenObject && (comma || open) {
-			value, err := parseObject(str, fmt.Sprintf("%s[%d]", p, len(result)))
-			if err != nil {
-				return result, err
-			}
-			result = append(result, value)
-			comma = false
-			open = false
-		} else if token == TokenDoubleQuote && (comma || open) {
-			value, err := parseString(str, fmt.Sprintf("%s[%d]", p, len(result)))
-			if err != nil {
-				return result, err
-			}
-			result = append(result, value)
+			str.path = str.path[:len(str.path)-1]
+			str.values = append(str.values, value)
 			comma = false
 			open = false
 		} else if token == TokenComma && !comma && !open {
@@ -647,28 +698,59 @@ func parseArray(str *StringReader, p string) ([]interface{}, error) {
 			str.Read()
 		} else if token == TokenCloseArray && !comma {
 			str.Read()
-			return result, nil
+			return str.builder.Array(str.values[base:]), nil
 		} else if comma || open {
-			value, err := parsePrimitive(str, fmt.Sprintf("%s[%d]", p, len(result)))
+			str.path = append(str.path, pathSegment{index: len(str.values) - base, isIndex: true})
+			value, err := str.parsePrimitive()
 			if err != nil {
-				return result, err
+				return nil, err
 			}
-			result = append(result, value)
+			str.path = str.path[:len(str.path)-1]
+			str.values = append(str.values, value)
 			comma = false
 			open = false
 		} else {
-			return result, utils.WrappedJsonErrorf(p, UnexpectedTokenError, token, str.line, str.column)
+			return nil, utils.WrappedJsonErrorf(str.pathString(), UnexpectedTokenError, token, str.line, str.column)
 		}
 	}
 }
 
-func parseString(str *StringReader, p string) (string, error) {
-	var result []rune
+func (str *parser) parseString() (string, error) {
 	str.Read()
+	// Fast path: scan for the closing quote. When the string contains no escape
+	// sequences, it can be returned as a single slice of the input.
+	column := str.column
+	line := str.line
+	for i := str.marker; i < len(str.str); i++ {
+		c := str.str[i]
+		if c == TokenDoubleQuote {
+			result := string(str.str[str.marker:i])
+			str.marker = i + 1
+			str.column = column + 1
+			str.line = line
+			return result, nil
+		}
+		if c == TokenBackslash || c == TokenEof {
+			break
+		}
+		if c == TokenNewline {
+			line++
+			column = 0
+		} else if !utf8.RuneStart(c) {
+			// Continuation byte of a multi-byte rune; the column was counted at its first byte.
+		} else {
+			column++
+		}
+	}
+	return str.parseStringSlow()
+}
+
+func (str *parser) parseStringSlow() (string, error) {
+	var result []byte
 	for {
 		token := str.Read()
 		if token == TokenEof {
-			return "", utils.WrappedJsonErrorf(p, UnexpectedEofError, str.line, str.column)
+			return "", utils.WrappedJsonErrorf(str.pathString(), UnexpectedEofError, str.line, str.column)
 		}
 		if token == TokenDoubleQuote {
 			break
@@ -676,7 +758,7 @@ func parseString(str *StringReader, p string) (string, error) {
 		if token == TokenBackslash {
 			token = str.Read()
 			if token == TokenEof {
-				return "", utils.WrappedJsonErrorf(p, UnexpectedEofError, str.line, str.column)
+				return "", utils.WrappedJsonErrorf(str.pathString(), UnexpectedEofError, str.line, str.column)
 			}
 			switch token {
 			case TokenDoubleQuote:
@@ -702,15 +784,15 @@ func parseString(str *StringReader, p string) (string, error) {
 				}
 				unicode, err := strconv.ParseInt(string(hex), 16, 32)
 				if err != nil {
-					return "", utils.WrappedJsonErrorf(p, "Invalid unicode escape sequence at line %d, column %d", str.line, str.column)
+					return "", utils.WrappedJsonErrorf(str.pathString(), "Invalid unicode escape sequence at line %d, column %d", str.line, str.column)
 				}
-				result = append(result, []rune(string(rune(unicode)))...)
+				result = append(result, string(rune(unicode))...)
 			default:
 				result = append(result, '\\')
-				result = append(result, token)
+				result = utf8.AppendRune(result, token)
 			}
 		} else {
-			result = append(result, token)
+			result = utf8.AppendRune(result, token)
 		}
 	}
 	return string(result), nil

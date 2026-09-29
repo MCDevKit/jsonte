@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"math"
 	"sort"
 )
 
@@ -18,13 +19,15 @@ type NavigableMap[K comparable, V any] struct {
 	// Allocated lazily on first Remove; len(valid) == len(entries) when non-nil.
 	valid []bool
 
-	live       int // number of valid entries
-	tombstones int // number of invalidated slots
+	// live is the number of valid entries. The number of invalidated slots
+	// (tombstones) is always len(entries) - live, so it is not stored.
+	live int32
 
 	// Auto-compaction thresholds:
-	// trigger when tombstones percentage >= autoCompactPct AND tombstones >= autoCompactMin
-	autoCompactPct int // 0..100
-	autoCompactMin int
+	// trigger when tombstones percentage >= autoCompactPct AND tombstones >= autoCompactMin.
+	// Kept small so they pack next to live and the header stays compact.
+	autoCompactPct uint8  // 0..100; 0 disables auto-compaction
+	autoCompactMin uint16 // saturates at math.MaxUint16
 
 	// inline backs entries for small maps initialized via InitInline,
 	// avoiding a separate heap allocation. Unused otherwise.
@@ -42,9 +45,15 @@ const NavigableMapInlineCap = 2
 // pointing into the original.
 func (m *NavigableMap[K, V]) InitInline() {
 	m.entries = m.inline[:0]
-	m.autoCompactPct = 33
-	m.autoCompactMin = 128
+	m.autoCompactPct = defaultAutoCompactPct
+	m.autoCompactMin = defaultAutoCompactMin
 }
+
+// Default auto-compaction thresholds used by the constructors.
+const (
+	defaultAutoCompactPct = 33
+	defaultAutoCompactMin = 128
+)
 
 // NewNavigableMap creates a new NavigableMap.
 func NewNavigableMap[K comparable, V any]() NavigableMap[K, V] {
@@ -64,8 +73,8 @@ func NewNavigableMapWithCapacity[K comparable, V any](capacity int) NavigableMap
 	}
 	return NavigableMap[K, V]{
 		entries:        make([]nmEntry[K, V], 0, capacity),
-		autoCompactPct: 33,
-		autoCompactMin: 128,
+		autoCompactPct: defaultAutoCompactPct,
+		autoCompactMin: defaultAutoCompactMin,
 	}
 }
 
@@ -101,8 +110,52 @@ func (m *NavigableMap[K, V]) SetAutoCompact(percent, minTombstones int) {
 	if minTombstones < 0 {
 		minTombstones = 0
 	}
-	m.autoCompactPct = percent
-	m.autoCompactMin = minTombstones
+	if minTombstones > math.MaxUint16 {
+		minTombstones = math.MaxUint16
+	}
+	m.autoCompactPct = uint8(percent)
+	m.autoCompactMin = uint16(minTombstones)
+}
+
+// tombstones returns the number of invalidated slots.
+func (m *NavigableMap[K, V]) tombstones() int {
+	return len(m.entries) - int(m.live)
+}
+
+// CloneInto overwrites dst with a compacted copy of m, mapping every value
+// through f (values are copied as-is when f is nil). Entry order is kept.
+// dst gets the default auto-compaction thresholds. Small results use dst's
+// inline storage, so dst must not be copied or moved afterwards (e.g. a
+// freshly heap-allocated struct embedding the map).
+func (m *NavigableMap[K, V]) CloneInto(dst *NavigableMap[K, V], f func(V) V) {
+	live := int(m.live)
+	if live <= NavigableMapInlineCap {
+		dst.inline = [NavigableMapInlineCap]nmEntry[K, V]{}
+		dst.entries = dst.inline[:0]
+	} else {
+		dst.entries = make([]nmEntry[K, V], 0, live)
+	}
+	for i := range m.entries {
+		if m.valid != nil && !m.valid[i] {
+			continue
+		}
+		e := m.entries[i]
+		if f != nil {
+			e.value = f(e.value)
+		}
+		dst.entries = append(dst.entries, e)
+	}
+	dst.valid = nil
+	dst.live = m.live
+	dst.autoCompactPct = defaultAutoCompactPct
+	dst.autoCompactMin = defaultAutoCompactMin
+	dst.data = nil
+	if live >= mapThreshold {
+		dst.data = make(map[K]V, live)
+		for i := range dst.entries {
+			dst.data[dst.entries[i].key] = dst.entries[i].value
+		}
+	}
 }
 
 // Reserve grows internal capacity to at least n additional free slots.
@@ -211,7 +264,7 @@ func (m *NavigableMap[K, V]) Put(key K, value V) {
 		m.live++
 		// Lazy promotion: create hash map after threshold.
 		if m.live >= mapThreshold {
-			m.data = make(map[K]V, m.live)
+			m.data = make(map[K]V, max(int(m.live), cap(m.entries)))
 			for i := range m.entries {
 				if m.valid == nil || m.valid[i] {
 					m.data[m.entries[i].key] = m.entries[i].value
@@ -291,14 +344,13 @@ func (m *NavigableMap[K, V]) Remove(key K) {
 			m.entries[i] = zero
 			m.valid[i] = false
 			m.live--
-			m.tombstones++
 			break
 		}
 	}
 	m.autoCompactMaybe()
 }
 
-func (m *NavigableMap[K, V]) Size() int     { return m.live }
+func (m *NavigableMap[K, V]) Size() int     { return int(m.live) }
 func (m *NavigableMap[K, V]) IsEmpty() bool { return m.live == 0 }
 
 func (m *NavigableMap[K, V]) Clear() {
@@ -306,7 +358,6 @@ func (m *NavigableMap[K, V]) Clear() {
 	m.data = nil
 	m.valid = nil
 	m.live = 0
-	m.tombstones = 0
 }
 
 // Reset clears all entries while keeping allocated storage for reuse.
@@ -324,7 +375,6 @@ func (m *NavigableMap[K, V]) Reset() {
 	m.entries = m.entries[:0]
 	m.valid = nil
 	m.live = 0
-	m.tombstones = 0
 }
 
 func (m *NavigableMap[K, V]) Range(fn func(K, V) bool) {
@@ -380,10 +430,31 @@ func (m *NavigableMap[K, V]) ContainsMatchingKey(match func(K) bool) bool {
 	return found
 }
 
+// At returns the key and value of the i-th live entry in insertion order.
+// ok is false when i is out of range.
+func (m *NavigableMap[K, V]) At(i int) (key K, value V, ok bool) {
+	if i < 0 || i >= int(m.live) {
+		return key, value, false
+	}
+	if m.valid == nil {
+		e := &m.entries[i]
+		return e.key, e.value, true
+	}
+	for j := range m.entries {
+		if m.valid[j] {
+			if i == 0 {
+				return m.entries[j].key, m.entries[j].value, true
+			}
+			i--
+		}
+	}
+	return key, value, false
+}
+
 // ===== Materialization (prefer Append* to avoid allocs) =====
 
 func (m *NavigableMap[K, V]) Keys() []K {
-	out := make([]K, 0, m.live)
+	out := make([]K, 0, int(m.live))
 	if m.valid == nil {
 		for i := range m.entries {
 			out = append(out, m.entries[i].key)
@@ -399,7 +470,7 @@ func (m *NavigableMap[K, V]) Keys() []K {
 }
 
 func (m *NavigableMap[K, V]) Values() []V {
-	out := make([]V, 0, m.live)
+	out := make([]V, 0, int(m.live))
 	if m.valid == nil {
 		for i := range m.entries {
 			out = append(out, m.entries[i].value)
@@ -460,7 +531,7 @@ func (m *NavigableMap[K, V]) Sort(comparer func(K, K) int) {
 	}
 
 	// Build dense list of valid indices
-	idxs := make([]int, 0, m.live)
+	idxs := make([]int, 0, int(m.live))
 	for i := range m.entries {
 		if m.valid[i] {
 			idxs = append(idxs, i)
@@ -473,8 +544,8 @@ func (m *NavigableMap[K, V]) Sort(comparer func(K, K) int) {
 	})
 
 	// Build compacted & sorted entries
-	newEntries := make([]nmEntry[K, V], 0, m.live)
-	newValid := make([]bool, 0, m.live)
+	newEntries := make([]nmEntry[K, V], 0, int(m.live))
+	newValid := make([]bool, 0, int(m.live))
 	for _, i := range idxs {
 		newEntries = append(newEntries, m.entries[i])
 		newValid = append(newValid, true)
@@ -482,16 +553,15 @@ func (m *NavigableMap[K, V]) Sort(comparer func(K, K) int) {
 
 	m.entries = newEntries
 	m.valid = newValid
-	m.tombstones = 0
 }
 
 // ===== Compaction =====
 
 func (m *NavigableMap[K, V]) Compact() {
-	if m == nil || m.tombstones == 0 {
+	if m == nil || m.tombstones() == 0 {
 		return
 	}
-	newEntries := make([]nmEntry[K, V], 0, m.live)
+	newEntries := make([]nmEntry[K, V], 0, int(m.live))
 	for i := range m.entries {
 		if m.valid[i] {
 			newEntries = append(newEntries, m.entries[i])
@@ -499,17 +569,17 @@ func (m *NavigableMap[K, V]) Compact() {
 	}
 	m.entries = newEntries
 	m.valid = nil
-	m.tombstones = 0
 }
 
 func (m *NavigableMap[K, V]) autoCompactMaybe() {
-	if m.autoCompactPct == 0 || m.tombstones == 0 || len(m.entries) == 0 {
+	tombstones := m.tombstones()
+	if m.autoCompactPct == 0 || tombstones == 0 || len(m.entries) == 0 {
 		return
 	}
-	if m.tombstones < m.autoCompactMin {
+	if tombstones < int(m.autoCompactMin) {
 		return
 	}
-	if m.tombstones*100/len(m.entries) >= m.autoCompactPct {
+	if tombstones*100/len(m.entries) >= int(m.autoCompactPct) {
 		m.Compact()
 	}
 }

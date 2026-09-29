@@ -57,16 +57,7 @@ func (v *LambdaVisitor) Visit(tree antlr.ParseTree) {
 
 // resolveLambdaTree resolves a string to an AST tree
 func (v *LambdaVisitor) resolveLambdaTree(src string) parser.ILambdaContext {
-	is := antlr.NewInputStream(src)
-	lexer := NewTemplateAwareLexer(is)
-	lexer.JsonTemplateLexer.RemoveErrorListeners()
-	lexer.JsonTemplateLexer.AddErrorListener(antlr.NewConsoleErrorListener())
-	stream := antlr.NewCommonTokenStream(lexer, 0)
-	p := parser.NewJsonTemplate(stream)
-	p.RemoveErrorListeners()
-	p.AddErrorListener(antlr.NewConsoleErrorListener())
-	p.BuildParseTrees = true
-	return p.Lambda()
+	return parseTree(src, lambdaRule, antlr.NewConsoleErrorListener()).(parser.ILambdaContext)
 }
 
 func (v *LambdaVisitor) VisitExpression(ctx *parser.ExpressionContext) {
